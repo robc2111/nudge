@@ -1,9 +1,13 @@
+//goals.js
 const express = require('express');
 const router = express.Router();
 const goalsController = require('../controllers/goalsController');
 
 // Create a new goal
 router.post('/', goalsController.createGoal);
+
+// Get all goals (for testing / admin / dev)
+router.get('/', goalsController.getAllGoals);
 
 // Get all goals for a user
 router.get('/user/:userId', goalsController.getGoalsByUser);

@@ -1,3 +1,4 @@
+//goasController.js
 const pool = require('../db');
 
 // Create a goal
@@ -96,6 +97,17 @@ exports.deleteGoal = async (req, res) => {
     res.json({ message: "Goal deleted", deleted: result.rows[0] });
   } catch (err) {
     console.error("❌ Error deleting goal:", err.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Get all goals (for testing or admin)
+exports.getAllGoals = async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM goals ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Error fetching all goals:", err.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };
