@@ -17,6 +17,12 @@ app.use('/api/microtasks', require('./routes/microtasks'));
 app.use('/api/check_ins', require('./routes/check_ins'));
 app.use('/api/reflections', require('./routes/reflections'));
 
+const authRoutes = require('./routes/auth');
+app.use('/api/auth', authRoutes);
+
+const profileRoutes = require('./routes/profile');
+app.use('/api/profile', profileRoutes);
+
 // Optional debug log
 if (process.env.NODE_ENV !== 'production') {
   console.log("Connected to DB:", process.env.DATABASE_URL);

@@ -31,11 +31,16 @@ const createUser = async (req, res) => {
 };
 
 // GET user by ID
-// GET user by ID
 const getUserById = async (req, res) => {
-  const { id } = req.params;
+  const requestedId = parseInt(req.params.id, 10);
+  const authenticatedUserId = req.user.id;
+
+  if (requestedId !== authenticatedUserId) {
+    return res.status(403).json({ error: "Access denied" });
+  }
+
   try {
-    const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    const result = await pool.query('SELECT id, name, email, tone_id FROM users WHERE id = $1', [requestedId]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -45,14 +50,40 @@ const getUserById = async (req, res) => {
   }
 };
 
+const getCurrentUser = async (req, res) => {
+  const authenticatedUserId = req.user.id;
+
+  try {
+    const result = await pool.query(
+      'SELECT id, name, email, telegram_id, tone_id FROM users WHERE id = $1',
+      [authenticatedUserId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error loading user:', err.message);
+    res.status(500).json({ error: 'Failed to load user' });
+  }
+};
+
 // PUT update user
 const updateUser = async (req, res) => {
-  const { id } = req.params;
+  const authenticatedUserId = req.user.id;
+  const targetUserId = parseInt(req.params.id, 10);
+
+  if (authenticatedUserId !== targetUserId) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
   const { name, tone_id } = req.body;
   try {
     const result = await pool.query(
       'UPDATE users SET name = $1, tone_id = $2 WHERE id = $3 RETURNING *',
-      [name, tone_id, id]
+      [name, tone_id, targetUserId]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "User not found" });
@@ -65,9 +96,15 @@ const updateUser = async (req, res) => {
 
 // DELETE user
 const deleteUser = async (req, res) => {
-  const { id } = req.params;
+  const authenticatedUserId = req.user.id;
+  const targetUserId = parseInt(req.params.id, 10);
+
+  if (authenticatedUserId !== targetUserId) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
   try {
-    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING *', [id]);
+    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING *', [targetUserId]);
     if (result.rowCount === 0) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -79,66 +116,79 @@ const deleteUser = async (req, res) => {
 
 // GET /api/users/:userId/dashboard
 const getUserDashboard = async (req, res) => {
-  const userId = parseInt(req.params.userId, 10);
-  if (isNaN(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  const requestedUserId = parseInt(req.params.userId, 10);
+  const authenticatedUserId = req.user.id;
+
+  if (isNaN(requestedUserId)) return res.status(400).json({ error: "Invalid user ID" });
+
+  if (requestedUserId !== authenticatedUserId) {
+    return res.status(403).json({ error: "Access denied" });
+  }
 
   try {
-    const userResult = await pool.query('SELECT id, name FROM users WHERE id = $1', [userId]);
+    const userResult = await pool.query('SELECT id, name FROM users WHERE id = $1', [authenticatedUserId]);
     if (userResult.rows.length === 0) return res.status(404).json({ error: "User not found" });
+
     const user = userResult.rows[0];
+    const goalResult = await pool.query('SELECT * FROM goals WHERE user_id = $1 ORDER BY created_at DESC', [authenticatedUserId]);
+    const goals = goalResult.rows;
+    if (goals.length === 0) return res.status(200).json({ user, goals: [] });
 
-    const goalResult = await pool.query('SELECT * FROM goals WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1', [userId]);
-    const goal = goalResult.rows[0];
-    if (!goal) return res.status(200).json({ user, goal: null });
+    const allGoals = [];
 
-    const subgoalsResult = await pool.query('SELECT * FROM subgoals WHERE goal_id = $1 ORDER BY order_index', [goal.id]);
-    const subgoals = [];
+    for (const goal of goals) {
+      const subgoalsResult = await pool.query('SELECT * FROM subgoals WHERE goal_id = $1 ORDER BY order_index', [goal.id]);
+      const subgoals = [];
 
-    let totalMicrotasks = 0;
-    let completedMicrotasks = 0;
-    let current = { subgoalId: null, taskId: null, microtaskId: null };
+      for (const sg of subgoalsResult.rows) {
+        const tasksResult = await pool.query('SELECT * FROM tasks WHERE subgoal_id = $1 ORDER BY id', [sg.id]);
+        const tasks = [];
 
-    for (const sg of subgoalsResult.rows) {
-      const tasksResult = await pool.query('SELECT * FROM tasks WHERE subgoal_id = $1 ORDER BY id', [sg.id]);
-      const tasks = [];
-
-      for (const task of tasksResult.rows) {
-        const microtasksResult = await pool.query('SELECT * FROM microtasks WHERE task_id = $1 ORDER BY id', [task.id]);
-        const microtasks = microtasksResult.rows;
-
-        totalMicrotasks += microtasks.length;
-        completedMicrotasks += microtasks.filter(mt => mt.status === 'done').length;
-
-        const next = microtasks.find(mt => mt.status !== 'done');
-        if (!current.microtaskId && next) {
-          current = {
-            subgoalId: sg.id,
-            taskId: task.id,
-            microtaskId: next.id
-          };
+        for (const task of tasksResult.rows) {
+          const microtasksResult = await pool.query('SELECT * FROM microtasks WHERE task_id = $1 ORDER BY id', [task.id]);
+          tasks.push({ ...task, microtasks: microtasksResult.rows });
         }
 
-        tasks.push({ ...task, microtasks });
+        subgoals.push({ ...sg, tasks });
       }
 
-      subgoals.push({ ...sg, tasks });
+      let total = 0;
+      let done = 0;
+      let current = { subgoalId: null, taskId: null, microtaskId: null };
+
+      for (const sg of subgoals) {
+        for (const task of sg.tasks) {
+          for (const mt of task.microtasks) {
+            total += 1;
+            if (mt.status === 'done') done += 1;
+          }
+
+          const next = task.microtasks.find(mt => mt.status !== 'done');
+          if (!current.microtaskId && next) {
+            current = {
+              subgoalId: sg.id,
+              taskId: task.id,
+              microtaskId: next.id
+            };
+          }
+        }
+      }
+
+      const percentage_complete = total === 0 ? 0 : ((done / total) * 100).toFixed(1);
+
+      allGoals.push({
+        ...goal,
+        subgoals,
+        percentage_complete: parseFloat(percentage_complete),
+        current
+      });
     }
 
-    const percentage_complete = totalMicrotasks === 0 ? 0 : ((completedMicrotasks / totalMicrotasks) * 100).toFixed(1);
-
-    res.json({
-      user,
-      goal: {
-        ...goal,
-        percentage_complete: parseFloat(percentage_complete),
-      },
-      subgoals,
-      current
-    });
+    return res.json({ user, goals: allGoals });
 
   } catch (err) {
     console.error("❌ Error generating dashboard:", err.message);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -148,5 +198,6 @@ module.exports = {
   getUserById,
   updateUser,
   deleteUser,
-  getUserDashboard
+  getUserDashboard,
+  getCurrentUser
 };

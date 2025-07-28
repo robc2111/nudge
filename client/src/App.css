@@ -1,3 +1,4 @@
+/* App.css */
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -6,10 +7,9 @@
 }
 
 .logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+  width: 100px;
+  height: auto;
+  border-radius: 10px;;
 }
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
@@ -33,10 +33,104 @@
   }
 }
 
-.card {
-  padding: 2em;
+/* === Header Styles === */
+
+.goalcrumbs-header {
+  background-color: #bd661d;
+  color: white;
+  padding: 1rem;
+
+  position: sticky;
+  top: 0;
+  z-index: 1000;
 }
 
-.read-the-docs {
-  color: #888;
+.goalcrumbs-header a {
+  color: white;
+  text-decoration: none;
+  margin: 0 0.5rem;
+}
+
+.goalcrumbs-header a:hover {
+  text-decoration: underline;
+}
+
+.goalcrumbs-header nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+
+/* === Dashboard Styles === */
+.dashboard {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem;
+  padding: 2rem;
+}
+
+/* General card layout */
+.dashboard .card {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  width: 280px;
+  max-width: 90%;
+  padding: 1.5rem;
+  text-align: left;
+  transition: transform 0.2s ease;
+}
+
+.dashboard .card:hover {
+  transform: translateY(-4px);
+}
+
+/* Card images */
+.dashboard .card img {
+  width: 48px;
+  height: auto;
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+/* Headings and lists */
+.dashboard .card h3 {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.dashboard .card ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.dashboard .card li {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #eee;
+  font-size: 0.95rem;
+}
+
+/* Optional: Status filter buttons */
+.status-filter {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.status-filter button {
+  margin: 0 0.5rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background-color: #fef0dd;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.status-filter button:hover {
+  background-color: #f8d7b8;
 }
