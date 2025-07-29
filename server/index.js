@@ -5,10 +5,33 @@ require('dotenv').config();
 const pool = require('./db');
 
 const app = express();
+const allowedOrigins = [
+  'http://localhost:5173',       // local dev
+  'https://goalcrumbs.com'       // production frontend
+];
+
 app.use(cors({
-  origin: 'https://goalcrumbs.com',
+  origin: allowedOrigins,
   credentials: true
 }));
+app.use((req, res, next) => {
+  const allowedOrigins = ['http://localhost:5173', 'https://goalcrumbs.com'];
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200); // preflight
+  }
+
+  next();
+});
 app.use(express.json());
 
 const telegramRoutes = require('./routes/telegram');
