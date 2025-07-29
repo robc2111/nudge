@@ -5,7 +5,10 @@ require('dotenv').config();
 const pool = require('./db');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:5173', 'https://goalcrumbs.com'],
+  credentials: true,
+}));
 app.use(express.json());
 
 const telegramRoutes = require('./routes/telegram');
