@@ -32,7 +32,7 @@ const createUser = async (req, res) => {
 
 // GET user by ID
 const getUserById = async (req, res) => {
-  const requestedId = parseInt(req.params.id, 10);
+  const requestedId = req.params.id;
   const authenticatedUserId = req.user.id;
 
   if (requestedId !== authenticatedUserId) {
@@ -73,7 +73,7 @@ const getCurrentUser = async (req, res) => {
 // PUT update user
 const updateUser = async (req, res) => {
   const authenticatedUserId = req.user.id;
-  const targetUserId = parseInt(req.params.id, 10);
+  const targetUserId = req.params.id;
 
   if (authenticatedUserId !== targetUserId) {
     return res.status(403).json({ error: 'Access denied' });
@@ -97,7 +97,7 @@ const updateUser = async (req, res) => {
 // DELETE user
 const deleteUser = async (req, res) => {
   const authenticatedUserId = req.user.id;
-  const targetUserId = parseInt(req.params.id, 10);
+  const targetUserId = req.params.id;
 
   if (authenticatedUserId !== targetUserId) {
     return res.status(403).json({ error: 'Access denied' });
