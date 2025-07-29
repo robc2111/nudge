@@ -8,6 +8,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const telegramRoutes = require('./routes/telegram');
+app.use('/api/telegram', telegramRoutes);
+
 // Mount API routes
 app.use('/api/users', require('./routes/users'));
 app.use('/api/goals', require('./routes/goals'));

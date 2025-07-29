@@ -1,9 +1,11 @@
 /* App.css */
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+  width: 100%;
+  max-width: 100vw;
+  padding: 0;
+  box-sizing: border-box;
   text-align: center;
+
 }
 
 .logo {
@@ -71,6 +73,57 @@
   padding: 2rem;
 }
 
+.dashboard-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+  gap: 1rem;
+}
+
+.dashboard-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+}
+
+.card {
+  width: 300px;
+  background: #fff;
+  padding: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.card img {
+  width: 50px;
+  margin-bottom: 0.5rem;
+}
+
+ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+li {
+  margin: 0.3rem 0;
+  cursor: pointer;
+}
+
+.selected {
+  font-weight: bold;
+  background-color: #fef0dd;
+  border-radius: 6px;
+  padding: 0.3rem;
+}
+
+.status-filter button.active {
+  background-color: #bd661d;
+  color: white;
+}
+
 /* General card layout */
 .dashboard .card {
   background-color: #fff;
@@ -133,4 +186,102 @@
 
 .status-filter button:hover {
   background-color: #f8d7b8;
+}
+
+/* === Landing Page Styles === */
+.landing-page {
+  padding: 2rem;
+  text-align: center;
+  max-width: 800px;
+  margin: auto;
+}
+
+.hero-section h1 {
+  font-size: 2.8rem;
+  margin-bottom: 1rem;
+}
+
+.about-section ul {
+  text-align: left;
+  margin: 0 auto;
+  max-width: 500px;
+}
+
+.icon-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.icon-section img {
+  width: 80px;
+  margin-bottom: 0.5rem;
+}
+
+.icon-section p {
+  max-width: 400px;
+}
+
+.dashboard-preview {
+  width: 100%;
+  max-width: 800px;
+  border-radius: 8px;
+}
+
+.cta-button {
+  background-color: #bd661d;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 6px;
+  margin-top: 1rem;
+  text-decoration: none;
+}
+
+.cta-button:hover {
+  background-color: #a55217;
+}
+
+/* Flex layout for the two sections side by side */
+.side-by-side-sections {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+/* Ensure each section takes about half on wide screens */
+.team-section,
+.how-it-works-section {
+  flex: 1 1 45%;
+  min-width: 280px;
+}
+
+/* Style for each mascot/goal block */
+.team-section div,
+.how-it-works-section div {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.team-section img,
+.how-it-works-section img {
+  width: 60px;
+  height: auto;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+* {
+  outline: 1px solid rgba(255, 0, 0, 0.1); /* temporary debug */
 }

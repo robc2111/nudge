@@ -3,18 +3,18 @@ import { Link } from 'react-router-dom';
 
 const LandingPage = () => {
   return (
-    <div style={{ padding: '2rem' }}>
+    <div className="landing-page">
       {/* Hero Section */}
-      <section>
+      <section className="hero-section">
         <h1>Welcome to GoalCrumbs 👋</h1>
         <p>Your AI-powered accountability partner. Break big goals into tiny, manageable crumbs — and actually get them done.</p>
         <p>
-          <Link to="/signup">Get Started</Link> or <Link to="/login">Sign In</Link>
+          <Link className="cta-button" to="/signup">Get Started</Link> or <Link className="cta-button" to="/login">Sign In</Link>
         </p>
       </section>
 
       {/* About Section */}
-      <section>
+      <section className="about-section">
         <h2>What is GoalCrumbs?</h2>
         <p>
           GoalCrumbs helps you stop procrastinating by breaking large, overwhelming goals into bite-sized steps. 
@@ -28,8 +28,9 @@ const LandingPage = () => {
         </ul>
       </section>
 
-      <section>
-  <h2>Meet Your GoalCrumbs Team 🐾</h2>
+      <section className="side-by-side-sections">
+  <div className="team-section">
+    <h2>Meet Your GoalCrumbs Team 🐾</h2>
 
   <div>
     <img src="/owl.png" alt="Owl" width="80" />
@@ -55,9 +56,9 @@ const LandingPage = () => {
     <img src="/frog.png" alt="Frog" width="80" />
     <p><strong>The Frog</strong> helps you take action and stay productive.</p>
   </div>
-</section>
+</div>
 
-<section>
+<div className="how-it-works-section">
   <h2>How GoalCrumbs Works 🍰</h2>
 
   <div>
@@ -74,12 +75,13 @@ const LandingPage = () => {
     <img src="/crumbs.png" alt="Tasks (Crumbs)" width="100" />
     <p><strong>Tasks:</strong> Tiny steps — the crumbs that lead to progress.</p>
   </div>
+  </div>
 </section>
 
       {/* Placeholder Image Section */}
       <section>
         <h2>How it Works</h2>
-        <img src="/example-dashboard.png" alt="Dashboard preview" width="100%" />
+        <img className="dashboard-preview" src="/example-dashboard.png" alt="Dashboard preview" />
         <p>(Placeholder image — you can replace this with your app's dashboard screenshot)</p>
       </section>
 
@@ -104,7 +106,7 @@ const LandingPage = () => {
       {/* Call to Action */}
       <section>
         <h2>Ready to take action?</h2>
-        <Link to="/signup">Join GoalCrumbs today</Link>
+        <Link to="/signup" className="cta-button">Join GoalCrumbs today</Link>
       </section>
     </div>
   );
