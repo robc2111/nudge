@@ -6,8 +6,8 @@ const pool = require('./db');
 
 const app = express();
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://goalcrumbs.com'],
-  credentials: true,
+  origin: 'https://goalcrumbs.com',
+  credentials: true
 }));
 app.use(express.json());
 
