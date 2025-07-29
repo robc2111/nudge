@@ -17,12 +17,12 @@ const createUser = async (req, res) => {
     return res.status(400).json({ error: 'Missing telegram_id in request body' });
   }
 
-  const { telegram_id, name, tone_id } = req.body;
+  const { telegram_id, name } = req.body;
 
   try {
     const result = await pool.query(
-      'INSERT INTO users (telegram_id, name, tone_id) VALUES ($1, $2, $3) RETURNING *',
-      [telegram_id, name, tone_id]
+      'INSERT INTO users (telegram_id, name) VALUES ($1, $2) RETURNING *',
+      [telegram_id, name]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -40,7 +40,7 @@ const getUserById = async (req, res) => {
   }
 
   try {
-    const result = await pool.query('SELECT id, name, email, tone_id FROM users WHERE id = $1', [requestedId]);
+    const result = await pool.query('SELECT id, name, email FROM users WHERE id = $1', [requestedId]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -55,7 +55,7 @@ const getCurrentUser = async (req, res) => {
 
   try {
     const result = await pool.query(
-      'SELECT id, name, email, telegram_id, tone_id FROM users WHERE id = $1',
+      'SELECT id, name, email, telegram_id FROM users WHERE id = $1',
       [authenticatedUserId]
     );
 
@@ -79,11 +79,11 @@ const updateUser = async (req, res) => {
     return res.status(403).json({ error: 'Access denied' });
   }
 
-  const { name, tone_id } = req.body;
+  const { name} = req.body;
   try {
     const result = await pool.query(
-      'UPDATE users SET name = $1, tone_id = $2 WHERE id = $3 RETURNING *',
-      [name, tone_id, targetUserId]
+      'UPDATE users SET name = $1 WHERE id = $2 RETURNING *',
+      [name, targetUserId]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "User not found" });
@@ -116,10 +116,12 @@ const deleteUser = async (req, res) => {
 
 // GET /api/users/:userId/dashboard
 const getUserDashboard = async (req, res) => {
-  const requestedUserId = parseInt(req.params.userId, 10);
+  const requestedUserId = req.params.userId; // ✅ UUID-safe
   const authenticatedUserId = req.user.id;
 
-  if (isNaN(requestedUserId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!requestedUserId || typeof requestedUserId !== 'string') {
+  return res.status(400).json({ error: "Invalid user ID" });
+}
 
   if (requestedUserId !== authenticatedUserId) {
     return res.status(403).json({ error: "Access denied" });

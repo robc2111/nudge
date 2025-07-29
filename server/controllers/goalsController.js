@@ -3,22 +3,57 @@ const pool = require('../db');
 
 // Create a goal
 exports.createGoal = async (req, res) => {
-  const { user_id, title, description, due_date } = req.body;
-
-  if (!user_id || !title) {
-    return res.status(400).json({ error: "user_id and title are required" });
-  }
-
+  const client = await pool.connect();
   try {
-    const result = await pool.query(
+    const { user_id, title, description, due_date, subgoals } = req.body;
+
+    if (!user_id || !title) {
+      return res.status(400).json({ error: "user_id and title are required" });
+    }
+
+    await client.query('BEGIN');
+
+    const goalRes = await client.query(
       `INSERT INTO goals (user_id, title, description, due_date)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
+       VALUES ($1, $2, $3, $4) RETURNING id`,
       [user_id, title, description || null, due_date || null]
     );
-    res.status(201).json(result.rows[0]);
+    const goalId = goalRes.rows[0].id;
+
+    // If breakdown exists, insert it too
+    if (subgoals && Array.isArray(subgoals)) {
+      for (const sub of subgoals) {
+        const subRes = await client.query(
+          'INSERT INTO subgoals (goal_id, title) VALUES ($1, $2) RETURNING id',
+          [goalId, sub.title]
+        );
+        const subgoalId = subRes.rows[0].id;
+
+        for (const task of sub.tasks || []) {
+          const taskRes = await client.query(
+            'INSERT INTO tasks (subgoal_id, title) VALUES ($1, $2) RETURNING id',
+            [subgoalId, task.title]
+          );
+          const taskId = taskRes.rows[0].id;
+
+          for (const micro of task.microtasks || []) {
+            await client.query(
+              'INSERT INTO microtasks (task_id, title) VALUES ($1, $2)',
+              [taskId, micro]
+            );
+          }
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+    res.status(201).json({ message: 'Goal saved successfully', goal_id: goalId });
   } catch (err) {
-    console.error("❌ Error creating goal:", err.message);
-    res.status(500).json({ error: "Internal server error" });
+    await client.query('ROLLBACK');
+    console.error('❌ Error creating goal:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
   }
 };
 

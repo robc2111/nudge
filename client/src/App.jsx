@@ -7,6 +7,7 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import PrivateRoute from './components/PrivateRoute';
+import GoalSetup from './pages/GoalSetup';
 
 function App() {
   return (
@@ -32,6 +33,14 @@ function App() {
             </PrivateRoute>
           }
         />
+        <Route
+  path="/setup"
+  element={
+    <PrivateRoute>
+      <GoalSetup />
+    </PrivateRoute>
+  }
+/>
       </Routes>
     </BrowserRouter>
   );

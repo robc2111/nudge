@@ -3,20 +3,23 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid'); // ✅ added
 const pool = require('../db');
 
-// POST /api/auth/register
 router.post('/register', async (req, res) => {
   const { name, email, password, telegram_id } = req.body;
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
+    const userId = uuidv4(); // ✅ generate UUID for user.id
+
     const newUser = await pool.query(
-      'INSERT INTO users (name, email, password, telegram_id) VALUES ($1, $2, $3, $4) RETURNING *',
-      [name, email, hashedPassword, telegram_id]
+      `INSERT INTO users (id, name, email, password, telegram_id)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [userId, name, email, hashedPassword, telegram_id]
     );
 
-    const token = jwt.sign({ id: newUser.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: newUser.rows[0] });
 
   } catch (err) {

@@ -19,6 +19,8 @@ app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/microtasks', require('./routes/microtasks'));
 app.use('/api/check_ins', require('./routes/check_ins'));
 app.use('/api/reflections', require('./routes/reflections'));
+const aiRoutes = require('./routes/ai');
+app.use('/api/ai', aiRoutes);
 
 const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);

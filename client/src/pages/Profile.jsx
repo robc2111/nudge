@@ -19,7 +19,6 @@ const Profile = () => {
       <p><strong>Name:</strong> {user.name}</p>
       <p><strong>Email:</strong> {user.email}</p>
       <p><strong>Telegram ID:</strong> {user.telegram_id}</p>
-      <p><strong>Tone Preference:</strong> {user.tone_id || 'Not set'}</p>
     </div>
   );
 };
