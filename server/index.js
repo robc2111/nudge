@@ -11,11 +11,13 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: ['https://goalcrumbs.com', 'http://localhost:5173'],
   credentials: true
 }));
+
+// ✳️ Must follow cors middleware
 app.use((req, res, next) => {
-  const allowedOrigins = ['http://localhost:5173', 'https://goalcrumbs.com'];
+  const allowedOrigins = ['https://goalcrumbs.com', 'http://localhost:5173'];
   const origin = req.headers.origin;
 
   if (allowedOrigins.includes(origin)) {
@@ -27,7 +29,7 @@ app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
 
   if (req.method === 'OPTIONS') {
-    return res.sendStatus(200); // preflight
+    return res.sendStatus(200);
   }
 
   next();
