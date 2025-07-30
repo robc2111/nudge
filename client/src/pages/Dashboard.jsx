@@ -1,6 +1,7 @@
 //Dashboard.jsx
 import { useEffect, useState } from 'react';
 import axios from '../api/axios';
+import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
   const [data, setData] = useState(null);
@@ -89,16 +90,12 @@ const Dashboard = () => {
           ))}
         </div>
 
-        <div className="tone-selector">
-          <label><strong>Tone:</strong></label>
-          <select onChange={(e) => console.log('Tone selected:', e.target.value)}>
-            <option value="mouse">🐭 Mouse</option>
-            <option value="sparrow">🐦 Sparrow</option>
-            <option value="ant">🐜 Ant</option>
-            <option value="owl">🦉 Owl</option>
-            <option value="frog">🐸 Frog</option>
-          </select>
-        </div>
+        <Link
+  to="/goal-setup"
+  className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+>
+  ➕ Add New Goal
+</Link>
       </div>
 
       <div className="dashboard-cards">

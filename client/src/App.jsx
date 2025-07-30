@@ -34,7 +34,7 @@ function App() {
           }
         />
         <Route
-  path="/setup"
+  path="/goal-setup"
   element={
     <PrivateRoute>
       <GoalSetup />

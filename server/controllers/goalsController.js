@@ -4,39 +4,62 @@ const pool = require('../db');
 // Create a goal
 exports.createGoal = async (req, res) => {
   const client = await pool.connect();
+
+  // Log when the route is hit
+  console.log("🛬 POST /api/goals hit");
+
   try {
-    const { user_id, title, description, due_date, subgoals } = req.body;
+    const { user_id, title, description, due_date, subgoals, tone } = req.body;
+
+    // Log the incoming payload
+    console.log('📦 Received goal payload:', req.body);
 
     if (!user_id || !title) {
+      console.warn("⚠️ Missing user_id or title", { user_id, title });
       return res.status(400).json({ error: "user_id and title are required" });
+    }
+
+    const validTones = ['friendly', 'strict', 'motivational'];
+    if (tone && !validTones.includes(tone)) {
+      console.warn("⚠️ Invalid tone:", tone);
+      return res.status(400).json({ error: 'Invalid tone value' });
     }
 
     await client.query('BEGIN');
 
     const goalRes = await client.query(
-      `INSERT INTO goals (user_id, title, description, due_date)
-       VALUES ($1, $2, $3, $4) RETURNING id`,
-      [user_id, title, description || null, due_date || null]
+      `INSERT INTO goals (user_id, title, description, due_date, tone)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [user_id, title, description || null, due_date || null, tone || null]
     );
-    const goalId = goalRes.rows[0].id;
 
-    // If breakdown exists, insert it too
+    const goalId = goalRes.rows[0].id;
+    console.log('✅ Goal inserted with ID:', goalId);
+
     if (subgoals && Array.isArray(subgoals)) {
       for (const sub of subgoals) {
+        console.log(`➡️ Inserting subgoal:`, sub.title);
+
         const subRes = await client.query(
           'INSERT INTO subgoals (goal_id, title) VALUES ($1, $2) RETURNING id',
           [goalId, sub.title]
         );
+
         const subgoalId = subRes.rows[0].id;
 
         for (const task of sub.tasks || []) {
+          console.log(`  ↪ Inserting task:`, task.title);
+
           const taskRes = await client.query(
             'INSERT INTO tasks (subgoal_id, title) VALUES ($1, $2) RETURNING id',
             [subgoalId, task.title]
           );
+
           const taskId = taskRes.rows[0].id;
 
           for (const micro of task.microtasks || []) {
+            console.log(`    • Inserting microtask:`, micro);
+
             await client.query(
               'INSERT INTO microtasks (task_id, title) VALUES ($1, $2)',
               [taskId, micro]
@@ -44,10 +67,15 @@ exports.createGoal = async (req, res) => {
           }
         }
       }
+
+      console.log("📥 Final subgoal breakdown saved.");
+    } else {
+      console.log("ℹ️ No subgoals provided in payload.");
     }
 
     await client.query('COMMIT');
     res.status(201).json({ message: 'Goal saved successfully', goal_id: goalId });
+
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('❌ Error creating goal:', err.message);

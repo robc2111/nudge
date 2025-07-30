@@ -15,8 +15,11 @@ const Login = () => {
 
     try {
       const res = await axios.post('/auth/login', { email, password });
-      localStorage.setItem('token', res.data.token);
-      navigate('/dashboard');
+
+localStorage.setItem('token', res.data.token);
+localStorage.setItem('user', JSON.stringify(res.data.user)); // 👈 this is the fix
+
+navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
     }

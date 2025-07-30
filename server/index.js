@@ -66,6 +66,11 @@ app.get('/', (req, res) => {
   res.send('Nudge API is running');
 });
 
+app.use((req, res, next) => {
+  console.log(`🌐 ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 // Catch-all 404
 app.use((req, res) => {
   res.status(404).json({ error: `Route not found: ${req.method} ${req.originalUrl}` });

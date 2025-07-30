@@ -56,7 +56,7 @@ const getCurrentUser = async (req, res) => {
   try {
     const result = await pool.query(
       'SELECT id, name, email, telegram_id FROM users WHERE id = $1',
-      [authenticatedUserId]
+      [authenticatedUserId]  // ✅ this must be a UUID, not parseInt
     );
 
     if (result.rows.length === 0) {
@@ -65,7 +65,7 @@ const getCurrentUser = async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (err) {
-    console.error('Error loading user:', err.message);
+    console.error('Error loading user:', err.message);  // ✅ good debug info
     res.status(500).json({ error: 'Failed to load user' });
   }
 };
