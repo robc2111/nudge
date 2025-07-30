@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import PrivateRoute from './components/PrivateRoute';
 import GoalSetup from './pages/GoalSetup';
+import EditGoal from './pages/EditGoal'; // ✅ Add this line
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/edit-goal/:id" element={<EditGoal />} />
         <Route
           path="/dashboard"
           element={

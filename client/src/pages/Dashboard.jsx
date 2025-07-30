@@ -1,7 +1,7 @@
 //Dashboard.jsx
 import { useEffect, useState } from 'react';
 import axios from '../api/axios';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const [data, setData] = useState(null);
@@ -9,6 +9,7 @@ const Dashboard = () => {
   const [selectedGoalId, setSelectedGoalId] = useState(null);
   const [selectedSubgoalId, setSelectedSubgoalId] = useState(null);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     axios.get('/users/me')
@@ -61,6 +62,38 @@ const Dashboard = () => {
     return total === 0 ? 0 : Math.round((done / total) * 100);
   };
 
+  const handleDelete = async (goalId) => {
+    const confirmed = window.confirm("Are you sure you want to delete this goal?");
+    if (!confirmed) return;
+
+    try {
+      const token = localStorage.getItem('token');
+
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/goals/${goalId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Delete failed");
+
+      // Update local state and select next goal (optional enhancement)
+      setData((prev) => {
+        const updatedGoals = prev.goals.filter((g) => g.id !== goalId);
+        const nextGoal = updatedGoals.find(g => g.status === 'in_progress') || updatedGoals[0] || null;
+        setSelectedGoalId(nextGoal?.id || null);
+        return {
+          ...prev,
+          goals: updatedGoals,
+        };
+      });
+
+    } catch (err) {
+      console.error("❌ Failed to delete goal:", err.message);
+    }
+  };
+
   if (!data) return <p>Loading...</p>;
 
   return (
@@ -91,11 +124,11 @@ const Dashboard = () => {
         </div>
 
         <Link
-  to="/goal-setup"
-  className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
->
-  ➕ Add New Goal
-</Link>
+          to="/goal-setup"
+          className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+        >
+          ➕ Add New Goal
+        </Link>
       </div>
 
       <div className="dashboard-cards">
@@ -104,6 +137,7 @@ const Dashboard = () => {
           <h3>{selectedGoal?.title || 'No Goal'}</h3>
           <p>📊 Progress: {getProgress(getGoalMicrotasks(selectedGoal))}%</p>
           <p><strong>Status:</strong> {selectedGoal?.status}</p>
+
           <h4>Subgoals</h4>
           <ul>
             {(selectedGoal?.subgoals || []).map(sg => (
@@ -116,6 +150,24 @@ const Dashboard = () => {
               </li>
             ))}
           </ul>
+
+          {selectedGoal && (
+            <div className="mt-4">
+              <button
+                className="text-blue-600 underline text-sm mr-4"
+                onClick={() => navigate(`/edit-goal/${selectedGoal.id}`)}
+              >
+                Edit
+              </button>
+
+              <button
+                className="text-red-600 underline text-sm"
+                onClick={() => handleDelete(selectedGoal.id)}
+              >
+                Delete
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="card">

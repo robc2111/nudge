@@ -1,4 +1,6 @@
 //usersController.js
+// usersController.js
+const { assignStatuses } = require('../utils/statusUtils');
 const pool = require('../db');
 
 // GET all users
@@ -56,7 +58,7 @@ const getCurrentUser = async (req, res) => {
   try {
     const result = await pool.query(
       'SELECT id, name, email, telegram_id FROM users WHERE id = $1',
-      [authenticatedUserId]  // ✅ this must be a UUID, not parseInt
+      [authenticatedUserId]
     );
 
     if (result.rows.length === 0) {
@@ -65,7 +67,7 @@ const getCurrentUser = async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (err) {
-    console.error('Error loading user:', err.message);  // ✅ good debug info
+    console.error('Error loading user:', err.message);
     res.status(500).json({ error: 'Failed to load user' });
   }
 };
@@ -79,7 +81,7 @@ const updateUser = async (req, res) => {
     return res.status(403).json({ error: 'Access denied' });
   }
 
-  const { name} = req.body;
+  const { name } = req.body;
   try {
     const result = await pool.query(
       'UPDATE users SET name = $1 WHERE id = $2 RETURNING *',
@@ -116,12 +118,12 @@ const deleteUser = async (req, res) => {
 
 // GET /api/users/:userId/dashboard
 const getUserDashboard = async (req, res) => {
-  const requestedUserId = req.params.userId; // ✅ UUID-safe
+  const requestedUserId = req.params.userId;
   const authenticatedUserId = req.user.id;
 
   if (!requestedUserId || typeof requestedUserId !== 'string') {
-  return res.status(400).json({ error: "Invalid user ID" });
-}
+    return res.status(400).json({ error: "Invalid user ID" });
+  }
 
   if (requestedUserId !== authenticatedUserId) {
     return res.status(403).json({ error: "Access denied" });
@@ -134,7 +136,6 @@ const getUserDashboard = async (req, res) => {
     const user = userResult.rows[0];
     const goalResult = await pool.query('SELECT * FROM goals WHERE user_id = $1 ORDER BY created_at DESC', [authenticatedUserId]);
     const goals = goalResult.rows;
-    if (goals.length === 0) return res.status(200).json({ user, goals: [] });
 
     const allGoals = [];
 
@@ -186,7 +187,8 @@ const getUserDashboard = async (req, res) => {
       });
     }
 
-    return res.json({ user, goals: allGoals });
+    const statusProcessedGoals = allGoals.map(assignStatuses);
+    return res.json({ user, goals: statusProcessedGoals });
 
   } catch (err) {
     console.error("❌ Error generating dashboard:", err.message);

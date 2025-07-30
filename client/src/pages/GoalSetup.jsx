@@ -1,5 +1,6 @@
 //GoalSetup.jsx
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const GoalSetup = () => {
   const [goalText, setGoalText] = useState('');
@@ -8,6 +9,7 @@ const GoalSetup = () => {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [userId, setUserId] = useState(null);
+  const navigate = useNavigate();
 
   // Fetch user ID from /users/me on mount
   useEffect(() => {
@@ -114,6 +116,12 @@ const GoalSetup = () => {
     } catch (err) {
       setError(err.message);
     }
+    
+setSaved(true);
+
+setTimeout(() => {
+  navigate('/dashboard');
+}, 1000); // Optional delay for "Goal saved" message
   };
 
   return (
