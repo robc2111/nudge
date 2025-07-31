@@ -24,6 +24,12 @@ const Profile = () => {
       <p><strong>Email:</strong> {user.email}</p>
       <p><strong>Telegram ID:</strong> {user.telegram_id}</p>
       <Link
+  to="/reflections"
+  className="inline-block mt-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+>
+  🪞 View My Reflections
+</Link>
+      <Link
   to="/goal-setup"
   className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
 >
