@@ -5,7 +5,8 @@ const {
   getMicrotaskById,
   createMicrotask,
   updateMicrotask,
-  deleteMicrotask
+  deleteMicrotask,
+  updateMicrotaskStatus
 } = require('../controllers/microtasksController');
 
 router.get('/', getMicrotasks);
@@ -13,5 +14,6 @@ router.get('/:id', getMicrotaskById);
 router.post('/', createMicrotask);
 router.put('/:id', updateMicrotask);
 router.delete('/:id', deleteMicrotask);
+router.patch('/:id/status', updateMicrotaskStatus);
 
 module.exports = router;

@@ -1,5 +1,4 @@
 // utils/statusUtils.js
-
 function assignStatuses(goal) {
   let hasSetInProgressSubgoal = false;
 
@@ -20,10 +19,10 @@ function assignStatuses(goal) {
         }
       }
 
-      const doneMicros = task.microtasks.filter(m => m.status === 'done').length;
       const totalMicros = task.microtasks.length;
+      const doneMicros = task.microtasks.filter(m => m.status === 'done').length;
 
-      if (doneMicros === totalMicros) {
+      if (totalMicros > 0 && doneMicros === totalMicros) {
         task.status = 'done';
       } else if (!hasSetInProgressTask) {
         task.status = 'in_progress';
@@ -33,10 +32,10 @@ function assignStatuses(goal) {
       }
     }
 
-    const doneTasks = subgoal.tasks.filter(t => t.status === 'done').length;
     const totalTasks = subgoal.tasks.length;
+    const doneTasks = subgoal.tasks.filter(t => t.status === 'done').length;
 
-    if (doneTasks === totalTasks) {
+    if (totalTasks > 0 && doneTasks === totalTasks) {
       subgoal.status = 'done';
     } else if (!hasSetInProgressSubgoal) {
       subgoal.status = 'in_progress';
@@ -46,10 +45,10 @@ function assignStatuses(goal) {
     }
   }
 
-  const doneSubs = goal.subgoals.filter(sg => sg.status === 'done').length;
   const totalSubs = goal.subgoals.length;
+  const doneSubs = goal.subgoals.filter(sg => sg.status === 'done').length;
 
-  if (doneSubs === totalSubs) {
+  if (totalSubs > 0 && doneSubs === totalSubs) {
     goal.status = 'done';
   } else if (hasSetInProgressSubgoal) {
     goal.status = 'in_progress';

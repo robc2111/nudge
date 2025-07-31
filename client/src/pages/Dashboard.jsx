@@ -9,6 +9,7 @@ const Dashboard = () => {
   const [selectedGoalId, setSelectedGoalId] = useState(null);
   const [selectedSubgoalId, setSelectedSubgoalId] = useState(null);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [selectedMicrotaskId, setSelectedMicrotaskId] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,6 +27,13 @@ const Dashboard = () => {
   useEffect(() => {
     setSelectedSubgoalId(null);
   }, [selectedGoalId]);
+
+  useEffect(() => {
+  const firstTask = filteredTasks[0];
+  if (firstTask) {
+    setSelectedTaskId(firstTask.id);
+  }
+}, [selectedSubgoalId]);
 
   useEffect(() => {
     setSelectedTaskId(null);
@@ -61,6 +69,42 @@ const Dashboard = () => {
     const done = items.filter(i => i.status === 'done').length;
     return total === 0 ? 0 : Math.round((done / total) * 100);
   };
+
+  const handleMicrotaskToggle = async (microtaskId, currentStatus) => {
+  const nextStatus = currentStatus === 'done' ? 'in_progress' : 'done';
+
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/microtasks/${microtaskId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ status: nextStatus })
+    });
+
+    if (!res.ok) throw new Error('Failed to update microtask');
+
+    const updated = await res.json();
+
+    // Update the local state to reflect the change
+    setData(prev => {
+      const newData = { ...prev };
+      for (const goal of newData.goals) {
+        for (const subgoal of goal.subgoals) {
+          for (const task of subgoal.tasks) {
+            const microtask = task.microtasks.find(m => m.id === microtaskId);
+            if (microtask) microtask.status = updated.status;
+          }
+        }
+      }
+      return newData;
+    });
+  } catch (err) {
+    console.error('❌ Error updating microtask:', err.message);
+  }
+};
+
+const selectedMicrotask = microtasks.find(mt => mt.id === selectedMicrotaskId);
 
   const handleDelete = async (goalId) => {
     const confirmed = window.confirm("Are you sure you want to delete this goal?");
@@ -192,12 +236,36 @@ const Dashboard = () => {
           <h3>{selectedTask?.title || 'No Task'}</h3>
           <p>📊 Progress: {getProgress(microtasks)}%</p>
           <ul>
-            {microtasks.map(mt => (
-              <li key={mt.id}>
-                {getStatusIcon(mt.status)} {mt.title}
-              </li>
-            ))}
-          </ul>
+  {microtasks.map(mt => (
+    <li
+      key={mt.id}
+      onClick={() =>
+        setSelectedMicrotaskId(selectedMicrotaskId === mt.id ? null : mt.id)
+      }
+      className={`cursor-pointer px-2 py-1 rounded ${
+        selectedMicrotaskId === mt.id ? 'bg-green-100 font-semibold' : ''
+      }`}
+    >
+      {getStatusIcon(mt.status)} {mt.title}
+    </li>
+  ))}
+</ul>
+
+{selectedMicrotask && (
+  <button
+    className={`mt-2 ${
+      selectedMicrotask.status === 'done' ? 'bg-yellow-500' : 'bg-green-600'
+    } text-white px-3 py-1 rounded`}
+    onClick={() => {
+      handleMicrotaskToggle(selectedMicrotaskId, selectedMicrotask.status);
+      setSelectedMicrotaskId(null);
+    }}
+  >
+    {selectedMicrotask.status === 'done'
+      ? '⏪ Mark as In Progress'
+      : '✅ Mark as Done'}
+  </button>
+)}
         </div>
       </div>
     </div>

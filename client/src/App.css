@@ -124,6 +124,17 @@ li {
   color: white;
 }
 
+.cursor-pointer:hover {
+  background-color: #f0f0f0;
+}
+
+.selected {
+  background-color: #d1fae5; /* green-100 for clarity */
+  font-weight: bold;
+  border-radius: 6px;
+  padding: 4px;
+}
+
 /* General card layout */
 .dashboard .card {
   background-color: #fff;

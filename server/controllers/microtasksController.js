@@ -61,6 +61,32 @@ exports.updateMicrotask = async (req, res) => {
   }
 };
 
+// PATCH /api/microtasks/:id/status
+exports.updateMicrotaskStatus = async (req, res) => {
+  const microtaskId = req.params.id;
+  const { status } = req.body;
+
+  if (!['todo', 'in_progress', 'done'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' });
+  }
+
+  try {
+    const result = await pool.query(
+      'UPDATE microtasks SET status = $1 WHERE id = $2 RETURNING *',
+      [status, microtaskId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Microtask not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('❌ Error updating microtask:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 // Delete a microtask
 exports.deleteMicrotask = async (req, res) => {
   const { id } = req.params;
