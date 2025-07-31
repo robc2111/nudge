@@ -7,10 +7,13 @@ const Profile = () => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    axios.get('/users/me')
-      .then(res => setUser(res.data))
-      .catch(err => console.error('Error loading user:', err));
-  }, []);
+  axios.get('/users/me')
+    .then(res => {
+      console.log("👤 Logged-in user:", res.data); // ✅ log user shape
+      setUser(res.data);
+    })
+    .catch(err => console.error('Error loading user:', err));
+}, []);
 
   if (!user) return <p>Loading your profile...</p>;
 

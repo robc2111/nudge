@@ -3,10 +3,47 @@ const pool = require('../db');
 
 // Get all reflections
 exports.getReflections = async (req, res) => {
+  const { user_id, goal_id, start_date, end_date, sort = 'desc' } = req.query;
+
+  if (!user_id) {
+    return res.status(400).json({ error: "Missing required parameter: user_id" });
+  }
+
   try {
-    const result = await pool.query('SELECT * FROM reflections ORDER BY created_at DESC');
+    let query = `
+  SELECT r.*, g.title AS goal_name
+  FROM reflections r
+  LEFT JOIN goals g ON r.goal_id = g.id
+  WHERE r.user_id = $1
+`;
+    const params = [user_id];
+    let paramIndex = 2;
+console.log("🔍 Final query:", query);
+console.log("📦 Params:", params);
+    if (goal_id) {
+      query += ` AND r.goal_id = $${paramIndex}`;
+      params.push(goal_id);
+      paramIndex++;
+    }
+
+    if (start_date && start_date.trim() !== '') {
+  query += ` AND r.created_at >= $${paramIndex}`;
+  params.push(start_date);
+  paramIndex++;
+}
+
+if (end_date && end_date.trim() !== '') {
+  query += ` AND r.created_at <= $${paramIndex}`;
+  params.push(end_date);
+  paramIndex++;
+}
+
+    query += ` ORDER BY r.created_at ${sort.toLowerCase() === 'asc' ? 'ASC' : 'DESC'}`;
+
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
+    console.error("❌ Error fetching reflections:", err.message);
     res.status(500).json({ error: err.message });
   }
 };

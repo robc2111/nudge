@@ -8,7 +8,8 @@ import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import PrivateRoute from './components/PrivateRoute';
 import GoalSetup from './pages/GoalSetup';
-import EditGoal from './pages/EditGoal'; // ✅ Add this line
+import EditGoal from './pages/EditGoal';
+import Reflections from './pages/Reflections';
 
 function App() {
   return (
@@ -19,6 +20,14 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/edit-goal/:id" element={<EditGoal />} />
+        <Route
+          path="/reflections"
+          element={
+            <PrivateRoute>
+              <Reflections />
+            </PrivateRoute>
+          }
+        />
         <Route
           path="/dashboard"
           element={

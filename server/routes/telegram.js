@@ -51,22 +51,28 @@ router.post('/webhook', async (req, res) => {
 
     // 3. If user is expected to reply with a reflection
     if (reflectionSessions[chatId]) {
-      reflectionSessions[chatId] = false; // Clear the flag
+  reflectionSessions[chatId] = false;
 
-      const goalRes = await pool.query(
-        `SELECT id FROM goals WHERE user_id = $1 AND status = 'in_progress' LIMIT 1`,
-        [user.id]
-      );
-      const goalId = goalRes.rows[0]?.id || null;
+  const goalRes = await pool.query(
+    `SELECT id FROM goals WHERE user_id = $1 AND status = 'in_progress' LIMIT 1`,
+    [user.id]
+  );
+  const goalId = goalRes.rows[0]?.id || null;
 
-      await pool.query(
-        `INSERT INTO reflections (user_id, goal_id, content) VALUES ($1, $2, $3)`,
-        [user.id, goalId, text]
-      );
+  if (!goalId) {
+    await sendMessage(chatId, "⚠️ You don’t have an active goal. Please create one in the app before submitting reflections.");
+    return;
+  }
 
-      await sendMessage(chatId, "✅ Your reflection has been saved. Keep up the great work!");
-      return res.sendStatus(200);
-    }
+  await pool.query(
+    `INSERT INTO reflections (user_id, goal_id, content)
+     VALUES ($1, $2, $3)`,
+    [user.id, goalId, text]
+  );
+
+  await sendMessage(chatId, "✅ Your reflection has been saved. Keep up the great work!");
+  return res.sendStatus(200);
+}
 
     // 4. If Sunday evening, store weekly reflection
     if (isWeeklyReflectionWindow()) {
