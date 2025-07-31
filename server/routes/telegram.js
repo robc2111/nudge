@@ -5,6 +5,7 @@ const router = express.Router();
 const pool = require('../db');
 const reflectionSessions = {}; // Temporary in-memory storage for reflect mode
 
+
 function isWeeklyReflectionWindow() {
   const now = new Date();
   const weekday = now.getDay(); // Sunday = 0
@@ -57,7 +58,7 @@ router.post('/webhook', async (req, res) => {
     `SELECT id FROM goals WHERE user_id = $1 AND status = 'in_progress' LIMIT 1`,
     [user.id]
   );
-  const goalId = goalRes.rows[0]?.id || null;
+const goalId = goalRes.rows.length ? goalRes.rows[0].id : null;
 
   if (!goalId) {
     await sendMessage(chatId, "⚠️ You don’t have an active goal. Please create one in the app before submitting reflections.");
@@ -90,6 +91,30 @@ router.post('/webhook', async (req, res) => {
       await sendMessage(chatId, "✅ Got it! Your reflection has been logged. See you next week.");
       return res.sendStatus(200);
     }
+
+    if (text.toLowerCase() === '/goals') {
+  const activeGoals = await pool.query(
+    `SELECT title FROM goals WHERE user_id = $1 AND status = 'in_progress'`,
+    [user.id]
+  );
+
+  if (activeGoals.rows.length === 0) {
+    await sendMessage(chatId, "📭 You don't have any active goals right now.");
+  } else {
+    const titles = activeGoals.rows.map(g => `🎯 ${g.title}`).join('\n');
+    await sendMessage(chatId, `Here are your active goals:\n\n${titles}`);
+  }
+
+  return res.sendStatus(200);
+}
+
+if (text.toLowerCase() === '/help') {
+  await sendMessage(chatId, `🤖 *Goalcrumbs Bot Commands*:
+/reflect – Log a weekly reflection
+/goals – View active goals
+/help – Show this help message`);
+  return res.sendStatus(200);
+}
 
     // 5. Fallback reply
     const reply = `Hi ${user.name}, you said: "${text}"`;

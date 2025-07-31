@@ -1,8 +1,11 @@
 //cron.js
+require('dotenv').config(); // ✅ Load environment variables
+
 const cron = require('node-cron');
 const axios = require('axios');
 const pool = require('./db');
-const TELEGRAM_API = `https://api.telegram.org/bot${process.env.BOT_TOKEN}/sendMessage`;
+
+const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`;
 
 // 🔁 Daily nudge logic
 const sendDailyNudge = async () => {
@@ -14,7 +17,7 @@ const sendDailyNudge = async () => {
 
     for (const user of users) {
       const res = await pool.query(`
-        SELECT mt.id, mt.name, g.title AS goal_name
+        SELECT mt.id, mt.title AS microtask_title, g.title AS goal_name
         FROM microtasks mt
         JOIN tasks t ON mt.task_id = t.id
         JOIN subgoals sg ON t.subgoal_id = sg.id
@@ -26,13 +29,20 @@ const sendDailyNudge = async () => {
       const microtask = res.rows[0];
       if (!microtask) continue;
 
-      const message = `🐭 Hey ${user.name || 'there'}! Today's task is:\n\n🎯 *${microtask.name}*\n🧁 From goal: ${microtask.goal_name}\n\nHave you done it? Reply ✅ or 💤`;
+      const message = `🐭 Hey ${user.name || 'there'}! Today's task is:\n\n🎯 *${microtask.microtask_title}*\n🧁 From goal: ${microtask.goal_name}\n\nHave you done it? Reply ✅ or 💤`;
 
-      await axios.post(TELEGRAM_API, {
-        chat_id: user.telegram_id,
-        text: message,
-        parse_mode: 'Markdown',
-      });
+      console.log(`📬 Sending nudge to ${user.name || user.id} (${user.telegram_id})`);
+
+      try {
+        await axios.post(TELEGRAM_API, {
+          chat_id: user.telegram_id,
+          text: message,
+          parse_mode: 'Markdown',
+        });
+        console.log('✅ Sent successfully!');
+      } catch (err) {
+        console.error(`❌ Telegram error for ${user.telegram_id}:`, err.response?.data || err.message);
+      }
     }
   } catch (err) {
     console.error('❌ Daily nudge error:', err.message);
@@ -57,31 +67,38 @@ const sendWeeklyReflection = async () => {
 
 Reply in your own words and I’ll log it.`;
 
-      await axios.post(TELEGRAM_API, {
-        chat_id: user.telegram_id,
-        text: message,
-        parse_mode: 'Markdown'
-      });
+      console.log(`📬 Sending reflection prompt to ${user.name || user.id} (${user.telegram_id})`);
+
+      try {
+        await axios.post(TELEGRAM_API, {
+          chat_id: user.telegram_id,
+          text: message,
+          parse_mode: 'Markdown'
+        });
+        console.log('✅ Prompt sent!');
+      } catch (err) {
+        console.error(`❌ Telegram reflection error for ${user.telegram_id}:`, err.response?.data || err.message);
+      }
     }
   } catch (err) {
     console.error('❌ Weekly reflection error:', err.message);
   }
 };
 
-// 🗓️ Real cron jobs
-cron.schedule('0 8 * * *', sendDailyNudge);      // 8:00 AM daily
-cron.schedule('0 18 * * 0', sendWeeklyReflection); // 6:00 PM Sunday
+// 🗓️ Production schedules
+cron.schedule('0 8 * * *', sendDailyNudge);         // 8:00 AM daily
+cron.schedule('0 18 * * 0', sendWeeklyReflection);  // 6:00 PM Sunday
 
-// 🚨 Optional: Rapid testing — every minute
-if (process.env.NODE_ENV !== 'production') {
-  cron.schedule('* * * * *', async () => {
-    console.log('🧪 Running test nudge every minute...');
-    await sendDailyNudge();
-    await sendWeeklyReflection(); // optional – comment if not needed
-  });
-}
+// // 🧪 Rapid dev testing every minute
+// if (process.env.NODE_ENV !== 'production') {
+//   cron.schedule('* * * * *', async () => {
+//     console.log('🧪 Running rapid test nudges...');
+//     await sendDailyNudge();
+//     await sendWeeklyReflection(); // Optional
+//   });
+// }
 
-// 🧪 Manual trigger if running directly via: node cron.js
+// 🧪 Manual trigger via `node cron.js`
 if (require.main === module) {
   (async () => {
     console.log('🚨 Manual test run of nudges...');
