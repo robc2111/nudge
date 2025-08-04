@@ -149,7 +149,13 @@ const getUserDashboard = async (req, res) => {
 
         for (const task of tasksResult.rows) {
           const microtasksResult = await pool.query('SELECT * FROM microtasks WHERE task_id = $1 ORDER BY id', [task.id]);
-          tasks.push({ ...task, microtasks: microtasksResult.rows });
+const microtasks = microtasksResult.rows.map(mt => ({
+  id: mt.id,
+  title: mt.title,
+  status: mt.status,
+  task_id: mt.task_id // ✅ Explicitly include this
+}));
+tasks.push({ ...task, microtasks });
         }
 
         subgoals.push({ ...sg, tasks });
