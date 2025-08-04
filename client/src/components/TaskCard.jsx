@@ -1,4 +1,4 @@
-//TaskCard.jsx
+// TaskCard.jsx
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
@@ -73,12 +73,12 @@ const TaskCard = ({
         </AnimatePresence>
       </ul>
 
-      {selectedMicrotask && (
-        <>
+      {selectedMicrotask ? (
+        <div className="flex flex-col sm:flex-row gap-2 mt-2">
           <button
-            className={`mt-2 ${
-              selectedMicrotask.status === 'done' ? 'bg-yellow-500' : 'bg-green-600'
-            } text-white px-3 py-1 rounded`}
+            className={`px-3 py-1 rounded text-white ${
+              selectedMicrotask.status === 'done' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-600 hover:bg-green-700'
+            }`}
             onClick={() => {
               handleMicrotaskToggle(selectedMicrotaskId, selectedMicrotask.status);
               setSelectedMicrotaskId(null);
@@ -88,7 +88,7 @@ const TaskCard = ({
           </button>
 
           <button
-            className={`mt-2 ml-2 px-3 py-1 rounded text-white ${
+            className={`px-3 py-1 rounded text-white ${
               selectedMicrotask?.task_id && !loading ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400 cursor-not-allowed'
             }`}
             onClick={handleBreakdown}
@@ -96,7 +96,9 @@ const TaskCard = ({
           >
             {loading ? '⏳ Breaking down...' : '🪄 Break Down'}
           </button>
-        </>
+        </div>
+      ) : (
+        <p className="text-sm text-gray-500 mt-2 italic">Select a microtask to mark or break it down</p>
       )}
     </div>
   );

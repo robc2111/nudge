@@ -26,6 +26,17 @@ const Dashboard = () => {
   const selectedMicrotask = microtasks.find(mt => String(mt.id) === String(selectedMicrotaskId));
 
   useEffect(() => {
+  const task = filteredTasks.find(t => t.status === 'in_progress') || filteredTasks[0] || null;
+  setSelectedTaskId(task?.id || null);
+
+  // 🪄 Auto-select first in-progress microtask if none is selected
+  if (task && task.microtasks && task.microtasks.length > 0) {
+    const firstActive = task.microtasks.find(mt => mt.status !== 'done') || task.microtasks[0];
+    setSelectedMicrotaskId(firstActive?.id || null);
+  }
+}, [filteredTasks]);
+
+  useEffect(() => {
     refreshData();
   }, []);
 
