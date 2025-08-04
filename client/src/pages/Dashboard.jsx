@@ -14,7 +14,6 @@ const Dashboard = () => {
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [selectedMicrotaskId, setSelectedMicrotaskId] = useState(null);
 
-  // Derived state
   const allGoals = data?.goals || [];
   const selectedGoal = allGoals.find(g => g.id === selectedGoalId);
   const subgoals = selectedGoal?.subgoals || [];
@@ -24,40 +23,30 @@ const Dashboard = () => {
   const filteredTasks = statusFilter === 'all' ? tasks : tasks.filter(t => t.status === statusFilter);
   const selectedTask = filteredTasks.find(t => t.id === selectedTaskId) || filteredTasks[0];
   const microtasks = selectedTask?.microtasks || [];
-  const selectedMicrotask = microtasks.find(mt => mt.id === selectedMicrotaskId);
+  const selectedMicrotask = microtasks.find(mt => String(mt.id) === String(selectedMicrotaskId));
 
-  // 1. Fetch data and set default goal
   useEffect(() => {
-  refreshData();
-}, []);
+    refreshData();
+  }, []);
 
-const refreshData = () => {
-  axios.get('/users/me')
-    .then(userRes => axios.get(`/users/${userRes.data.id}/dashboard`))
-    .then(res => {
-      setData(res.data);
-      const goals = res.data.goals || [];
-      const defaultGoal = goals.find(g => g.status === 'in_progress') || goals[0];
-      setSelectedGoalId(defaultGoal?.id || null);
-    })
-    .catch(err => console.error('Dashboard error:', err));
-};
+  const refreshData = () => {
+    axios.get('/users/me')
+      .then(userRes => axios.get(`/users/${userRes.data.id}/dashboard`))
+      .then(res => {
+        setData(res.data);
+        const goals = res.data.goals || [];
+        const defaultGoal = goals.find(g => g.status === 'in_progress') || goals[0];
+        setSelectedGoalId(defaultGoal?.id || null);
+      })
+      .catch(err => console.error('Dashboard error:', err));
+  };
 
-  // 2. Reset selectedSubgoal when goal changes
-  useEffect(() => {
-    setSelectedSubgoalId(null);
-  }, [selectedGoalId]);
-
-  // 3. Reset selectedTask when subgoal changes
+  useEffect(() => setSelectedSubgoalId(null), [selectedGoalId]);
   useEffect(() => {
     const task = filteredTasks.find(t => t.status === 'in_progress') || filteredTasks[0] || null;
     setSelectedTaskId(task?.id || null);
   }, [filteredTasks]);
-
-  // 4. Reset selectedMicrotask when task changes
-  useEffect(() => {
-    setSelectedMicrotaskId(null);
-  }, [selectedTaskId]);
+  useEffect(() => setSelectedMicrotaskId(null), [selectedTaskId]);
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -76,21 +65,15 @@ const refreshData = () => {
 
   const handleMicrotaskToggle = async (microtaskId, currentStatus) => {
     const nextStatus = currentStatus === 'done' ? 'in_progress' : 'done';
-
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/microtasks/${microtaskId}/status`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus })
       });
-
       if (!res.ok) throw new Error('Failed to update microtask');
 
       const updated = await res.json();
-
-      // Update the local state to reflect the change
       setData(prev => {
         const newData = { ...prev };
         for (const goal of newData.goals) {
@@ -109,32 +92,20 @@ const refreshData = () => {
   };
 
   const handleDelete = async (goalId) => {
-    const confirmed = window.confirm("Are you sure you want to delete this goal?");
-    if (!confirmed) return;
-
+    if (!window.confirm("Are you sure you want to delete this goal?")) return;
     try {
       const token = localStorage.getItem('token');
-
       const res = await fetch(`${import.meta.env.VITE_API_URL}/goals/${goalId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-
       if (!res.ok) throw new Error("Delete failed");
-
-      // Update local state and select next goal
-      setData((prev) => {
-        const updatedGoals = prev.goals.filter((g) => g.id !== goalId);
+      setData(prev => {
+        const updatedGoals = prev.goals.filter(g => g.id !== goalId);
         const nextGoal = updatedGoals.find(g => g.status === 'in_progress') || updatedGoals[0] || null;
         setSelectedGoalId(nextGoal?.id || null);
-        return {
-          ...prev,
-          goals: updatedGoals,
-        };
+        return { ...prev, goals: updatedGoals };
       });
-
     } catch (err) {
       console.error("❌ Failed to delete goal:", err.message);
     }
@@ -147,7 +118,7 @@ const refreshData = () => {
       <div className="dashboard-controls">
         <div className="goal-selector">
           <label><strong>Goal:</strong></label>
-          <select value={selectedGoalId || ''} onChange={e => setSelectedGoalId(parseInt(e.target.value))}>
+          <select value={selectedGoalId || ''} onChange={e => setSelectedGoalId(e.target.value)}>
             {allGoals.map(goal => (
               <option key={goal.id} value={goal.id}>
                 {getStatusIcon(goal.status)} {goal.title}
@@ -197,16 +168,16 @@ const refreshData = () => {
         />
 
         <TaskCard
-  task={selectedTask}
-  microtasks={microtasks}
-  selectedMicrotaskId={selectedMicrotaskId}
-  setSelectedMicrotaskId={setSelectedMicrotaskId}
-  selectedMicrotask={selectedMicrotask}
-  handleMicrotaskToggle={handleMicrotaskToggle}
-  getStatusIcon={getStatusIcon}
-  getProgress={getProgress}
-  refreshData={refreshData}
-/>
+          task={selectedTask}
+          microtasks={microtasks}
+          selectedMicrotaskId={selectedMicrotaskId}
+          setSelectedMicrotaskId={setSelectedMicrotaskId}
+          selectedMicrotask={selectedMicrotask}
+          handleMicrotaskToggle={handleMicrotaskToggle}
+          getStatusIcon={getStatusIcon}
+          getProgress={getProgress}
+          refreshData={refreshData}
+        />
       </div>
     </div>
   );

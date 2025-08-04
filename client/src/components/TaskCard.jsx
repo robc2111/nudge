@@ -1,5 +1,5 @@
 //TaskCard.jsx
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 
@@ -14,36 +14,38 @@ const TaskCard = ({
   getProgress,
   refreshData
 }) => {
-    const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleBreakdown = async () => {
-  if (!selectedMicrotask) return;
-  setLoading(true);
+    if (!selectedMicrotask?.task_id) {
+      console.warn("⚠️ Microtask is missing task_id:", selectedMicrotask);
+      return;
+    }
 
-  try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/gpt/breakdown`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        microtaskId: selectedMicrotask.id,
-        title: selectedMicrotask.title,
-        taskId: selectedMicrotask.task_id
-      })
-    });
+    setLoading(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/gpt/breakdown`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          microtaskId: selectedMicrotask.id,
+          title: selectedMicrotask.title,
+          taskId: selectedMicrotask.task_id
+        })
+      });
 
-    if (!response.ok) throw new Error('Breakdown request failed');
+      if (!response.ok) throw new Error('Breakdown request failed');
 
-    refreshData();
-    toast.success('✅ Microtask broken down!');
-    setSelectedMicrotaskId(null);
-  } catch (err) {
-    console.error('❌ Breakdown failed:', err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+      toast.success('✅ Microtask broken down!');
+      refreshData();
+      setSelectedMicrotaskId(null);
+    } catch (err) {
+      console.error('❌ Breakdown failed:', err.message);
+      toast.error('Breakdown failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="card">
@@ -52,24 +54,24 @@ const TaskCard = ({
       <p>📊 Progress: {getProgress(microtasks)}%</p>
 
       <ul>
-  <AnimatePresence>
-  {microtasks.map(mt => (
-    <Motion.li
-      key={mt.id}
-      initial={{ opacity: 0, y: -5 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -5 }}
-      transition={{ duration: 0.2 }}
-      onClick={() => setSelectedMicrotaskId(selectedMicrotaskId === mt.id ? null : mt.id)}
-      className={`cursor-pointer px-2 py-1 rounded ${
-        selectedMicrotaskId === mt.id ? 'bg-green-100 font-semibold' : ''
-      }`}
-    >
-      {getStatusIcon(mt.status)} {mt.title}
-    </Motion.li>
-  ))}
-</AnimatePresence>
-</ul>
+        <AnimatePresence>
+          {microtasks.map(mt => (
+            <Motion.li
+              key={mt.id}
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setSelectedMicrotaskId(selectedMicrotaskId === mt.id ? null : mt.id)}
+              className={`cursor-pointer px-2 py-1 rounded ${
+                selectedMicrotaskId === mt.id ? 'bg-green-100 font-semibold' : ''
+              }`}
+            >
+              {getStatusIcon(mt.status)} {mt.title}
+            </Motion.li>
+          ))}
+        </AnimatePresence>
+      </ul>
 
       {selectedMicrotask && (
         <>
@@ -86,12 +88,14 @@ const TaskCard = ({
           </button>
 
           <button
-  className="mt-2 ml-2 bg-purple-600 text-white px-3 py-1 rounded disabled:opacity-50"
-  onClick={handleBreakdown}
-  disabled={loading}
->
-  {loading ? '⏳ Breaking down...' : '🪄 Break Down'}
-</button>
+            className={`mt-2 ml-2 px-3 py-1 rounded text-white ${
+              selectedMicrotask?.task_id && !loading ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400 cursor-not-allowed'
+            }`}
+            onClick={handleBreakdown}
+            disabled={!selectedMicrotask?.task_id || loading}
+          >
+            {loading ? '⏳ Breaking down...' : '🪄 Break Down'}
+          </button>
         </>
       )}
     </div>

@@ -44,13 +44,12 @@ router.post('/webhook', async (req, res) => {
 
     // 2. If user just sent /reflect, prompt them
     if (text.toLowerCase() === '/reflect') {
-      console.log('📥 /reflect command received');
       reflectionSessions[chatId] = true;
       await sendMessage(chatId, "🪞 Please reply with your reflection. What went well, what didn’t, and what did you learn?");
       return res.sendStatus(200);
     }
 
-    // 3. If user is expected to reply with a reflection
+    // 3. Handle reflection response
     if (reflectionSessions[chatId]) {
       reflectionSessions[chatId] = false;
 
@@ -75,7 +74,7 @@ router.post('/webhook', async (req, res) => {
       return res.sendStatus(200);
     }
 
-    // 4. If Sunday evening, store weekly reflection automatically
+    // 4. Weekly auto-reflection window
     if (isWeeklyReflectionWindow()) {
       const goalRes = await pool.query(
         `SELECT id FROM goals WHERE user_id = $1 AND status = 'in_progress' LIMIT 1`,
@@ -114,12 +113,13 @@ router.post('/webhook', async (req, res) => {
       const microtaskTitle = text.slice(4).trim();
 
       const result = await pool.query(
-        `SELECT mt.*, g.user_id
+        `SELECT mt.*
          FROM microtasks mt
          JOIN tasks t ON mt.task_id = t.id
          JOIN subgoals sg ON t.subgoal_id = sg.id
          JOIN goals g ON sg.goal_id = g.id
-         WHERE mt.title ILIKE '%' || $1 || '%' AND g.telegram_id = $2
+         JOIN users u ON g.user_id = u.id
+         WHERE mt.title ILIKE '%' || $1 || '%' AND u.telegram_id = $2
          LIMIT 1`,
         [microtaskTitle, telegramId]
       );
@@ -138,14 +138,15 @@ router.post('/webhook', async (req, res) => {
 
       await sendMessage(chatId, `✅ Marked *"${microtask.title}"* as done! 🎉`);
 
-      // 👉 Find and send next microtask
+      // 👉 Get next task
       const nextRes = await pool.query(`
         SELECT mt.*
         FROM microtasks mt
         JOIN tasks t ON mt.task_id = t.id
         JOIN subgoals sg ON t.subgoal_id = sg.id
         JOIN goals g ON sg.goal_id = g.id
-        WHERE mt.status != 'done' AND g.telegram_id = $1
+        JOIN users u ON g.user_id = u.id
+        WHERE mt.status != 'done' AND u.telegram_id = $1
         ORDER BY mt.id
         LIMIT 1
       `, [telegramId]);
@@ -161,7 +162,7 @@ router.post('/webhook', async (req, res) => {
       return res.sendStatus(200);
     }
 
-    // 7. Help command
+    // 7. Help message
     if (text.toLowerCase() === '/help') {
       await sendMessage(chatId, `🤖 *Goalcrumbs Bot Help*
 Here’s what I can do:
@@ -173,7 +174,7 @@ Here’s what I can do:
       return res.sendStatus(200);
     }
 
-    // 8. Fallback reply
+    // 8. Fallback
     const fallback = `Hi ${user.name}, I didn’t understand that command. 🤔
 
 Try:
