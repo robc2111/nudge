@@ -56,6 +56,7 @@ app.use('/api/auth', authRoutes);
 
 const profileRoutes = require('./routes/profile');
 app.use('/api/profile', profileRoutes);
+app.use('/api/gpt', require('./routes/gptRoutes'));
 
 // Optional debug log
 if (process.env.NODE_ENV !== 'production') {

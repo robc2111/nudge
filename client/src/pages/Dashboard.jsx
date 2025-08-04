@@ -1,7 +1,10 @@
 //Dashboard.jsx
 import { useEffect, useState } from 'react';
 import axios from '../api/axios';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import GoalCard from '../components/GoalCard';
+import SubgoalCard from '../components/SubgoalCard';
+import TaskCard from '../components/TaskCard';
 
 const Dashboard = () => {
   const [data, setData] = useState(null);
@@ -10,35 +13,8 @@ const Dashboard = () => {
   const [selectedSubgoalId, setSelectedSubgoalId] = useState(null);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [selectedMicrotaskId, setSelectedMicrotaskId] = useState(null);
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    axios.get('/users/me')
-      .then(userRes => axios.get(`/users/${userRes.data.id}/dashboard`))
-      .then(res => {
-        setData(res.data);
-        const goals = res.data.goals || [];
-        const defaultGoal = goals.find(g => g.status === 'in_progress') || goals[0];
-        setSelectedGoalId(defaultGoal?.id || null);
-      })
-      .catch(err => console.error('Dashboard error:', err));
-  }, []);
-
-  useEffect(() => {
-    setSelectedSubgoalId(null);
-  }, [selectedGoalId]);
-
-  useEffect(() => {
-  const firstTask = filteredTasks[0];
-  if (firstTask) {
-    setSelectedTaskId(firstTask.id);
-  }
-}, [selectedSubgoalId]);
-
-  useEffect(() => {
-    setSelectedTaskId(null);
-  }, [selectedSubgoalId]);
-
+  // Derived state
   const allGoals = data?.goals || [];
   const selectedGoal = allGoals.find(g => g.id === selectedGoalId);
   const subgoals = selectedGoal?.subgoals || [];
@@ -48,6 +24,40 @@ const Dashboard = () => {
   const filteredTasks = statusFilter === 'all' ? tasks : tasks.filter(t => t.status === statusFilter);
   const selectedTask = filteredTasks.find(t => t.id === selectedTaskId) || filteredTasks[0];
   const microtasks = selectedTask?.microtasks || [];
+  const selectedMicrotask = microtasks.find(mt => mt.id === selectedMicrotaskId);
+
+  // 1. Fetch data and set default goal
+  useEffect(() => {
+  refreshData();
+}, []);
+
+const refreshData = () => {
+  axios.get('/users/me')
+    .then(userRes => axios.get(`/users/${userRes.data.id}/dashboard`))
+    .then(res => {
+      setData(res.data);
+      const goals = res.data.goals || [];
+      const defaultGoal = goals.find(g => g.status === 'in_progress') || goals[0];
+      setSelectedGoalId(defaultGoal?.id || null);
+    })
+    .catch(err => console.error('Dashboard error:', err));
+};
+
+  // 2. Reset selectedSubgoal when goal changes
+  useEffect(() => {
+    setSelectedSubgoalId(null);
+  }, [selectedGoalId]);
+
+  // 3. Reset selectedTask when subgoal changes
+  useEffect(() => {
+    const task = filteredTasks.find(t => t.status === 'in_progress') || filteredTasks[0] || null;
+    setSelectedTaskId(task?.id || null);
+  }, [filteredTasks]);
+
+  // 4. Reset selectedMicrotask when task changes
+  useEffect(() => {
+    setSelectedMicrotaskId(null);
+  }, [selectedTaskId]);
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -58,12 +68,6 @@ const Dashboard = () => {
     }
   };
 
-  const getGoalMicrotasks = (goal) =>
-    goal?.subgoals?.flatMap(sg => sg.tasks?.flatMap(t => t.microtasks || []) || []) || [];
-
-  const getSubgoalMicrotasks = (subgoal) =>
-    subgoal?.tasks?.flatMap(t => t.microtasks || []) || [];
-
   const getProgress = (items = []) => {
     const total = items.length;
     const done = items.filter(i => i.status === 'done').length;
@@ -71,40 +75,38 @@ const Dashboard = () => {
   };
 
   const handleMicrotaskToggle = async (microtaskId, currentStatus) => {
-  const nextStatus = currentStatus === 'done' ? 'in_progress' : 'done';
+    const nextStatus = currentStatus === 'done' ? 'in_progress' : 'done';
 
-  try {
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/microtasks/${microtaskId}/status`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ status: nextStatus })
-    });
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/microtasks/${microtaskId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: nextStatus })
+      });
 
-    if (!res.ok) throw new Error('Failed to update microtask');
+      if (!res.ok) throw new Error('Failed to update microtask');
 
-    const updated = await res.json();
+      const updated = await res.json();
 
-    // Update the local state to reflect the change
-    setData(prev => {
-      const newData = { ...prev };
-      for (const goal of newData.goals) {
-        for (const subgoal of goal.subgoals) {
-          for (const task of subgoal.tasks) {
-            const microtask = task.microtasks.find(m => m.id === microtaskId);
-            if (microtask) microtask.status = updated.status;
+      // Update the local state to reflect the change
+      setData(prev => {
+        const newData = { ...prev };
+        for (const goal of newData.goals) {
+          for (const subgoal of goal.subgoals) {
+            for (const task of subgoal.tasks) {
+              const microtask = task.microtasks.find(m => m.id === microtaskId);
+              if (microtask) microtask.status = updated.status;
+            }
           }
         }
-      }
-      return newData;
-    });
-  } catch (err) {
-    console.error('❌ Error updating microtask:', err.message);
-  }
-};
-
-const selectedMicrotask = microtasks.find(mt => mt.id === selectedMicrotaskId);
+        return newData;
+      });
+    } catch (err) {
+      console.error('❌ Error updating microtask:', err.message);
+    }
+  };
 
   const handleDelete = async (goalId) => {
     const confirmed = window.confirm("Are you sure you want to delete this goal?");
@@ -122,7 +124,7 @@ const selectedMicrotask = microtasks.find(mt => mt.id === selectedMicrotaskId);
 
       if (!res.ok) throw new Error("Delete failed");
 
-      // Update local state and select next goal (optional enhancement)
+      // Update local state and select next goal
       setData((prev) => {
         const updatedGoals = prev.goals.filter((g) => g.id !== goalId);
         const nextGoal = updatedGoals.find(g => g.status === 'in_progress') || updatedGoals[0] || null;
@@ -176,97 +178,35 @@ const selectedMicrotask = microtasks.find(mt => mt.id === selectedMicrotaskId);
       </div>
 
       <div className="dashboard-cards">
-        <div className="card">
-          <img src="/cake.png" alt="Goal" />
-          <h3>{selectedGoal?.title || 'No Goal'}</h3>
-          <p>📊 Progress: {getProgress(getGoalMicrotasks(selectedGoal))}%</p>
-          <p><strong>Status:</strong> {selectedGoal?.status}</p>
+        <GoalCard
+          goal={selectedGoal}
+          onSelect={setSelectedSubgoalId}
+          onDelete={handleDelete}
+          selectedId={selectedSubgoalId}
+          getProgress={getProgress}
+          getStatusIcon={getStatusIcon}
+        />
 
-          <h4>Subgoals</h4>
-          <ul>
-            {(selectedGoal?.subgoals || []).map(sg => (
-              <li
-                key={sg.id}
-                onClick={() => setSelectedSubgoalId(sg.id)}
-                className={sg.id === selectedSubgoalId ? 'selected' : ''}
-              >
-                {getStatusIcon(sg.status)} {sg.title}
-              </li>
-            ))}
-          </ul>
+        <SubgoalCard
+          subgoal={selectedSubgoal}
+          tasks={filteredTasks}
+          selectedTaskId={selectedTask?.id}
+          setSelectedTaskId={setSelectedTaskId}
+          getProgress={getProgress}
+          getStatusIcon={getStatusIcon}
+        />
 
-          {selectedGoal && (
-            <div className="mt-4">
-              <button
-                className="text-blue-600 underline text-sm mr-4"
-                onClick={() => navigate(`/edit-goal/${selectedGoal.id}`)}
-              >
-                Edit
-              </button>
-
-              <button
-                className="text-red-600 underline text-sm"
-                onClick={() => handleDelete(selectedGoal.id)}
-              >
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="card">
-          <img src="/slice.png" alt="Subgoal" />
-          <h3>{selectedSubgoal?.title || 'No Subgoal'}</h3>
-          <p>📊 Progress: {getProgress(getSubgoalMicrotasks(selectedSubgoal))}%</p>
-          <ul>
-            {filteredTasks.map(task => (
-              <li
-                key={task.id}
-                onClick={() => setSelectedTaskId(task.id)}
-                className={task.id === selectedTask?.id ? 'selected' : ''}
-              >
-                {getStatusIcon(task.status)} {task.title}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="card">
-          <img src="/crumbs.png" alt="Task" />
-          <h3>{selectedTask?.title || 'No Task'}</h3>
-          <p>📊 Progress: {getProgress(microtasks)}%</p>
-          <ul>
-  {microtasks.map(mt => (
-    <li
-      key={mt.id}
-      onClick={() =>
-        setSelectedMicrotaskId(selectedMicrotaskId === mt.id ? null : mt.id)
-      }
-      className={`cursor-pointer px-2 py-1 rounded ${
-        selectedMicrotaskId === mt.id ? 'bg-green-100 font-semibold' : ''
-      }`}
-    >
-      {getStatusIcon(mt.status)} {mt.title}
-    </li>
-  ))}
-</ul>
-
-{selectedMicrotask && (
-  <button
-    className={`mt-2 ${
-      selectedMicrotask.status === 'done' ? 'bg-yellow-500' : 'bg-green-600'
-    } text-white px-3 py-1 rounded`}
-    onClick={() => {
-      handleMicrotaskToggle(selectedMicrotaskId, selectedMicrotask.status);
-      setSelectedMicrotaskId(null);
-    }}
-  >
-    {selectedMicrotask.status === 'done'
-      ? '⏪ Mark as In Progress'
-      : '✅ Mark as Done'}
-  </button>
-)}
-        </div>
+        <TaskCard
+  task={selectedTask}
+  microtasks={microtasks}
+  selectedMicrotaskId={selectedMicrotaskId}
+  setSelectedMicrotaskId={setSelectedMicrotaskId}
+  selectedMicrotask={selectedMicrotask}
+  handleMicrotaskToggle={handleMicrotaskToggle}
+  getStatusIcon={getStatusIcon}
+  getProgress={getProgress}
+  refreshData={refreshData}
+/>
       </div>
     </div>
   );

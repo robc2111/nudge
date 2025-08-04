@@ -4,7 +4,7 @@ const axios = require('axios');
 const router = express.Router();
 const pool = require('../db');
 const reflectionSessions = {}; // Temporary in-memory storage for reflect mode
-
+const telegramId = message.from.id;
 
 function isWeeklyReflectionWindow() {
   const now = new Date();
@@ -107,6 +107,58 @@ const goalId = goalRes.rows.length ? goalRes.rows[0].id : null;
 
   return res.sendStatus(200);
 }
+
+if (text.toLowerCase().startsWith('done')) {
+  const microtaskTitle = text.slice(4).trim();
+  const telegramId = message.from.id;
+
+  const result = await pool.query(
+    `SELECT mt.*, g.user_id
+     FROM microtasks mt
+     JOIN tasks t ON mt.task_id = t.id
+     JOIN subgoals sg ON t.subgoal_id = sg.id
+     JOIN goals g ON sg.goal_id = g.id
+     WHERE mt.title ILIKE $1 AND g.telegram_id = $2
+     LIMIT 1`,
+    [microtaskTitle, telegramId]
+  );
+
+  const microtask = result.rows[0];
+
+  if (!microtask) {
+    await sendMessage(chatId, `⚠️ Microtask "${microtaskTitle}" not found.`);
+    return res.sendStatus(200);
+  }
+
+  await pool.query(
+    `UPDATE microtasks SET status = 'done' WHERE id = $1`,
+    [microtask.id]
+  );
+
+  await sendMessage(chatId, `✅ Marked "${microtask.title}" as done!`);
+
+  // 👉 Find and send next microtask
+  const nextRes = await pool.query(`
+    SELECT mt.*
+    FROM microtasks mt
+    JOIN tasks t ON mt.task_id = t.id
+    JOIN subgoals sg ON t.subgoal_id = sg.id
+    JOIN goals g ON sg.goal_id = g.id
+    WHERE mt.status != 'done' AND g.telegram_id = $1
+    ORDER BY mt.id
+    LIMIT 1
+  `, [telegramId]);
+
+  const next = nextRes.rows[0];
+
+  if (next) {
+    await sendMessage(chatId, `👉 Next up: "${next.title}"`);
+  }
+
+  return res.sendStatus(200);
+}
+
+
 
 if (text.toLowerCase() === '/help') {
   await sendMessage(chatId, `🤖 *Goalcrumbs Bot Commands*:

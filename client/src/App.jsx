@@ -10,11 +10,14 @@ import PrivateRoute from './components/PrivateRoute';
 import GoalSetup from './pages/GoalSetup';
 import EditGoal from './pages/EditGoal';
 import Reflections from './pages/Reflections';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   return (
     <BrowserRouter>
       <Header /> {/* ✅ Always visible */}
+      <ToastContainer position="bottom-right" autoClose={3000} />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
