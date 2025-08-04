@@ -46,7 +46,8 @@ const TaskCard = ({
       setLoading(false);
     }
   };
-
+console.log("🧪 selectedMicrotask:", selectedMicrotask);
+console.log("🔎 microtasks:", microtasks);
   return (
     <div className="card">
       <img src="/crumbs.png" alt="Task" />
