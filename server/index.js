@@ -7,15 +7,15 @@ const pool = require('./db');
 
 const app = express();
 
-// ✅ CORS config
+// ✅ Allowed origins for production & local dev
 const allowedOrigins = [
   'https://goalcrumbs.com',
   'http://localhost:5173'
 ];
 
+// ✅ CORS middleware (dynamic origin handling)
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
     if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     } else {
@@ -25,27 +25,23 @@ app.use(cors({
   credentials: true
 }));
 
-// ✅ Additional CORS headers for preflight OPTIONS
+// ✅ Additional headers for preflight requests
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
-
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
 
+// ✅ Parse JSON bodies
 app.use(express.json());
 
-// ✅ Routes
+// ✅ API routes
 app.use('/api/telegram', require('./routes/telegram'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/goals', require('./routes/goals'));
@@ -59,27 +55,22 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/gpt', require('./routes/gptRoutes'));
 
-// Debug DB connection log
-if (process.env.NODE_ENV !== 'production') {
-  console.log("Connected to DB:", process.env.DATABASE_URL);
-}
-
-// Root route
+// ✅ Health check route
 app.get('/', (req, res) => {
-  res.send('Nudge API is running');
+  res.send('🚀 GoalCrumbs API is running');
 });
 
-// Log all requests
+// ✅ Log all incoming requests
 app.use((req, res, next) => {
   console.log(`🌐 ${req.method} ${req.originalUrl}`);
   next();
 });
 
-// Catch-all for undefined routes
+// ✅ Catch-all 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: `Route not found: ${req.method} ${req.originalUrl}` });
 });
 
-// Start server
+// ✅ Start the server
 const PORT = process.env.PORT || 5050;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
