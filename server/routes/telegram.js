@@ -108,7 +108,59 @@ router.post('/webhook', async (req, res) => {
       return res.sendStatus(200);
     }
 
-    // 6. Mark a microtask as done
+    // 6. Set tone via `/tone`
+    async function updateUserTone(userId, tone, chatId) {
+  const updateRes = await pool.query(`
+    UPDATE goals SET tone = $1
+    WHERE user_id = $2 AND status = 'in_progress'
+    RETURNING title
+  `, [tone, userId]);
+
+  if (updateRes.rowCount === 0) {
+    await sendMessage(chatId, "⚠️ You don’t have an active goal to apply this tone to.");
+  } else {
+    await sendMessage(chatId, `✅ Coach tone set to *${tone}* for your goal: *${updateRes.rows[0].title}*`);
+  }
+}
+
+    if (text.toLowerCase() === '/tone status') {
+  const toneRes = await pool.query(`
+    SELECT tone FROM goals
+    WHERE user_id = $1 AND status = 'in_progress'
+    LIMIT 1
+  `, [user.id]);
+
+  const tone = toneRes.rows[0]?.tone;
+
+  if (!tone) {
+    await sendMessage(chatId, "📭 You don’t have an active goal or a tone set.");
+  } else {
+    await sendMessage(chatId, `🎙️ Your current coach tone is: *${tone}*`);
+  }
+
+  return res.sendStatus(200);
+}
+
+if (text.toLowerCase() === '/tone') {
+  await sendMessage(chatId, `🎙️ Choose your coach tone:
+
+🐭 *friendly* – Kind and encouraging  
+🐜 *strict* – No-nonsense and focused  
+🐦 *motivational* – Upbeat and energizing
+
+Just reply with one of the keywords.`);
+  return res.sendStatus(200);
+}
+
+// 7. Handle tone reply (if it matches valid tone)
+const toneMatch = text.toLowerCase().match(/\b(friendly|strict|motivational)\b/);
+if (toneMatch) {
+  const tone = toneMatch[1];
+  await updateUserTone(user.id, tone, chatId);
+  return res.sendStatus(200);
+}
+
+    // 8. Mark a microtask as done
     if (text.toLowerCase().startsWith('done')) {
       const microtaskTitle = text.slice(4).trim();
 
@@ -162,19 +214,21 @@ router.post('/webhook', async (req, res) => {
       return res.sendStatus(200);
     }
 
-    // 7. Help message
+    // 9. Help message
     if (text.toLowerCase() === '/help') {
       await sendMessage(chatId, `🤖 *Goalcrumbs Bot Help*
 Here’s what I can do:
 
 🪞 */reflect* – Log a weekly reflection  
 🎯 */goals* – View your active goals  
+🎙️ */tone* – Change your coach's tone  
+🎙️ */tone status* – Check your current tone 
 ✅ *done [task]* – Mark a microtask as done  
 ❓ */help* – Show this message`);
       return res.sendStatus(200);
     }
 
-    // 8. Fallback
+    // 10. Fallback
     const fallback = `Hi ${user.name}, I didn’t understand that command. 🤔
 
 Try:

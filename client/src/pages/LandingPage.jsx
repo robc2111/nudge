@@ -6,12 +6,17 @@ const LandingPage = () => {
     <div className="landing-page">
       {/* Hero Section */}
       <section className="hero-section">
-        <h1>Welcome to GoalCrumbs 👋</h1>
-        <p>Your AI-powered accountability partner. Break big goals into tiny, manageable crumbs — and actually get them done.</p>
-        <p>
-          <Link className="cta-button" to="/signup">Get Started</Link> or <Link className="cta-button" to="/login">Sign In</Link>
-        </p>
-      </section>
+  <div className="hero-left">
+    <img className="hero-image" src="/logo.png" alt="GoalCrumbs Logo" />
+  </div>
+  <div className="hero-right">
+    <h1>Welcome to GoalCrumbs 👋</h1>
+    <p>Your AI-powered accountability partner. Break big goals into tiny, manageable crumbs — and actually get them done.</p>
+    <p>
+      <Link className="cta-button" to="/signup">Get Started</Link> or <Link className="cta-button" to="/login">Sign In</Link>
+    </p>
+  </div>
+</section>
 
       {/* About Section */}
       <section className="about-section">
@@ -21,10 +26,10 @@ const LandingPage = () => {
           With smart nudges, visual progress, and check-ins, it's like having a project manager in your pocket.
         </p>
         <ul>
-          <li>✅ Create layered goals with subgoals and microtasks</li>
-          <li>✅ Get daily and weekly check-ins</li>
+          <li>✅ Create layered goals with subgoals, tasks and microtasks</li>
+          <li>✅ Get daily reminders and weekly check-ins</li>
           <li>✅ Track progress and stay consistent</li>
-          <li>✅ Connect to Telegram for nudges</li>
+          <li>✅ Connect to Telegram for reminders</li>
         </ul>
       </section>
 

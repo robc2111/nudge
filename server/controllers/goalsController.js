@@ -164,6 +164,33 @@ exports.deleteGoal = async (req, res) => {
   }
 };
 
+// Update goal status only
+exports.updateGoalStatus = async (req, res) => {
+  const { status } = req.body;
+  const { id } = req.params;
+
+  try {
+    const validStatuses = ['not_started', 'in_progress', 'done'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid status value" });
+    }
+
+    const result = await pool.query(
+      'UPDATE goals SET status = $1 WHERE id = $2 RETURNING *',
+      [status, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Goal not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("❌ Error updating goal status:", err.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 // Get all goals (for testing or admin)
 exports.getAllGoals = async (req, res) => {
   try {

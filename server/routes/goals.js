@@ -21,4 +21,6 @@ router.put('/:id', goalsController.updateGoal);
 // Delete a goal by ID
 router.delete('/:id', goalsController.deleteGoal);
 
+router.put('/:id/status', goalsController.updateGoalStatus);
+
 module.exports = router;

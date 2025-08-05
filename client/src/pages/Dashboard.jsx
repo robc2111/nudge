@@ -16,25 +16,6 @@ const Dashboard = () => {
 
   const allGoals = data?.goals || [];
   const selectedGoal = allGoals.find(g => g.id === selectedGoalId);
-  const subgoals = selectedGoal?.subgoals || [];
-  const filteredSubgoals = statusFilter === 'all' ? subgoals : subgoals.filter(sg => sg.status === statusFilter);
-  const selectedSubgoal = filteredSubgoals.find(sg => sg.id === selectedSubgoalId) || filteredSubgoals[0];
-  const tasks = selectedSubgoal?.tasks || [];
-  const filteredTasks = statusFilter === 'all' ? tasks : tasks.filter(t => t.status === statusFilter);
-  const selectedTask = filteredTasks.find(t => t.id === selectedTaskId) || filteredTasks[0];
-  const microtasks = selectedTask?.microtasks || [];
-  const selectedMicrotask = microtasks.find(mt => String(mt.id) === String(selectedMicrotaskId));
-
-  useEffect(() => {
-  const task = filteredTasks.find(t => t.status === 'in_progress') || filteredTasks[0] || null;
-  setSelectedTaskId(task?.id || null);
-
-  // 🪄 Auto-select first in-progress microtask if none is selected
-  if (task && task.microtasks && task.microtasks.length > 0) {
-    const firstActive = task.microtasks.find(mt => mt.status !== 'done') || task.microtasks[0];
-    setSelectedMicrotaskId(firstActive?.id || null);
-  }
-}, [filteredTasks]);
 
   useEffect(() => {
     refreshData();
@@ -53,11 +34,29 @@ const Dashboard = () => {
   };
 
   useEffect(() => setSelectedSubgoalId(null), [selectedGoalId]);
-  useEffect(() => {
-    const task = filteredTasks.find(t => t.status === 'in_progress') || filteredTasks[0] || null;
-    setSelectedTaskId(task?.id || null);
-  }, [filteredTasks]);
+  useEffect(() => setSelectedTaskId(null), [selectedSubgoalId]);
   useEffect(() => setSelectedMicrotaskId(null), [selectedTaskId]);
+
+  if (!data) return <p>Loading...</p>;
+
+  // ✅ Handle no goals at all
+  if (!allGoals.length) {
+    return (
+      <div className="dashboard">
+        <p>You don't have any goals yet.</p>
+        <Link to="/goal-setup" className="cta-button">➕ Create Your First Goal</Link>
+      </div>
+    );
+  }
+
+  const subgoals = selectedGoal?.subgoals || [];
+  const filteredSubgoals = statusFilter === 'all' ? subgoals : subgoals.filter(sg => sg.status === statusFilter);
+  const selectedSubgoal = filteredSubgoals.find(sg => sg.id === selectedSubgoalId) || filteredSubgoals[0];
+  const tasks = selectedSubgoal?.tasks || [];
+  const filteredTasks = statusFilter === 'all' ? tasks : tasks.filter(t => t.status === statusFilter);
+  const selectedTask = filteredTasks.find(t => t.id === selectedTaskId) || filteredTasks[0];
+  const microtasks = selectedTask?.microtasks || [];
+  const selectedMicrotask = microtasks.find(mt => String(mt.id) === String(selectedMicrotaskId));
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -83,8 +82,8 @@ const Dashboard = () => {
         body: JSON.stringify({ status: nextStatus })
       });
       if (!res.ok) throw new Error('Failed to update microtask');
-
       const updated = await res.json();
+
       setData(prev => {
         const newData = { ...prev };
         for (const goal of newData.goals) {
@@ -104,13 +103,16 @@ const Dashboard = () => {
 
   const handleDelete = async (goalId) => {
     if (!window.confirm("Are you sure you want to delete this goal?")) return;
+
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${import.meta.env.VITE_API_URL}/goals/${goalId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
+
       if (!res.ok) throw new Error("Delete failed");
+
       setData(prev => {
         const updatedGoals = prev.goals.filter(g => g.id !== goalId);
         const nextGoal = updatedGoals.find(g => g.status === 'in_progress') || updatedGoals[0] || null;
@@ -121,8 +123,6 @@ const Dashboard = () => {
       console.error("❌ Failed to delete goal:", err.message);
     }
   };
-
-  if (!data) return <p>Loading...</p>;
 
   return (
     <div className="dashboard">
@@ -161,13 +161,14 @@ const Dashboard = () => {
 
       <div className="dashboard-cards">
         <GoalCard
-          goal={selectedGoal}
-          onSelect={setSelectedSubgoalId}
-          onDelete={handleDelete}
-          selectedId={selectedSubgoalId}
-          getProgress={getProgress}
-          getStatusIcon={getStatusIcon}
-        />
+  goal={selectedGoal}
+  onSelect={setSelectedSubgoalId}
+  onDelete={handleDelete}
+  selectedId={selectedSubgoalId}
+  getProgress={getProgress}
+  getStatusIcon={getStatusIcon}
+  refreshDashboard={refreshData}
+/>
 
         <SubgoalCard
           subgoal={selectedSubgoal}

@@ -1,4 +1,4 @@
-//Header.jsx
+// Header.jsx
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
@@ -30,38 +30,38 @@ const Header = () => {
 
   return (
     <header className="goalcrumbs-header">
-      <nav>
-        {/* ✅ Logo + Name */}
-        <div>
-          <Link to="/">
-            <img className="logo" src="/logo.png" alt="Logo" />GoalCrumbs
+      <div className="header-container">
+        <div className="header-left">
+          <Link to="/" className="logo-link">
+            <img className="logo" src="/logo.png" alt="GoalCrumbs Logo" />
+            <span className="logo-text">GoalCrumbs</span>
           </Link>
         </div>
 
-        {/* ✅ Navigation */}
-        <div>
+        <nav className="header-nav">
           <Link to="/">Home</Link>
-          {!token ? (
-            <>
-              <Link to="/login">Login</Link>
-              <Link to="/signup">Sign Up</Link>
-            </>
-          ) : (
+          {token ? (
             <>
               <Link to="/dashboard">Dashboard</Link>
               <Link to="/profile">Profile</Link>
             </>
+          ) : (
+            <>
+              <Link to="/login">Login</Link>
+              <Link to="/signup">Sign Up</Link>
+            </>
           )}
-        </div>
+        </nav>
 
-        {/* ✅ User Info */}
-        {user && (
-          <div>
-            <span>👤 {user.name}</span>
-            <button onClick={handleLogout}>Sign Out</button>
-          </div>
-        )}
-      </nav>
+        <div className="header-user">
+          {user ? (
+            <>
+              <span>👤 {user.name}</span>
+              <button onClick={handleLogout}>Sign Out</button>
+            </>
+          ) : null}
+        </div>
+      </div>
     </header>
   );
 };
