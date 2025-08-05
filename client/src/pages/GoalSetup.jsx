@@ -125,24 +125,27 @@ setTimeout(() => {
   };
 
   return (
-    <div className="max-w-xl mx-auto mt-8 p-4 bg-white rounded shadow">
+    <div className="max-w-xl mx-auto mt-8 p-4 bg-white rounded shadow text-center">
       <h2 className="text-2xl font-bold mb-4">🎯 Goal Setup</h2>
 
-      <textarea
-        className="w-full border p-2 rounded mb-2"
-        placeholder="Describe your goal in natural language..."
-        rows={4}
-        value={goalText}
-        onChange={(e) => setGoalText(e.target.value)}
-      />
+      <div className="flex flex-col items-center gap-4 mb-6">
+  <textarea
+    className="goal-textarea"
+    placeholder="Describe your goal in natural language..."
+    rows={5}
+    value={goalText}
+    onChange={(e) => setGoalText(e.target.value)}
+  />
 
-      <button
-        className="bg-blue-600 text-white px-4 py-2 rounded"
-        onClick={handleGenerate}
-        disabled={loading || !goalText.trim()}
-      >
-        {loading ? 'Generating...' : 'Generate Breakdown'}
-      </button>
+  <button
+    className="btn"
+    style={{ width: '60%' }}
+    onClick={handleGenerate}
+    disabled={loading || !goalText.trim()}
+  >
+    {loading ? 'Generating...' : 'Generate Breakdown'}
+  </button>
+</div>
 
       {error && <p className="text-red-500 mt-2">{error}</p>}
       {saved && <p className="text-green-600 mt-2">✅ Goal saved successfully</p>}
@@ -171,7 +174,7 @@ setTimeout(() => {
           </div>
 
           <button
-            className="bg-green-600 text-white mt-4 px-4 py-2 rounded"
+            className="bg-green-600 text-white mt-4 px-4 py-2 rounded "
             onClick={handleSave}
           >
             Confirm & Save

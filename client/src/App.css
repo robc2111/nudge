@@ -8,8 +8,38 @@
 
 }
 
+.profile-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.profile-buttons a {
+  min-width: 180px;
+  padding: 0.6rem 1.2rem;
+  text-align: center;
+}
+
 body {
   background: linear-gradient(to right, #fef0dd, #fff9f3);
+}
+
+input {
+  margin: 0.5rem;
+  height: 2.5rem;
+  border-radius: 8px;
+}
+
+.goal-textarea {
+  width: 60%;
+  min-height: 160px;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+  resize: vertical;
 }
 
 .logo-link {
@@ -88,6 +118,12 @@ body {
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem; /* increased spacing */
 }
 
 .header-center {
@@ -206,11 +242,17 @@ body {
 
 .dashboard-controls {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 2rem;
   gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #fff6eb;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .dashboard-cards {
@@ -231,6 +273,24 @@ body {
 .card img {
   width: 50px;
   margin-bottom: 0.5rem;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn {
+  background-color: #bd661d;
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn:hover {
+  background-color: #a55217;
 }
 
 ul {
@@ -279,6 +339,82 @@ li {
   transition: transform 0.2s ease;
 }
 
+.dashboard .card h3 {
+  font-size: 1.4rem;
+}
+
+.dashboard-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  background-color: #fff6eb;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  margin: 2rem auto;
+  gap: 1rem;
+  max-width: 1000px;
+}
+
+.controls-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0 1rem;
+}
+
+.filter-group .filter-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.filter-btn {
+  padding: 0.4rem 1rem;
+  border-radius: 6px;
+  border: none;
+  background: #1a1a1a;
+  color: white;
+  cursor: pointer;
+}
+
+.filter-btn.active {
+  background-color: #bd661d;
+}
+
+.filter-btn:hover {
+  opacity: 0.9;
+}
+
+.add-goal-btn {
+  background-color: #bd661d;
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.add-goal-btn:hover {
+  background-color: #a55217;
+}
+
+
+.dashboard-controls > * {
+  flex: 1 1 auto;
+  min-width: 200px;
+}
+
+.controls-left,
+.controls-center {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
 .dashboard .card:hover {
   transform: translateY(-4px);
 }
@@ -288,7 +424,7 @@ li {
   width: 48px;
   height: auto;
   display: block;
-  margin-bottom: 0.75rem;
+  margin: 0 auto 0.75rem auto; /* ✅ center horizontally */
 }
 
 /* Headings and lists */
@@ -307,6 +443,24 @@ li {
   padding: 0.4rem 0;
   border-bottom: 1px solid #eee;
   font-size: 0.95rem;
+}
+
+.goal-selector label {
+  margin-right: 0.5rem;
+  font-weight: 500;
+}
+
+.goal-selector select {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.card-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 /* Optional: Status filter buttons */

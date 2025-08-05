@@ -1,3 +1,4 @@
+// GoalCard.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
@@ -52,16 +53,16 @@ const GoalCard = ({ goal, onSelect, onDelete, selectedId, getProgress, getStatus
 
       <div className="mt-4">
         <button
-          className="text-blue-600 underline text-sm mr-4"
+          className="card-buttons text-blue-600 underline text-sm mr-4"
           onClick={() => navigate(`/edit-goal/${goal.id}`)}
         >
-          Edit
+          📝 Edit Goal
         </button>
         <button
-          className="text-red-600 underline text-sm"
+          className="card-buttons text-red-600 underline text-sm"
           onClick={() => onDelete(goal.id)}
         >
-          Delete
+          🗑️ Delete Goal
         </button>
       </div>
     </div>

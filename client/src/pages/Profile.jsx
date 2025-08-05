@@ -29,33 +29,22 @@ const Profile = () => {
       <div style={{ padding: '2rem' }}>
         <h1>⚠️ Error</h1>
         <p>We couldn't load your profile. Please try refreshing or log in again.</p>
-        <Link to="/login" className="cta-button">🔐 Log In</Link>
+        <Link to="/login" className="btn">🔐 Log In</Link>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <h1>👤 Your Profile</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center text-center p-6">
+      <h1 className="text-3xl font-bold mb-4">👤 Your Profile</h1>
       <p><strong>Name:</strong> {user.name || 'N/A'}</p>
       <p><strong>Email:</strong> {user.email || 'Not provided'}</p>
       <p><strong>Telegram ID:</strong> {user.telegram_id || 'Not connected'}</p>
 
-      <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-        <Link
-          to="/reflections"
-          className="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
-        >
-          🪞 View My Reflections
-        </Link>
-
-        <Link
-          to="/goal-setup"
-          className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-        >
-          ➕ Add New Goal
-        </Link>
-      </div>
+      <div className="profile-buttons">
+  <Link to="/reflections" className="btn">🪞 View My Reflections</Link>
+  <Link to="/goal-setup" className="add-goal-btn">➕ Add New Goal</Link>
+</div>
     </div>
   );
 };

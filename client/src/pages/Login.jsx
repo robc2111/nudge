@@ -16,36 +16,48 @@ const Login = () => {
     try {
       const res = await axios.post('/auth/login', { email, password });
 
-localStorage.setItem('token', res.data.token);
-localStorage.setItem('user', JSON.stringify(res.data.user)); // 👈 this is the fix
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
 
-navigate('/dashboard');
+      navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
     }
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: 'auto' }}>
-      <h2>Login</h2>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        /><br />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        /><br />
-        <button type="submit">Login</button>
-      </form>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+    <div className="min-h-screen flex items-center justify-center bg-[#fff9f3] px-4">
+      <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
+        <h2 className="text-2xl font-bold mb-6 text-center">🔐 Login</h2>
+
+        <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="border border-gray-300 px-4 py-3 rounded w-full text-base"
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="border border-gray-300 px-4 py-3 rounded w-full text-base"
+          />
+
+          <button
+            type="submit"
+            className="bg-[#bd661d] text-white py-3 rounded hover:bg-[#a55217] transition"
+          >
+            Login
+          </button>
+        </form>
+
+        {error && <p className="text-red-600 text-sm mt-4 text-center">{error}</p>}
+      </div>
     </div>
   );
 };

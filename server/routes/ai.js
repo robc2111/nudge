@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { OpenAI } = require('openai');
+const { regenerateBreakdown } = require('../controllers/aiController');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -48,5 +49,8 @@ Goal: "${goal}"
     res.status(500).json({ error: 'Failed to generate breakdown' });
   }
 });
+
+// routes/ai.js
+router.post('/goals/:id/regenerate', regenerateBreakdown);
 
 module.exports = router;

@@ -75,9 +75,9 @@ console.log("🔎 microtasks:", microtasks);
       </ul>
 
       {selectedMicrotask ? (
-        <div className="flex flex-col sm:flex-row gap-2 mt-2">
+        <div className="mt-4">
           <button
-            className={`px-3 py-1 rounded text-white ${
+            className={`card-buttons text-blue-600 underline text-sm mr-4 ${
               selectedMicrotask.status === 'done' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-600 hover:bg-green-700'
             }`}
             onClick={() => {
@@ -89,7 +89,7 @@ console.log("🔎 microtasks:", microtasks);
           </button>
 
           <button
-            className={`px-3 py-1 rounded text-white ${
+            className={`card-buttons text-blue-600 underline text-sm mr-4 ${
               selectedMicrotask?.task_id && !loading ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400 cursor-not-allowed'
             }`}
             onClick={handleBreakdown}

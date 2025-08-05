@@ -69,7 +69,7 @@ const Reflections = () => {
     <div className="p-4 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">🪞 Your Reflections</h1>
 
-      <div className="flex flex-wrap gap-3 mb-6 items-center">
+      <div className="controls-group flex flex-wrap gap-3 mb-6 items-center">
         <select
           name="goal_id"
           value={filters.goal_id}

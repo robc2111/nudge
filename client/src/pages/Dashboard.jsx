@@ -39,7 +39,6 @@ const Dashboard = () => {
 
   if (!data) return <p>Loading...</p>;
 
-  // ✅ Handle no goals at all
   if (!allGoals.length) {
     return (
       <div className="dashboard">
@@ -126,49 +125,54 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard">
+      {/* ✅ Styled control bar */}
       <div className="dashboard-controls">
-        <div className="goal-selector">
-          <label><strong>Goal:</strong></label>
-          <select value={selectedGoalId || ''} onChange={e => setSelectedGoalId(e.target.value)}>
-            {allGoals.map(goal => (
-              <option key={goal.id} value={goal.id}>
-                {getStatusIcon(goal.status)} {goal.title}
-              </option>
-            ))}
-          </select>
-        </div>
+  <div className="controls-group">
+    <label><strong>Goal:</strong></label>
+    <select value={selectedGoalId || ''} onChange={e => setSelectedGoalId(e.target.value)}>
+      {allGoals.map(goal => (
+        <option key={goal.id} value={goal.id}>
+          {getStatusIcon(goal.status)} {goal.title}
+        </option>
+      ))}
+    </select>
+  </div>
 
-        <div className="status-filter">
-          <label><strong>Filter:</strong></label>
-          {['todo', 'in_progress', 'done', 'all'].map(status => (
-            <button
-              key={status}
-              className={status === statusFilter ? 'active' : ''}
-              onClick={() => setStatusFilter(status)}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
-
-        <Link
-          to="/goal-setup"
-          className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+  <div className="controls-group filter-group">
+    <label><strong>Filter:</strong></label>
+    <div className="filter-buttons">
+      {['todo', 'in_progress', 'done', 'all'].map(status => (
+        <button
+          key={status}
+          className={`filter-btn ${status === statusFilter ? 'active' : ''}`}
+          onClick={() => setStatusFilter(status)}
         >
-          ➕ Add New Goal
-        </Link>
-      </div>
+          {{
+            todo: 'To-do',
+            in_progress: 'In Progress',
+            done: 'Done',
+            all: 'All'
+          }[status]}
+        </button>
+      ))}
+    </div>
+  </div>
+
+  <Link to="/goal-setup" className="add-goal-btn">
+    ➕ Add New Goal
+  </Link>
+</div>
 
       <div className="dashboard-cards">
         <GoalCard
-  goal={selectedGoal}
-  onSelect={setSelectedSubgoalId}
-  onDelete={handleDelete}
-  selectedId={selectedSubgoalId}
-  getProgress={getProgress}
-  getStatusIcon={getStatusIcon}
-  refreshDashboard={refreshData}
-/>
+          goal={selectedGoal}
+          onSelect={setSelectedSubgoalId}
+          onDelete={handleDelete}
+          selectedId={selectedSubgoalId}
+          getProgress={getProgress}
+          getStatusIcon={getStatusIcon}
+          refreshDashboard={refreshData}
+        />
 
         <SubgoalCard
           subgoal={selectedSubgoal}

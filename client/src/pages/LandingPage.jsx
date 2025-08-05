@@ -13,7 +13,7 @@ const LandingPage = () => {
     <h1>Welcome to GoalCrumbs 👋</h1>
     <p>Your AI-powered accountability partner. Break big goals into tiny, manageable crumbs — and actually get them done.</p>
     <p>
-      <Link className="cta-button" to="/signup">Get Started</Link> or <Link className="cta-button" to="/login">Sign In</Link>
+      <Link className="cta-button" to="/signup">Get Started</Link>   or   <Link className="cta-button" to="/login">Sign In</Link>
     </p>
   </div>
 </section>
