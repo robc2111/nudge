@@ -62,6 +62,7 @@ exports.updateMicrotask = async (req, res) => {
 };
 
 // PATCH /api/microtasks/:id/status
+// PATCH /api/microtasks/:id/status
 exports.updateMicrotaskStatus = async (req, res) => {
   const microtaskId = req.params.id;
   const { status } = req.body;
@@ -70,20 +71,62 @@ exports.updateMicrotaskStatus = async (req, res) => {
     return res.status(400).json({ error: 'Invalid status' });
   }
 
+  const client = await pool.connect();
+
   try {
-    const result = await pool.query(
+    await client.query('BEGIN');
+
+    // 1. Update selected microtask
+    const updateRes = await client.query(
       'UPDATE microtasks SET status = $1 WHERE id = $2 RETURNING *',
       [status, microtaskId]
     );
 
-    if (result.rows.length === 0) {
+    if (updateRes.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Microtask not found' });
     }
 
-    res.json(result.rows[0]);
+    const updated = updateRes.rows[0];
+
+    // 2. Get all microtasks for this task
+    const allRes = await client.query(
+      'SELECT * FROM microtasks WHERE task_id = $1 ORDER BY id ASC',
+      [updated.task_id]
+    );
+
+    const allMicrotasks = allRes.rows;
+
+    // 3. Set the first non-done microtask to 'in_progress', others to 'todo'
+    let inProgressSet = false;
+
+    for (const mt of allMicrotasks) {
+      if (mt.status === 'done') continue;
+
+      const newStatus = !inProgressSet ? 'in_progress' : 'todo';
+
+      await client.query(
+        'UPDATE microtasks SET status = $1 WHERE id = $2',
+        [newStatus, mt.id]
+      );
+
+      if (!inProgressSet) inProgressSet = true;
+    }
+
+    await client.query('COMMIT');
+
+    const finalRes = await client.query(
+      'SELECT * FROM microtasks WHERE task_id = $1 ORDER BY id ASC',
+      [updated.task_id]
+    );
+
+    res.json({ message: 'Status updated and reassigned', microtasks: finalRes.rows });
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error('❌ Error updating microtask:', err.message);
     res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
   }
 };
 

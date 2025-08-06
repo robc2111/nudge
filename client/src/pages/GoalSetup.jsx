@@ -1,6 +1,7 @@
 //GoalSetup.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from '../api/axios';
 
 const GoalSetup = () => {
   const [goalText, setGoalText] = useState('');
@@ -11,41 +12,25 @@ const GoalSetup = () => {
   const [userId, setUserId] = useState(null);
   const navigate = useNavigate();
 
-  // Fetch user ID from /users/me on mount
+  // ✅ Fetch user ID on mount
   useEffect(() => {
-  const fetchUser = async () => {
-    try {
-      const token = localStorage.getItem('token');
-
-      if (!token) {
-        console.warn("⚠️ No token found in localStorage.");
-        return;
+    const fetchUser = async () => {
+      try {
+        const res = await axios.get('/users/me');
+        if (res.data?.id) {
+          setUserId(res.data.id);
+          console.log('✅ User ID fetched:', res.data.id);
+        }
+      } catch (err) {
+        console.error('❌ Error fetching user:', err.response?.data || err.message);
+        setError('Failed to fetch user. Please log in again.');
       }
+    };
 
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/users/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+    fetchUser();
+  }, []);
 
-      if (!res.ok) throw new Error(`Failed to fetch user: ${res.status}`);
-
-      const data = await res.json();
-
-      if (data?.id) {
-        setUserId(data.id);
-        console.log("✅ User ID fetched and set:", data.id);
-      } else {
-        console.warn("⚠️ /users/me response missing id:", data);
-      }
-    } catch (err) {
-      console.error("❌ Error fetching user from /me:", err.message);
-    }
-  };
-
-  fetchUser();
-}, []);
-
+  // ✅ Generate breakdown
   const handleGenerate = async () => {
     setLoading(true);
     setError('');
@@ -53,15 +38,8 @@ const GoalSetup = () => {
     setBreakdown(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/ai/goal-breakdown`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goal: goalText }),
-      });
-
-      if (!response.ok) throw new Error('Failed to generate breakdown');
-
-      const data = await response.json();
+      const response = await axios.post('/ai/goal-breakdown', { goal: goalText });
+      const data = response.data;
 
       setBreakdown({
         title: data.goal,
@@ -69,14 +47,15 @@ const GoalSetup = () => {
         subgoals: data.subgoals,
       });
     } catch (err) {
-      setError(err.message);
+      console.error('❌ Breakdown error:', err);
+      setError(err.response?.data?.error || 'Failed to generate breakdown');
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ Save goal
   const handleSave = async () => {
-    console.log("🟢 Save button clicked");
     setSaved(false);
     setError('');
 
@@ -97,31 +76,14 @@ const GoalSetup = () => {
       subgoals: breakdown.subgoals,
     };
 
-    console.log("📤 Payload:", payload);
-
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/goals`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) throw new Error(result.error || 'Failed to save goal');
-
-      console.log('✅ Goal saved:', result);
+      await axios.post('/goals', payload);
       setSaved(true);
+      setTimeout(() => navigate('/dashboard'), 1000);
     } catch (err) {
-      setError(err.message);
+      console.error('❌ Save error:', err);
+      setError(err.response?.data?.error || 'Failed to save goal');
     }
-    
-setSaved(true);
-
-setTimeout(() => {
-  navigate('/dashboard');
-}, 1000); // Optional delay for "Goal saved" message
   };
 
   return (
@@ -129,34 +91,51 @@ setTimeout(() => {
       <h2 className="text-2xl font-bold mb-4">🎯 Goal Setup</h2>
 
       <div className="flex flex-col items-center gap-4 mb-6">
-  <textarea
-    className="goal-textarea"
-    placeholder="Describe your goal in natural language..."
-    rows={5}
-    value={goalText}
-    onChange={(e) => setGoalText(e.target.value)}
-  />
+        <textarea
+          className="goal-textarea"
+          placeholder="Describe your goal in natural language..."
+          rows={5}
+          value={goalText}
+          onChange={(e) => setGoalText(e.target.value)}
+        />
 
-  <button
-    className="btn"
-    style={{ width: '60%' }}
-    onClick={handleGenerate}
-    disabled={loading || !goalText.trim()}
-  >
-    {loading ? 'Generating...' : 'Generate Breakdown'}
-  </button>
-</div>
+        <button
+          className="btn"
+          style={{ width: '60%' }}
+          onClick={handleGenerate}
+          disabled={loading || !goalText.trim()}
+        >
+          {loading ? 'Generating...' : 'Generate Breakdown'}
+        </button>
+      </div>
 
       {error && <p className="text-red-500 mt-2">{error}</p>}
       {saved && <p className="text-green-600 mt-2">✅ Goal saved successfully</p>}
 
       {breakdown && (
-        <div className="mt-6">
+        <div className="mt-6 text-left">
           <h3 className="font-semibold text-lg">AI Breakdown:</h3>
-          <pre className="bg-gray-100 p-3 mt-2 rounded text-sm overflow-auto">
-            {JSON.stringify(breakdown, null, 2)}
-          </pre>
+          <div className="text-left bg-gray-50 p-4 mt-4 rounded shadow-sm">
+  <h4 className="text-lg font-bold mb-2">{breakdown.title}</h4>
 
+  {breakdown.subgoals.map((subgoal, i) => (
+    <div key={i} className="mb-4 pl-4 border-l-4 border-orange-300">
+      <h5 className="text-md font-semibold text-orange-700 mb-1">🧩 {subgoal.title}</h5>
+
+      {subgoal.tasks?.map((task, j) => (
+        <div key={j} className="ml-4 mb-2">
+          <p className="font-medium text-gray-800">🔹 {task.title}</p>
+          <ul className="list-disc list-inside text-sm text-gray-700 ml-4">
+            {task.microtasks?.map((micro, k) => (
+              <li key={k}>🟠 {micro}</li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  ))}
+</div>
+<div className="goalsetup-container">
           <div className="mt-4">
             <label className="block mb-1 font-medium">Choose your coaching tone:</label>
             <select
@@ -174,11 +153,13 @@ setTimeout(() => {
           </div>
 
           <button
-            className="bg-green-600 text-white mt-4 px-4 py-2 rounded "
+            className="btn bg-green-600 text-white mt-4 mb-4 px-4 py-2 rounded"
             onClick={handleSave}
           >
             Confirm & Save
           </button>
+        </div>
+        
         </div>
       )}
     </div>

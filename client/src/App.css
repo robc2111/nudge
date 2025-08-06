@@ -26,10 +26,11 @@ body {
   background: linear-gradient(to right, #fef0dd, #fff9f3);
 }
 
-input {
+input, select {
   margin: 0.5rem;
   height: 2.5rem;
   border-radius: 8px;
+  min-width: 150px;
 }
 
 .goal-textarea {
@@ -291,6 +292,16 @@ input {
 
 .btn:hover {
   background-color: #a55217;
+}
+
+.goalsetup-container {
+  max-width: 800px;
+  display: flex;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 ul {
@@ -631,4 +642,18 @@ img {
   background-color: #333;
   padding: 10px;
   text-align: center;
+}
+
+.status-in-progress {
+  background-color: #d1fae5; /* light green */
+  color: #065f46;
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+}
+
+.status-done {
+  background-color: #047857; /* darker green */
+  color: white;
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
 }

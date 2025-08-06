@@ -1,7 +1,9 @@
 // TaskCard.jsx
+// TaskCard.jsx
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
+import axios from '../api/axios';
 
 const TaskCard = ({
   task,
@@ -15,6 +17,7 @@ const TaskCard = ({
   refreshData
 }) => {
   const [loading, setLoading] = useState(false);
+  const sortedMicrotasks = [...microtasks].sort((a, b) => a.id - b.id);
 
   const handleBreakdown = async () => {
     if (!selectedMicrotask?.task_id) {
@@ -24,30 +27,23 @@ const TaskCard = ({
 
     setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/gpt/breakdown`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          microtaskId: selectedMicrotask.id,
-          title: selectedMicrotask.title,
-          taskId: selectedMicrotask.task_id
-        })
+      await axios.post('/gpt/breakdown', {
+        microtaskId: selectedMicrotask.id,
+        title: selectedMicrotask.title,
+        taskId: selectedMicrotask.task_id,
       });
-
-      if (!response.ok) throw new Error('Breakdown request failed');
 
       toast.success('✅ Microtask broken down!');
       refreshData();
       setSelectedMicrotaskId(null);
     } catch (err) {
-      console.error('❌ Breakdown failed:', err.message);
+      console.error('❌ Breakdown failed:', err.response?.data?.error || err.message);
       toast.error('Breakdown failed');
     } finally {
       setLoading(false);
     }
   };
-console.log("🧪 selectedMicrotask:", selectedMicrotask);
-console.log("🔎 microtasks:", microtasks);
+
   return (
     <div className="card">
       <img src="/crumbs.png" alt="Task" />
@@ -56,17 +52,23 @@ console.log("🔎 microtasks:", microtasks);
 
       <ul>
         <AnimatePresence>
-          {microtasks.map(mt => (
+          {sortedMicrotasks.map(mt => (
             <Motion.li
               key={mt.id}
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -5 }}
               transition={{ duration: 0.2 }}
-              onClick={() => setSelectedMicrotaskId(selectedMicrotaskId === mt.id ? null : mt.id)}
-              className={`cursor-pointer px-2 py-1 rounded ${
-                selectedMicrotaskId === mt.id ? 'bg-green-100 font-semibold' : ''
-              }`}
+              onClick={() =>
+                setSelectedMicrotaskId(selectedMicrotaskId === mt.id ? null : mt.id)
+              }
+              className={`cursor-pointer px-2 py-1 rounded transition-all duration-200 ease-in-out ${
+                mt.status === 'done'
+                  ? 'status-done'
+                  : mt.status === 'in_progress'
+                  ? 'status-in-progress'
+                  : ''
+              } ${selectedMicrotaskId === mt.id ? 'ring-2 ring-green-500' : ''}`}
             >
               {getStatusIcon(mt.status)} {mt.title}
             </Motion.li>
@@ -77,20 +79,28 @@ console.log("🔎 microtasks:", microtasks);
       {selectedMicrotask ? (
         <div className="mt-4">
           <button
-            className={`card-buttons text-blue-600 underline text-sm mr-4 ${
-              selectedMicrotask.status === 'done' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-600 hover:bg-green-700'
+            className={`cursor-pointer px-2 py-1 rounded ${
+              selectedMicrotask.status === 'done'
+                ? 'status-done'
+                : selectedMicrotask.status === 'in_progress'
+                ? 'status-in-progress'
+                : ''
             }`}
             onClick={() => {
               handleMicrotaskToggle(selectedMicrotaskId, selectedMicrotask.status);
               setSelectedMicrotaskId(null);
             }}
           >
-            {selectedMicrotask.status === 'done' ? '⏪ Mark as In Progress' : '✅ Mark as Done'}
+            {selectedMicrotask.status === 'done'
+              ? '⏪ Mark as In Progress'
+              : '✅ Mark as Done'}
           </button>
 
           <button
-            className={`card-buttons text-blue-600 underline text-sm mr-4 ${
-              selectedMicrotask?.task_id && !loading ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400 cursor-not-allowed'
+            className={`card-buttons text-blue-600 underline text-sm ml-4 ${
+              selectedMicrotask?.task_id && !loading
+                ? 'bg-purple-600 hover:bg-purple-700'
+                : 'bg-gray-400 cursor-not-allowed'
             }`}
             onClick={handleBreakdown}
             disabled={!selectedMicrotask?.task_id || loading}
@@ -99,7 +109,9 @@ console.log("🔎 microtasks:", microtasks);
           </button>
         </div>
       ) : (
-        <p className="text-sm text-gray-500 mt-2 italic">Select a microtask to mark or break it down</p>
+        <p className="text-sm text-gray-500 mt-2 italic">
+          Select a microtask to mark or break it down
+        </p>
       )}
     </div>
   );

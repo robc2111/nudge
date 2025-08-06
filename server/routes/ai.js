@@ -12,11 +12,27 @@ router.post('/goal-breakdown', async (req, res) => {
   if (!goal) return res.status(400).json({ error: 'Missing goal' });
 
   const prompt = `
-Break down the following goal into 3–5 subgoals. 
-Then break each subgoal into 3–5 tasks.
-Then break each task into 3–5 microtasks.
-Return only a clean JSON object like:
+You are an expert productivity coach.
 
+Break down the user's goal into a structured plan using the following hierarchy:
+- Subgoals (each achievable within 3–7 days)
+- Tasks (each achievable in less than a day)
+- Microtasks (3–5 small, specific actions per task)
+
+Rules:
+- Use natural, friendly language for titles.
+- Ensure microtasks are highly actionable and specific.
+- If the task should be repeated daily (like “learn 10 new words” or “do 30 mins exercise”), then split it into multiple daily entries.
+
+- Do NOT return vague or generic microtasks like “practice every day”. Instead, return specific daily steps like:
+- "Day 1: Learn 10 new words related to food"
+- "Day 2: Learn 10 new words related to travel"
+- Suggest resources that can help achieve each microtask, based on your knowledge.
+- If unsure or lacking details, respond with "unknown" or leave fields empty. Do not guess or invent tasks.
+- Do not include anything unrelated to the core goal.
+- Do NOT include commentary, only return valid JSON.
+
+Return ONLY a well-formatted JSON object like this:
 {
   "goal": "string",
   "subgoals": [
@@ -25,14 +41,14 @@ Return only a clean JSON object like:
       "tasks": [
         {
           "title": "string",
-          "microtasks": ["string", "string"]
+          "microtasks": ["string", "string", "string"]
         }
       ]
     }
   ]
 }
 
-Goal: "${goal}"
+User's goal: "${goal}"
 `;
 
   try {

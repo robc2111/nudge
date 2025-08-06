@@ -8,9 +8,9 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 async function callGPT(prompt) {
   const res = await openai.chat.completions.create({
-    model: 'gpt-4',
+    model: 'gpt-4-turbo',
     messages: [{ role: 'user', content: prompt }],
-    temperature: 0.7
+    temperature: 0.3
   });
 
   return JSON.parse(res.choices[0].message.content);

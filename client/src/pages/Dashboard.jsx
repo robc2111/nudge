@@ -66,6 +66,17 @@ const Dashboard = () => {
     }
   };
 
+  const getStatusClass = (status) => {
+    switch (status) {
+      case 'done':
+        return 'bg-green-700 text-white';
+      case 'in_progress':
+        return 'bg-green-100 text-green-900';
+      default:
+        return '';
+    }
+  };
+
   const getProgress = (items = []) => {
     const total = items.length;
     const done = items.filter(i => i.status === 'done').length;
@@ -73,95 +84,83 @@ const Dashboard = () => {
   };
 
   const handleMicrotaskToggle = async (microtaskId, currentStatus) => {
-    const nextStatus = currentStatus === 'done' ? 'in_progress' : 'done';
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/microtasks/${microtaskId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: nextStatus })
-      });
-      if (!res.ok) throw new Error('Failed to update microtask');
-      const updated = await res.json();
+  const nextStatus = currentStatus === 'done' ? 'in_progress' : 'done';
 
-      setData(prev => {
-        const newData = { ...prev };
-        for (const goal of newData.goals) {
-          for (const subgoal of goal.subgoals) {
-            for (const task of subgoal.tasks) {
-              const microtask = task.microtasks.find(m => m.id === microtaskId);
-              if (microtask) microtask.status = updated.status;
-            }
+  try {
+    await axios.patch(`/microtasks/${microtaskId}/status`, { status: nextStatus });
+
+    setData(prev => {
+      const newData = { ...prev };
+      for (const goal of newData.goals) {
+        for (const subgoal of goal.subgoals) {
+          for (const task of subgoal.tasks) {
+            const microtask = task.microtasks.find(m => m.id === microtaskId);
+            if (microtask) microtask.status = nextStatus;
           }
         }
-        return newData;
-      });
-    } catch (err) {
-      console.error('❌ Error updating microtask:', err.message);
-    }
-  };
+      }
+      return newData;
+    });
+  } catch (err) {
+    console.error('❌ Error updating microtask:', err.response?.data?.error || err.message);
+  }
+};
 
   const handleDelete = async (goalId) => {
-    if (!window.confirm("Are you sure you want to delete this goal?")) return;
+  if (!window.confirm("Are you sure you want to delete this goal?")) return;
 
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/goals/${goalId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+  try {
+    await axios.delete(`/goals/${goalId}`);
 
-      if (!res.ok) throw new Error("Delete failed");
-
-      setData(prev => {
-        const updatedGoals = prev.goals.filter(g => g.id !== goalId);
-        const nextGoal = updatedGoals.find(g => g.status === 'in_progress') || updatedGoals[0] || null;
-        setSelectedGoalId(nextGoal?.id || null);
-        return { ...prev, goals: updatedGoals };
-      });
-    } catch (err) {
-      console.error("❌ Failed to delete goal:", err.message);
-    }
-  };
+    setData(prev => {
+      const updatedGoals = prev.goals.filter(g => g.id !== goalId);
+      const nextGoal = updatedGoals.find(g => g.status === 'in_progress') || updatedGoals[0] || null;
+      setSelectedGoalId(nextGoal?.id || null);
+      return { ...prev, goals: updatedGoals };
+    });
+  } catch (err) {
+    console.error("❌ Failed to delete goal:", err.response?.data?.error || err.message);
+  }
+};
 
   return (
     <div className="dashboard">
-      {/* ✅ Styled control bar */}
       <div className="dashboard-controls">
-  <div className="controls-group">
-    <label><strong>Goal:</strong></label>
-    <select value={selectedGoalId || ''} onChange={e => setSelectedGoalId(e.target.value)}>
-      {allGoals.map(goal => (
-        <option key={goal.id} value={goal.id}>
-          {getStatusIcon(goal.status)} {goal.title}
-        </option>
-      ))}
-    </select>
-  </div>
+        <div className="controls-group">
+          <label><strong>Goal:</strong></label>
+          <select value={selectedGoalId || ''} onChange={e => setSelectedGoalId(e.target.value)}>
+            {allGoals.map(goal => (
+              <option key={goal.id} value={goal.id}>
+                {getStatusIcon(goal.status)} {goal.title}
+              </option>
+            ))}
+          </select>
+        </div>
 
-  <div className="controls-group filter-group">
-    <label><strong>Filter:</strong></label>
-    <div className="filter-buttons">
-      {['todo', 'in_progress', 'done', 'all'].map(status => (
-        <button
-          key={status}
-          className={`filter-btn ${status === statusFilter ? 'active' : ''}`}
-          onClick={() => setStatusFilter(status)}
-        >
-          {{
-            todo: 'To-do',
-            in_progress: 'In Progress',
-            done: 'Done',
-            all: 'All'
-          }[status]}
-        </button>
-      ))}
-    </div>
-  </div>
+        <div className="controls-group filter-group">
+          <label><strong>Filter:</strong></label>
+          <div className="filter-buttons">
+            {['todo', 'in_progress', 'done', 'all'].map(status => (
+              <button
+                key={status}
+                className={`filter-btn ${status === statusFilter ? 'active' : ''}`}
+                onClick={() => setStatusFilter(status)}
+              >
+                {{
+                  todo: 'To-do',
+                  in_progress: 'In Progress',
+                  done: 'Done',
+                  all: 'All'
+                }[status]}
+              </button>
+            ))}
+          </div>
+        </div>
 
-  <Link to="/goal-setup" className="add-goal-btn">
-    ➕ Add New Goal
-  </Link>
-</div>
+        <Link to="/goal-setup" className="add-goal-btn">
+          ➕ Add New Goal
+        </Link>
+      </div>
 
       <div className="dashboard-cards">
         <GoalCard
@@ -171,6 +170,7 @@ const Dashboard = () => {
           selectedId={selectedSubgoalId}
           getProgress={getProgress}
           getStatusIcon={getStatusIcon}
+          getStatusClass={getStatusClass}
           refreshDashboard={refreshData}
         />
 
@@ -181,6 +181,7 @@ const Dashboard = () => {
           setSelectedTaskId={setSelectedTaskId}
           getProgress={getProgress}
           getStatusIcon={getStatusIcon}
+          getStatusClass={getStatusClass}
         />
 
         <TaskCard
@@ -191,6 +192,7 @@ const Dashboard = () => {
           selectedMicrotask={selectedMicrotask}
           handleMicrotaskToggle={handleMicrotaskToggle}
           getStatusIcon={getStatusIcon}
+          getStatusClass={getStatusClass}
           getProgress={getProgress}
           refreshData={refreshData}
         />

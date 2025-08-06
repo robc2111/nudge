@@ -1,25 +1,32 @@
 // MicrotaskCard.jsx
-import React from 'react';
-//import axios from '../../api/axios';
+import React, { useState } from 'react';
+import axios from '../../api/axios'; // ✅ keep imports at the top
 
 const MicrotaskCard = ({ microtask, refreshData }) => {
+  const [loading, setLoading] = useState(false);
+
   const handleBreakdown = async () => {
+    setLoading(true);
     try {
-    //   const res = await axios.post(`/api/gpt/breakdown`, {
-    //     microtaskId: microtask.id,
-    //     title: microtask.title,
-    //     taskId: microtask.task_id,
-    //   });
-      refreshData(); // re-fetch updated goal data
+      await axios.post('/api/gpt/breakdown', {
+        microtaskId: microtask.id,
+        title: microtask.title,
+        taskId: microtask.task_id,
+      });
+      refreshData();
     } catch (err) {
-      console.error('Error breaking down microtask:', err.message);
+      console.error('❌ Breakdown failed:', err.response?.data?.error || err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="microtask-card">
       <p>{microtask.title}</p>
-      <button onClick={handleBreakdown}>Break Down</button>
+      <button onClick={handleBreakdown} disabled={loading}>
+        {loading ? 'Breaking down...' : 'Break Down'}
+      </button>
     </div>
   );
 };
