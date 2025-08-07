@@ -37,6 +37,7 @@ const Signup = () => {
   };
 
   return (
+    
     <div style={{ maxWidth: 400, margin: 'auto' }}>
       <h2>Sign Up</h2>
       <form onSubmit={handleSubmit}>

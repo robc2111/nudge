@@ -7,11 +7,17 @@ const { v4: uuidv4 } = require('uuid'); // ✅ added
 const pool = require('../db');
 
 router.post('/register', async (req, res) => {
+  // 🚧 Block all registrations for now
+  return res.status(403).json({
+    error: 'Registrations are temporarily closed. Please check back soon!'
+  });
+
+  // The rest of the code below is now unreachable
   const { name, email, password, telegram_id } = req.body;
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const userId = uuidv4(); // ✅ generate UUID for user.id
+    const userId = uuidv4();
 
     const newUser = await pool.query(
       `INSERT INTO users (id, name, email, password, telegram_id)

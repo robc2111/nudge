@@ -10,7 +10,7 @@ router.post('/goal-breakdown', async (req, res) => {
   const { goal } = req.body;
 
   if (!goal) return res.status(400).json({ error: 'Missing goal' });
-
+// allow different prompts based on goal type (e.g learning, fitness, career, etc.)
   const prompt = `
 You are an expert productivity coach.
 

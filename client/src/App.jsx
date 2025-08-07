@@ -10,6 +10,7 @@ import PrivateRoute from './components/PrivateRoute';
 import GoalSetup from './pages/GoalSetup';
 import EditGoal from './pages/EditGoal';
 import Reflections from './pages/Reflections';
+import Footer from './components/Footer';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -56,6 +57,7 @@ function App() {
   }
 />
       </Routes>
+      <Footer />
     </BrowserRouter>
   );
 }
