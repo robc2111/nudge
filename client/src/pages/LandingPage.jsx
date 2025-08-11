@@ -11,7 +11,7 @@ const LandingPage = () => {
   </div>
   <div className="hero-right">
     <h1>Welcome to GoalCrumbs 👋</h1>
-    <p>Your AI-powered accountability partner. Break big goals into tiny, manageable crumbs — and actually get them done.</p>
+    <p>Your AI-powered accountability partner. Break big goals into tiny, manageable crumbs and actually get them done.</p>
     <p>
       <Link className="cta-button" to="/signup">Get Started</Link>   or   <Link className="cta-button" to="/login">Sign In</Link>
     </p>
@@ -23,7 +23,7 @@ const LandingPage = () => {
         <h2>What is GoalCrumbs?</h2>
         <p>
           GoalCrumbs helps you stop procrastinating by breaking large, overwhelming goals into bite-sized steps. 
-          With smart nudges, visual progress, and check-ins, it's like having a project manager in your pocket.
+          With daily reminders, visual progress, and weekly check-ins, it's like having a project manager in your pocket.
         </p>
         <ul>
           <li>✅ Create layered goals with subgoals, tasks and microtasks</li>

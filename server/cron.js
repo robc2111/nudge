@@ -1,5 +1,6 @@
 //cron.js
 require('dotenv').config(); // ✅ Load environment variables
+const systemPrompts = require('./prompts');
 
 const cron = require('node-cron');
 const axios = require('axios');
@@ -14,18 +15,18 @@ const gptSystemPrompts = {
 };
 
 async function generateToneBasedMessage(tone, taskTitle) {
-  const system = gptSystemPrompts[tone] || gptSystemPrompts["friendly"]; // fallback
+  const system = systemPrompts.telegramMessages.promptMap[tone] || systemPrompts.telegramMessages.promptMap["friendly"];
   const prompt = `The user is working on: "${taskTitle}". Write a short, 1-sentence check-in message to send via Telegram.`;
 
   try {
     const res = await axios.post('https://api.openai.com/v1/chat/completions', {
-      model: "gpt-4",
+      model: systemPrompts.telegramMessages.model,
       messages: [
         { role: "system", content: system },
         { role: "user", content: prompt }
       ],
       max_tokens: 50,
-      temperature: 0.8
+      temperature: systemPrompts.telegramMessages.temperature
     }, {
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,

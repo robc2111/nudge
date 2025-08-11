@@ -1,16 +1,17 @@
 // aiController.js
-// aiController.js
-const { getGoalData, extractDoneItems, generatePrompt } = require('../utils/goalUtils');
+// controllers/aiController.js
+const { getGoalData, extractDoneItems } = require('../utils/goalUtils');
 const { OpenAI } = require('openai');
 const pool = require('../db');
+const editGoalPrompt = require('../prompts/editGoal'); // ✅ import
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 async function callGPT(prompt) {
   const res = await openai.chat.completions.create({
-    model: 'gpt-4-turbo',
+    model: editGoalPrompt.model,
     messages: [{ role: 'user', content: prompt }],
-    temperature: 0.3
+    temperature: editGoalPrompt.temperature
   });
 
   return JSON.parse(res.choices[0].message.content);
@@ -23,12 +24,13 @@ const regenerateBreakdown = async (req, res) => {
 
     const goalData = await getGoalData(goalId);
     const doneItems = extractDoneItems(goalData);
-    const prompt = generatePrompt(description, doneItems);
+    const prompt = editGoalPrompt.prompt(description, doneItems); // ✅ use prompt function
+
     console.log("🧠 Prompt to GPT:\n", prompt);
 
     const aiResponse = await callGPT(prompt);
 
-    // ❌ Delete microtasks where task/subgoal is not done
+    // (unchanged) DB cleanup
     await pool.query(`
       DELETE FROM microtasks WHERE task_id IN (
         SELECT id FROM tasks WHERE subgoal_id IN (
@@ -37,19 +39,16 @@ const regenerateBreakdown = async (req, res) => {
       );
     `, [goalId]);
 
-    // ❌ Delete tasks that aren't done
     await pool.query(`
       DELETE FROM tasks WHERE subgoal_id IN (
         SELECT id FROM subgoals WHERE goal_id = $1 AND status IN ('not_started', 'in_progress')
       ) AND status IN ('not_started', 'in_progress');
     `, [goalId]);
 
-    // ❌ Delete subgoals that aren't done
     await pool.query(`
       DELETE FROM subgoals WHERE goal_id = $1 AND status IN ('not_started', 'in_progress');
     `, [goalId]);
 
-    // ✅ Insert fresh structure
     await replaceTodoBreakdown(goalId, aiResponse);
 
     res.status(200).json({ message: 'Goal regenerated with updated breakdown.' });

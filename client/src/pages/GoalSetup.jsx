@@ -92,12 +92,17 @@ const GoalSetup = () => {
 
       <div className="flex flex-col items-center gap-4 mb-6">
         <textarea
-          className="goal-textarea"
-          placeholder="Describe your goal in natural language..."
-          rows={5}
-          value={goalText}
-          onChange={(e) => setGoalText(e.target.value)}
-        />
+  className="goal-textarea"
+  placeholder="Describe your goal in natural language..."
+  rows={5}
+  value={goalText}
+  onChange={(e) => setGoalText(e.target.value)}
+  maxLength={300} // ✅ limit characters
+/>
+
+<p className="text-sm text-gray-500 mt-1">
+  {goalText.length} / 300 characters
+</p>
 
         <button
           className="btn"
