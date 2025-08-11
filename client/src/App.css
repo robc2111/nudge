@@ -1,24 +1,11 @@
 /* App.css */
+
+/* Base layout */
 #root {
   width: 100%;
   max-width: 100vw;
   padding: 0;
   box-sizing: border-box;
-  text-align: center;
-
-}
-
-.profile-buttons {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-.profile-buttons a {
-  min-width: 180px;
-  padding: 0.6rem 1.2rem;
   text-align: center;
 }
 
@@ -26,6 +13,7 @@ body {
   background: linear-gradient(to right, #fef0dd, #fff9f3);
 }
 
+/* Inputs */
 input, select {
   margin: 0.5rem;
   height: 2.5rem;
@@ -43,6 +31,21 @@ input, select {
   resize: vertical;
 }
 
+/* Profile buttons */
+.profile-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+.profile-buttons a {
+  min-width: 180px;
+  padding: 0.6rem 1.2rem;
+  text-align: center;
+}
+
+/* Logo + brand */
 .logo-link {
   display: flex;
   align-items: center;
@@ -50,33 +53,22 @@ input, select {
   text-decoration: none;
   color: white;
 }
-
 .logo {
   width: 40px;
-  height: 40px;
-  border-radius: 8px;
+  height: auto;
+  border-radius: 6px;
 }
-
 .logo-text {
   font-size: 1.3rem;
   font-weight: bold;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
+.logo:hover { filter: drop-shadow(0 0 2em #646cffaa); }
+.logo.react:hover { filter: drop-shadow(0 0 2em #61dafbaa); }
 
 @keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
-
 @media (prefers-reduced-motion: no-preference) {
   a:nth-of-type(2) .logo {
     animation: logo-spin infinite 20s linear;
@@ -84,7 +76,6 @@ input, select {
 }
 
 /* === Header Styles === */
-
 .goalcrumbs-header {
   background-color: #bd661d;
   color: white;
@@ -94,7 +85,6 @@ input, select {
   padding: 0.5rem 1rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-
 .header-container {
   display: flex;
   align-items: center;
@@ -103,7 +93,6 @@ input, select {
   max-width: 1200px;
   margin: 0 auto;
 }
-
 .header-inner {
   display: flex;
   align-items: center;
@@ -112,7 +101,6 @@ input, select {
   margin: 0 auto;
   gap: 1rem;
 }
-
 .header-left,
 .header-center,
 .header-right {
@@ -120,44 +108,16 @@ input, select {
   align-items: center;
   gap: 1rem;
 }
+.header-center { flex-grow: 1; justify-content: center; }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem; /* increased spacing */
-}
-
-.header-center {
-  flex-grow: 1;
-  justify-content: center;
-}
-
-.logo-link {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.logo {
-  width: 40px;
-  height: auto;
-  border-radius: 6px;
-}
-
-.app-name {
-  font-size: 1.2rem;
-  font-weight: bold;
-}
+.app-name { font-size: 1.2rem; font-weight: bold; }
 
 .goalcrumbs-header a {
   color: white;
   text-decoration: none;
   font-weight: 500;
 }
-
-.goalcrumbs-header a:hover {
-  text-decoration: underline;
-}
+.goalcrumbs-header a:hover { text-decoration: underline; }
 
 .logout-button {
   background-color: transparent;
@@ -169,10 +129,8 @@ input, select {
   font-size: 0.9rem;
   margin-left: 0.5rem;
 }
+.logout-button:hover { background-color: rgba(255, 255, 255, 0.2); }
 
-.logout-button:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-}
 .header-nav {
   display: flex;
   gap: 1rem;
@@ -180,16 +138,12 @@ input, select {
   justify-content: center;
   flex: 1;
 }
-
 .header-nav a {
   color: white;
   text-decoration: none;
   font-size: 1rem;
 }
-
-.header-nav a:hover {
-  text-decoration: underline;
-}
+.header-nav a:hover { text-decoration: underline; }
 
 .header-user {
   display: flex;
@@ -198,7 +152,6 @@ input, select {
   font-size: 0.95rem;
   white-space: nowrap;
 }
-
 .header-user button {
   background: white;
   color: #bd661d;
@@ -207,29 +160,34 @@ input, select {
   border: none;
   cursor: pointer;
 }
-
-.header-user button:hover {
-  background-color: #f0f0f0;
-}
-
+.header-user button:hover { background-color: #f0f0f0; }
 
 /* Mobile adjustments */
 @media (max-width: 768px) {
-  .header-container {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+  .header-container { flex-direction: column; align-items: flex-start; }
+  .header-nav { justify-content: flex-start; margin-top: 0.5rem; gap: 0.7rem; }
+  .header-user { align-self: flex-end; margin-top: 0.5rem; }
+}
 
-  .header-nav {
-    justify-content: flex-start;
-    margin-top: 0.5rem;
-    gap: 0.7rem;
-  }
-
-  .header-user {
-    align-self: flex-end;
-    margin-top: 0.5rem;
-  }
+/* === Buttons === */
+.btn,
+.add-reflection-form button, /* ✅ share same styles */
+.add-goal-btn {
+  background-color: #bd661d;
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border: none;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn:hover,
+.add-reflection-form button:hover,
+.add-goal-btn:hover {
+  background-color: #a55217;
 }
 
 /* === Dashboard Styles === */
@@ -240,120 +198,6 @@ input, select {
   gap: 2rem;
   padding: 2rem;
 }
-
-.dashboard-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: center;
-  justify-content: space-between;
-  background-color: #fff6eb;
-  padding: 1rem 1.5rem;
-  border-radius: 12px;
-  margin-bottom: 2rem;
-  max-width: 1000px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.dashboard-cards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2rem;
-  justify-content: center;
-}
-
-.card {
-  width: 300px;
-  background: #fff;
-  padding: 1rem;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.card img {
-  width: 50px;
-  margin-bottom: 0.5rem;
-}
-
-.card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.btn {
-  background-color: #bd661d;
-  color: white;
-  padding: 0.6rem 1.2rem;
-  border-radius: 6px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.btn:hover {
-  background-color: #a55217;
-}
-
-.goalsetup-container {
-  max-width: 800px;
-  display: flex;
-  margin: 0 auto;
-  padding: 2rem;
-  background-color: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-ul {
-  list-style: none;
-  padding-left: 0;
-}
-
-li {
-  margin: 0.3rem 0;
-  cursor: pointer;
-}
-
-.selected {
-  font-weight: bold;
-  background-color: #fef0dd;
-  border-radius: 6px;
-  padding: 0.3rem;
-}
-
-.status-filter button.active {
-  background-color: #bd661d;
-  color: white;
-}
-
-.cursor-pointer:hover {
-  background-color: #f0f0f0;
-}
-
-.selected {
-  background-color: #d1fae5; /* green-100 for clarity */
-  font-weight: bold;
-  border-radius: 6px;
-  padding: 4px;
-}
-
-/* General card layout */
-.dashboard .card {
-  background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  width: 280px;
-  max-width: 90%;
-  padding: 1.5rem;
-  text-align: left;
-  transition: transform 0.2s ease;
-}
-
-.dashboard .card h3 {
-  font-size: 1.4rem;
-}
-
 .dashboard-controls {
   display: flex;
   flex-wrap: wrap;
@@ -366,101 +210,47 @@ li {
   gap: 1rem;
   max-width: 1000px;
 }
-
-.controls-group {
+.dashboard-cards {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  margin: 0 1rem;
-}
-
-.filter-group .filter-buttons {
-  display: flex;
-  gap: 0.5rem;
   flex-wrap: wrap;
+  gap: 2rem;
   justify-content: center;
 }
-
-.filter-btn {
-  padding: 0.4rem 1rem;
-  border-radius: 6px;
-  border: none;
-  background: #1a1a1a;
-  color: white;
-  cursor: pointer;
+.dashboard .card {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  width: 280px;
+  max-width: 90%;
+  padding: 1.5rem;
+  text-align: left;
+  transition: transform 0.2s ease;
 }
-
-.filter-btn.active {
-  background-color: #bd661d;
-}
-
-.filter-btn:hover {
-  opacity: 0.9;
-}
-
-.add-goal-btn {
-  background-color: #bd661d;
-  color: white;
-  padding: 0.6rem 1.2rem;
-  border-radius: 6px;
-  text-decoration: none;
-  font-weight: 500;
-  transition: background-color 0.2s ease;
-}
-
-.add-goal-btn:hover {
-  background-color: #a55217;
-}
-
-
-.dashboard-controls > * {
-  flex: 1 1 auto;
-  min-width: 200px;
-}
-
-.controls-left,
-.controls-center {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.dashboard .card:hover {
-  transform: translateY(-4px);
-}
-
-/* Card images */
+.dashboard .card:hover { transform: translateY(-4px); }
 .dashboard .card img {
   width: 48px;
   height: auto;
   display: block;
-  margin: 0 auto 0.75rem auto; /* ✅ center horizontally */
+  margin: 0 auto 0.75rem auto; /* center */
 }
-
-/* Headings and lists */
 .dashboard .card h3 {
   font-size: 1.2rem;
   margin-bottom: 0.5rem;
 }
-
 .dashboard .card ul {
   list-style: none;
   padding-left: 0;
   margin: 0;
 }
-
 .dashboard .card li {
   padding: 0.4rem 0;
   border-bottom: 1px solid #eee;
   font-size: 0.95rem;
 }
 
-.goal-selector label {
-  margin-right: 0.5rem;
-  font-weight: 500;
-}
-
+/* Goal selector */
+.goal-selector label { margin-right: 0.5rem; font-weight: 500; }
 .goal-selector select {
   width: 100%;
   padding: 0.5rem;
@@ -468,18 +258,11 @@ li {
   border: 1px solid #ccc;
 }
 
-.card-buttons {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
+/* Card button group */
+.card-buttons { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
 
-/* Optional: Status filter buttons */
-.status-filter {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
+/* Status filter */
+.status-filter { text-align: center; margin-bottom: 2rem; }
 .status-filter button {
   margin: 0 0.5rem;
   padding: 0.4rem 1rem;
@@ -490,9 +273,27 @@ li {
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
+.status-filter button:hover { background-color: #f8d7b8; }
+.status-filter button.active { background-color: #bd661d; color: white; }
 
-.status-filter button:hover {
-  background-color: #f8d7b8;
+/* Utility */
+.cursor-pointer:hover { background-color: #f0f0f0; }
+.selected {
+  background-color: #d1fae5; /* green-100 */
+  font-weight: bold;
+  border-radius: 6px;
+  padding: 4px;
+}
+
+/* Fixed header (unused? keep if referenced) */
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background-color: #333;
+  padding: 10px;
+  text-align: center;
 }
 
 /* === Landing Page Styles === */
@@ -501,85 +302,60 @@ li {
   margin: 0 auto;
   padding: 2rem 1rem;
 }
-
 .hero-section {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 2rem;
-  text-align: left;
-  margin-bottom: 3rem;
-  flex-wrap: wrap;
-}
-
-.hero-left {
-  flex: 1;
-  min-width: 200px;
-  display: flex;
-  justify-content: center;
-}
-
-.hero-image {
-  max-width: 300px;
-  width: 100%;
-  height: auto;
-  border-radius: 12px;
-  border: #31251c 3px solid;
-}
-
-.hero-right {
-  flex: 2;
-  min-width: 280px;
-}
-
-.hero-right h1 {
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
-}
-
-.hero-right p {
-  margin-bottom: 1rem;
-  font-size: 1.1rem;
-}
-
-@media (max-width: 768px) {
-  .hero-section {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .hero-right, .hero-left {
-    text-align: center;
-  }
-}
-
-.about-section ul {
-  text-align: left;
-  margin: 0 auto;
-  max-width: 500px;
-}
-
-.icon-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   margin-bottom: 2rem;
+  text-align: left;
+}
+.hero-right { flex: 1; }
+.hero-left { flex: 1; display: flex; justify-content: center; }
+.hero-image { max-width: 280px; }
+
+.tagline { font-size: 1.2rem; margin-bottom: 1rem; }
+.hero-cta { display: flex; align-items: center; gap: 1rem; }
+.hero-cta .or { color: #666; }
+
+.cta-button.secondary {
+  background-color: transparent;
+  color: #bd661d;
+  border: 2px solid #bd661d;
+}
+.cta-button.secondary:hover {
+  background-color: #fcefe3;
 }
 
-.icon-section img {
-  width: 80px;
-  margin-bottom: 0.5rem;
+.benefits-list {
+  list-style: none;
+  padding: 0;
+  text-align: left;
+}
+.benefits-list li { margin-bottom: 0.5rem; }
+
+.team-section img,
+.how-it-works-section img { width: 60px; }
+
+blockquote {
+  margin: 1rem auto;
+  max-width: 600px;
+  font-style: italic;
 }
 
-.icon-section p {
-  max-width: 400px;
+.hero-right h1 { font-size: 2.5rem; margin-bottom: 1rem; }
+.hero-right p { margin-bottom: 1rem; font-size: 1.1rem; }
+@media (max-width: 768px) {
+  .hero-section { flex-direction: column; text-align: center; }
+  .hero-right, .hero-left { text-align: center; }
 }
-
-.dashboard-preview {
-  width: 100%;
-  max-width: 800px;
-  border-radius: 8px;
+.about-section ul { text-align: left; margin: 0 auto; max-width: 500px; }
+.icon-section {
+  display: flex; flex-direction: column; align-items: center; margin-bottom: 2rem;
 }
+.icon-section img { width: 80px; margin-bottom: 0.5rem; }
+.icon-section p { max-width: 400px; }
+.dashboard-preview { width: 100%; max-width: 800px; border-radius: 8px; }
 
 .cta-button {
   background-color: #bd661d;
@@ -591,12 +367,9 @@ li {
   margin-top: 1rem;
   text-decoration: none;
 }
+.cta-button:hover { background-color: #a55217; }
 
-.cta-button:hover {
-  background-color: #a55217;
-}
-
-/* Flex layout for the two sections side by side */
+/* Side-by-side info sections */
 .side-by-side-sections {
   display: flex;
   flex-wrap: wrap;
@@ -604,56 +377,56 @@ li {
   gap: 2rem;
   margin-bottom: 3rem;
 }
-
-/* Ensure each section takes about half on wide screens */
-.team-section,
-.how-it-works-section {
+.team-section, .how-it-works-section {
   flex: 1 1 45%;
   min-width: 280px;
 }
+.team-section div, .how-it-works-section div {
+  display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; text-align: left;
+}
+.team-section img, .how-it-works-section img {
+  width: 60px; height: auto;
+}
 
-/* Style for each mascot/goal block */
-.team-section div,
-.how-it-works-section div {
+/* Media */
+img { max-width: 100%; height: auto; display: block; }
+
+/* === Reflections Styles === */
+.add-reflection-form {
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  text-align: left;
+  flex-direction: column;
+  gap: 8px;
+  background: #f9f9f9;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
 }
+.add-reflection-form select,
+.add-reflection-form textarea,
+.add-reflection-form button {
+  padding: 8px;
+  font-size: 14px;
+}
+.add-reflection-form textarea { min-height: 80px; resize: vertical; }
 
-.team-section img,
-.how-it-works-section img {
-  width: 60px;
-  height: auto;
-}
+.error { color: red; font-size: 0.9rem; }
 
-img {
-  max-width: 100%;
-  height: auto;
-  display: block;
+.reflections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
 }
+.reflection-card {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: box-shadow 0.2s ease-in-out;
+}
+.reflection-card:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+.reflection-date { font-size: 0.85rem; color: #666; }
+.reflection-goal { font-size: 0.9rem; color: #444; font-style: italic; margin-top: 4px; }
+.reflection-content { margin-top: 10px; font-size: 1rem; white-space: pre-wrap; }
 
-.header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  background-color: #333;
-  padding: 10px;
-  text-align: center;
-}
-
-.status-in-progress {
-  background-color: #d1fae5; /* light green */
-  color: #065f46;
-  border-radius: 6px;
-  padding: 0.3rem 0.5rem;
-}
-
-.status-done {
-  background-color: #047857; /* darker green */
-  color: white;
-  border-radius: 6px;
-  padding: 0.3rem 0.5rem;
-}
+/* End App.css */
