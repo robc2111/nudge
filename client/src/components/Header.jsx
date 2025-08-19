@@ -1,31 +1,35 @@
-// Header.jsx
+// src/components/Header.jsx
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from '../api/axios';
+import api from '../api/axios';
 
 const Header = () => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem('user');
+    return stored ? JSON.parse(stored) : null;
+  });
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
-    navigate('/');
+    navigate('/login', { replace: true });
   };
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        if (token) {
-          const res = await axios.get('/users/me');
-          setUser(res.data);
-        }
-      } catch (err) {
+    if (!token) return;
+
+    api.get('/users/me')
+      .then((res) => {
+        setUser(res.data);
+        localStorage.setItem('user', JSON.stringify(res.data));
+      })
+      .catch((err) => {
         console.error('Failed to load user:', err);
-      }
-    };
-    fetchUser();
+        // No manual logout here — axios.js 401 handler will catch auth issues
+      });
   }, [token]);
 
   return (
@@ -54,12 +58,18 @@ const Header = () => {
         </nav>
 
         <div className="header-user">
-          {user ? (
+          {user && (
             <>
               <span>👤 {user.name}</span>
-              <button onClick={handleLogout}>Sign Out</button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                aria-label="Sign out"
+              >
+                Sign Out
+              </button>
             </>
-          ) : null}
+          )}
         </div>
       </div>
     </header>

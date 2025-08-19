@@ -1,13 +1,14 @@
-// App.jsx
+// src/App.jsx
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import PrivateRoute from './components/PrivateRoute';
+import ErrorBoundary from './components/ErrorBoundary';
+import NotFound from './pages/NotFound';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-// --- Code-split pages ---
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const Login       = lazy(() => import('./pages/Login'));
 const Signup      = lazy(() => import('./pages/Signup'));
@@ -17,60 +18,56 @@ const GoalSetup   = lazy(() => import('./pages/GoalSetup'));
 const EditGoal    = lazy(() => import('./pages/EditGoal'));
 const Reflections = lazy(() => import('./pages/Reflections'));
 
-// --- Simple fallback while lazy chunks load ---
 const Loader = () => <div style={{ padding: '2rem' }}>Loading…</div>;
 
-// --- Protected layout: wraps any route group that requires auth ---
 const Protected = () => (
   <PrivateRoute>
     <Outlet />
   </PrivateRoute>
 );
 
-function App() {
+export default function App() {
   return (
-    <BrowserRouter>
-      <Header />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Header />
 
-      {/* Global toasts: keep tidy and non-intrusive */}
-      <ToastContainer
-        position="bottom-right"
-        autoClose={3000}
-        newestOnTop
-        pauseOnFocusLoss={false}
-        pauseOnHover
-        closeOnClick
-        draggable
-        limit={3}
-      />
+        <ToastContainer
+          position="bottom-right"
+          autoClose={3000}
+          newestOnTop
+          pauseOnFocusLoss={false}
+          pauseOnHover
+          closeOnClick
+          draggable
+          limit={3}
+        />
 
-      {/* Landmark for accessibility */}
-      <main role="main">
-        <Suspense fallback={<Loader />}>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
+        <main role="main">
+          <Suspense fallback={<Loader />}>
+            <Routes>
+              {/* Public */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
 
-            {/* Private routes (grouped) */}
-            <Route element={<Protected />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/reflections" element={<Reflections />} />
-              <Route path="/goal-setup" element={<GoalSetup />} />
-              <Route path="/edit-goal/:id" element={<EditGoal />} />
-            </Route>
+              {/* Private */}
+              <Route element={<Protected />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/reflections" element={<Reflections />} />
+                <Route path="/goal-setup" element={<GoalSetup />} />
+                <Route path="/edit-goal/:id" element={<EditGoal />} />
+              </Route>
 
-            {/* 404 fallback (use a dedicated <NotFound /> later if you like) */}
-            <Route path="*" element={<LandingPage />} />
-          </Routes>
-        </Suspense>
-      </main>
+              {/* 404 */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </main>
 
-      <Footer />
-    </BrowserRouter>
+        <Footer />
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
-
-export default App;

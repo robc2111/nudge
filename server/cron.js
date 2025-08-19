@@ -44,47 +44,54 @@ async function generateToneBasedMessage(tone, taskTitle) {
 // 🔁 Daily nudge logic
 const sendDailyNudge = async () => {
   console.log('⏰ Running daily nudge logic...');
-
   try {
     const usersRes = await pool.query('SELECT * FROM users');
     const users = usersRes.rows;
 
     for (const user of users) {
-      const res = await pool.query(`
-  SELECT mt.id, mt.title AS microtask_title, g.title AS goal_title, g.tone
-  FROM microtasks mt
-  JOIN tasks t ON mt.task_id = t.id
-  JOIN subgoals sg ON t.subgoal_id = sg.id
-  JOIN goals g ON sg.goal_id = g.id
-  WHERE mt.status = 'in_progress' AND g.user_id = $1
-  LIMIT 1
-`, [user.id]);
+      const data = await fetchCurrentTaskForUser(user.id);
+      if (!data) {
+        console.log(`⚠️ No actionable task for ${user.name || user.id}`);
+        continue;
+      }
 
-console.log(`📦 Microtask query result for ${user.name}:`, res.rows);
-if (!res.rows.length) {
-  console.log(`⚠️ No in-progress microtasks for ${user.name}`);
-  continue;
-}
+      // Optional: ultra short tone header
+      const toneHeaders = {
+        friendly: '🌞 Good morning!',
+        strict: '📋 Daily focus:',
+        motivational: '🚀 Let’s make progress!'
+      };
+      const toneHeader = toneHeaders[data.tone] || toneHeaders.friendly;
 
-      const microtask = res.rows[0];
-      if (!microtask) continue;
+      // Optional: 1-sentence GPT nudge using your existing function
+      let toneMessage = '';
+      try {
+        toneMessage = await generateToneBasedMessage(data.tone, data.taskTitle);
+      } catch (_) {
+        toneMessage = '';
+      }
 
-      const toneMessage = await generateToneBasedMessage(
-  microtask.tone,
-  microtask.microtask_title
-);
+      const checklist = renderChecklist(data.microtasks, data.nextIdx);
+      const message =
+`${toneHeader}${toneMessage ? `\n\n${toneMessage}` : ''}
 
-const message = `👋 Hey ${user.name || 'there'}!\n\n${toneMessage}\n\n🎯 Task: *${microtask.microtask_title}*\n🧁 From goal: ${microtask.goal_title}\n\nReply ✅ or 💤`;
+*Goal:* ${data.goalTitle}
+*Task:* ${data.taskTitle}
 
-      console.log(`📬 Sending nudge to ${user.name || user.id} (${user.telegram_id})`);
+*Microtasks:*
+${checklist}
+
+Reply with:
+• \`done [microtask words]\` to check one off
+• /reflect to log a quick reflection`;
 
       try {
         await axios.post(TELEGRAM_API, {
           chat_id: user.telegram_id,
           text: message,
-          parse_mode: 'Markdown',
+          parse_mode: 'Markdown'
         });
-        console.log('✅ Sent successfully!');
+        console.log(`✅ Daily task sent to ${user.name || user.id}`);
       } catch (err) {
         console.error(`❌ Telegram error for ${user.telegram_id}:`, err.response?.data || err.message);
       }
@@ -93,6 +100,52 @@ const message = `👋 Hey ${user.name || 'there'}!\n\n${toneMessage}\n\n🎯 Tas
     console.error('❌ Daily nudge error:', err.message);
   }
 };
+
+// Helpers used by sendDailyNudge
+async function fetchCurrentTaskForUser(userId) {
+  const taskRes = await pool.query(`
+    SELECT t.id AS task_id, t.title AS task_title, g.title AS goal_title, g.tone
+    FROM tasks t
+    JOIN subgoals sg ON t.subgoal_id = sg.id
+    JOIN goals g ON sg.goal_id = g.id
+    WHERE g.user_id = $1
+      AND EXISTS (
+        SELECT 1 FROM microtasks mt WHERE mt.task_id = t.id AND mt.status != 'done'
+      )
+    ORDER BY sg.id, t.id
+    LIMIT 1
+  `, [userId]);
+
+  if (!taskRes.rows.length) return null;
+
+  const task = taskRes.rows[0];
+  const mtRes = await pool.query(`
+    SELECT id, title, status
+    FROM microtasks
+    WHERE task_id = $1
+    ORDER BY id
+  `, [task.task_id]);
+
+  let nextIdx = mtRes.rows.findIndex(m => m.status !== 'done');
+  if (nextIdx === -1) nextIdx = null;
+
+  return {
+    taskId: task.task_id,
+    taskTitle: task.task_title,
+    goalTitle: task.goal_title,
+    tone: task.tone || 'friendly',
+    microtasks: mtRes.rows,
+    nextIdx
+  };
+}
+
+function renderChecklist(microtasks, nextIdx) {
+  // ✅ done  | 🔸 next | ⭕ todo
+  return microtasks.map((m, i) => {
+    const icon = m.status === 'done' ? '✅' : (i === nextIdx ? '🔸' : '⭕');
+    return `${icon} ${m.title}`;
+  }).join('\n');
+}
 
 // 🔁 Weekly reflection logic
 const getWeeklyReflectionMessage = (tone = 'friendly') => {
@@ -171,7 +224,7 @@ const message = getWeeklyReflectionMessage(tone);
 };
 
 // 🗓️ Production schedules
-cron.schedule('0 8 * * *', sendDailyNudge);         // 8:00 AM daily
+cron.schedule('0 08 * * *', sendDailyNudge);         // 8:00 AM daily
 cron.schedule('0 18 * * 0', sendWeeklyReflection);  // 6:00 PM Sunday
 
 // // 🧪 Rapid dev testing every minute

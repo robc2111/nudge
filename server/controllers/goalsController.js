@@ -1,4 +1,4 @@
-//goasController.js
+//goalsController.js
 const pool = require('../db');
 
 // Create a goal

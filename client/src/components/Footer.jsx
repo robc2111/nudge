@@ -1,61 +1,63 @@
 // Footer.jsx
-import React from 'react';
 import { FaInstagram, FaTwitter, FaLinkedin } from 'react-icons/fa';
+
+const contacts = [
+  { label: 'Contact', email: 'contact@goalcrumbs.com' },
+  { label: 'Support', email: 'support@goalcrumbs.com' },
+  { label: 'Admin', email: 'admin@goalcrumbs.com' },
+];
+
+const socials = [
+  { icon: FaInstagram, url: 'https://instagram.com/goalcrumbs', label: 'Instagram' },
+  { icon: FaTwitter, url: 'https://twitter.com/goalcrumbs', label: 'Twitter' },
+  { icon: FaLinkedin, url: 'https://www.linkedin.com/company/goalcrumbs', label: 'LinkedIn' },
+];
 
 const Footer = () => {
   return (
-    <footer style={styles.footer}>
-      <div style={styles.section}>
-        <h4>📧 Contact</h4>
-        <ul style={styles.linkList}>
-          <li><a href="mailto:contact@goalcrumbs.com">contact@goalcrumbs.com</a></li>
-          <li><a href="mailto:support@goalcrumbs.com">support@goalcrumbs.com</a></li>
-          <li><a href="mailto:admin@goalcrumbs.com">admin@goalcrumbs.com</a></li>
-        </ul>
+    <footer className="bg-[#fef0dd] border-t border-gray-300 mt-16 p-8 text-center">
+      <div className="mb-6">
+        <h4 className="font-semibold text-lg mb-2">📧 Contact</h4>
+        <address className="not-italic space-y-1">
+          {contacts.map(({ email }) => (
+            <div key={email}>
+              <a
+                href={`mailto:${email}`}
+                className="text-blue-600 hover:underline"
+              >
+                {email}
+              </a>
+            </div>
+          ))}
+        </address>
       </div>
 
-      <div style={styles.section}>
-        <h4>🔗 Social</h4>
-        <div style={styles.socialIcons}>
-          <a href="https://instagram.com/goalcrumbs" target="_blank" rel="noopener noreferrer"><FaInstagram size={20} /></a>
-          <a href="https://twitter.com/goalcrumbs" target="_blank" rel="noopener noreferrer"><FaTwitter size={20} /></a>
-          <a href="https://www.linkedin.com/company/goalcrumbs" target="_blank" rel="noopener noreferrer"><FaLinkedin size={20} /></a>
-        </div>
+      <div className="mb-6">
+        <h4 className="font-semibold text-lg mb-2">🔗 Social</h4>
+        <nav className="flex justify-center gap-4">
+          {socials.map((item) => {
+  const { icon: Icon, url, label } = item;
+  return (
+    <a
+      key={label}
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      className="text-gray-700 hover:text-[#bd661d] transition"
+    >
+      <Icon size={20} />
+    </a>
+  );
+})}
+        </nav>
       </div>
 
-      <p style={styles.credits}>© {new Date().getFullYear()} GoalCrumbs. All rights reserved.</p>
+      <p className="text-sm text-gray-600">
+        © {new Date().getFullYear()} GoalCrumbs. All rights reserved.
+      </p>
     </footer>
   );
-};
-
-const styles = {
-  footer: {
-    backgroundColor: '#fef0dd',
-    padding: '2rem',
-    textAlign: 'center',
-    marginTop: '4rem',
-    borderTop: '1px solid #ccc',
-  },
-  section: {
-    marginBottom: '1.5rem',
-  },
-  linkList: {
-    listStyle: 'none',
-    padding: 0,
-    margin: '0.5rem 0',
-    lineHeight: '1.8',
-  },
-  socialIcons: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '1rem',
-    marginTop: '0.5rem',
-  },
-  credits: {
-    fontSize: '0.9rem',
-    color: '#666',
-    marginTop: '1rem',
-  },
 };
 
 export default Footer;

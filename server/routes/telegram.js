@@ -4,6 +4,7 @@ const axios = require('axios');
 const router = express.Router();
 const pool = require('../db');
 const reflectionSessions = {}; // Temporary in-memory storage for reflect mode
+const { cascadeAfterMicrotaskDone, normalizeProgressByGoal } = require('../utils/progressUtils');
 
 function isWeeklyReflectionWindow() {
   const now = new Date();
@@ -91,6 +92,60 @@ router.post('/webhook', async (req, res) => {
       return res.sendStatus(200);
     }
 
+    // 4.5 On-demand "today" command (current task + checklist)
+if (text.toLowerCase() === '/today') {
+  // pick the first actionable task and also return goal_id
+  const taskRes = await pool.query(`
+    SELECT t.id AS task_id, t.title AS task_title, g.id AS goal_id, g.title AS goal_title
+    FROM tasks t
+    JOIN subgoals sg ON t.subgoal_id = sg.id
+    JOIN goals g     ON sg.goal_id = g.id
+    WHERE g.user_id = $1
+      AND EXISTS (SELECT 1 FROM microtasks mt WHERE mt.task_id = t.id AND mt.status <> 'done')
+    ORDER BY sg.id, t.id
+    LIMIT 1
+  `, [user.id]);
+
+  if (!taskRes.rows.length) {
+    await sendMessage(chatId, "🎉 No pending microtasks. You’re all caught up!");
+    return res.sendStatus(200);
+  }
+
+  const { task_id, task_title, goal_id, goal_title } = taskRes.rows[0];
+
+  // normalize so checklist reflects single active item
+  await normalizeProgressByGoal(goal_id);
+
+  const mtRes = await pool.query(`
+    SELECT id, title, status
+    FROM microtasks
+    WHERE task_id = $1
+    ORDER BY id
+  `, [task_id]);
+
+  const nextIdx = mtRes.rows.findIndex(m => m.status !== 'done');
+  const checklist = mtRes.rows.map((m, i) => {
+    const icon = m.status === 'done' ? '✅' : (i === nextIdx ? '🔸' : '⭕');
+    return `${icon} ${m.title}`;
+  }).join('\n');
+
+  const msg =
+`🗓️ *Today’s Focus*
+
+*Goal:* ${goal_title}
+*Task:* ${task_title}
+
+*Microtasks:*
+${checklist}
+
+Reply with:
+• \`done [microtask words]\` to check one off
+• /reflect to log a quick reflection`;
+
+  await sendMessage(chatId, msg);
+  return res.sendStatus(200);
+}
+
     // 5. Show active goals
     if (text.toLowerCase() === '/goals') {
       const activeGoals = await pool.query(
@@ -160,59 +215,49 @@ if (toneMatch) {
   return res.sendStatus(200);
 }
 
-    // 8. Mark a microtask as done
-    if (text.toLowerCase().startsWith('done')) {
-      const microtaskTitle = text.slice(4).trim();
+// 8. Mark a microtask as done
+if (text.toLowerCase().startsWith('done')) {
+  const microtaskTitle = text.slice(4).trim();
 
-      const result = await pool.query(
-        `SELECT mt.*
-         FROM microtasks mt
-         JOIN tasks t ON mt.task_id = t.id
-         JOIN subgoals sg ON t.subgoal_id = sg.id
-         JOIN goals g ON sg.goal_id = g.id
-         JOIN users u ON g.user_id = u.id
-         WHERE mt.title ILIKE '%' || $1 || '%' AND u.telegram_id = $2
-         LIMIT 1`,
-        [microtaskTitle, telegramId]
-      );
+  // Find the target microtask for THIS user
+  const result = await pool.query(
+    `SELECT mt.id, mt.title
+     FROM microtasks mt
+     JOIN tasks t     ON mt.task_id = t.id
+     JOIN subgoals sg ON t.subgoal_id = sg.id
+     JOIN goals g     ON sg.goal_id = g.id
+     WHERE g.user_id = $1
+       AND mt.title ILIKE '%' || $2 || '%'
+     ORDER BY mt.id
+     LIMIT 1`,
+    [user.id, microtaskTitle]
+  );
 
-      const microtask = result.rows[0];
+  const microtask = result.rows[0];
+  if (!microtask) {
+    await sendMessage(chatId, `⚠️ Microtask "${microtaskTitle}" not found.`);
+    return res.sendStatus(200);
+  }
 
-      if (!microtask) {
-        await sendMessage(chatId, `⚠️ Microtask "${microtaskTitle}" not found.`);
-        return res.sendStatus(200);
-      }
+  // 1) mark as done
+  await pool.query(`UPDATE microtasks SET status = 'done' WHERE id = $1`, [microtask.id]);
 
-      await pool.query(
-        `UPDATE microtasks SET status = 'done' WHERE id = $1`,
-        [microtask.id]
-      );
+  // 2) cascade normalization (ensures single in-progress at each level)
+  const cascade = await cascadeAfterMicrotaskDone(microtask.id);
 
-      await sendMessage(chatId, `✅ Marked *"${microtask.title}"* as done! 🎉`);
+  // 3) messages
+  await sendMessage(chatId, `✅ Marked *"${microtask.title}"* as done! 🎉`);
 
-      // 👉 Get next task
-      const nextRes = await pool.query(`
-        SELECT mt.*
-        FROM microtasks mt
-        JOIN tasks t ON mt.task_id = t.id
-        JOIN subgoals sg ON t.subgoal_id = sg.id
-        JOIN goals g ON sg.goal_id = g.id
-        JOIN users u ON g.user_id = u.id
-        WHERE mt.status != 'done' AND u.telegram_id = $1
-        ORDER BY mt.id
-        LIMIT 1
-      `, [telegramId]);
+  if (cascade?.activeMicroId) {
+    const next = await pool.query(`SELECT title FROM microtasks WHERE id = $1`, [cascade.activeMicroId]);
+    const nextTitle = next.rows[0]?.title;
+    if (nextTitle) await sendMessage(chatId, `👉 Next up: *${nextTitle}*`);
+  } else {
+    await sendMessage(chatId, `🎉 You’ve completed all microtasks for this goal. Great work!`);
+  }
 
-      const next = nextRes.rows[0];
-
-      if (next) {
-        await sendMessage(chatId, `👉 Next up: *${next.title}*`);
-      } else {
-        await sendMessage(chatId, `🎉 You’ve completed all your microtasks for now. Great work!`);
-      }
-
-      return res.sendStatus(200);
-    }
+  return res.sendStatus(200);
+}
 
     // 9. Help message
     if (text.toLowerCase() === '/help') {

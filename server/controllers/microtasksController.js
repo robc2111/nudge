@@ -1,4 +1,4 @@
-//microtasksController.js
+// controllers/microtasksController.js
 const pool = require('../db');
 
 // Get all microtasks
@@ -62,7 +62,6 @@ exports.updateMicrotask = async (req, res) => {
 };
 
 // PATCH /api/microtasks/:id/status
-// PATCH /api/microtasks/:id/status
 exports.updateMicrotaskStatus = async (req, res) => {
   const microtaskId = req.params.id;
   const { status } = req.body;
@@ -76,51 +75,109 @@ exports.updateMicrotaskStatus = async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // 1. Update selected microtask
+    // 1) Update selected microtask
     const updateRes = await client.query(
       'UPDATE microtasks SET status = $1 WHERE id = $2 RETURNING *',
       [status, microtaskId]
     );
-
     if (updateRes.rows.length === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Microtask not found' });
     }
-
     const updated = updateRes.rows[0];
 
-    // 2. Get all microtasks for this task
+    // 2) Normalize within this task: first non-done → in_progress, others → todo
     const allRes = await client.query(
-      'SELECT * FROM microtasks WHERE task_id = $1 ORDER BY id ASC',
+      'SELECT id, status FROM microtasks WHERE task_id = $1 ORDER BY id ASC',
       [updated.task_id]
     );
-
-    const allMicrotasks = allRes.rows;
-
-    // 3. Set the first non-done microtask to 'in_progress', others to 'todo'
     let inProgressSet = false;
-
-    for (const mt of allMicrotasks) {
+    for (const mt of allRes.rows) {
       if (mt.status === 'done') continue;
-
       const newStatus = !inProgressSet ? 'in_progress' : 'todo';
-
-      await client.query(
-        'UPDATE microtasks SET status = $1 WHERE id = $2',
-        [newStatus, mt.id]
-      );
-
+      await client.query('UPDATE microtasks SET status = $1 WHERE id = $2', [newStatus, mt.id]);
       if (!inProgressSet) inProgressSet = true;
     }
 
-    await client.query('COMMIT');
+    // 3) Cascade up → task
+    const taskId = updated.task_id;
+    const microStatuses = (await client.query(
+      'SELECT status FROM microtasks WHERE task_id = $1',
+      [taskId]
+    )).rows.map(r => r.status);
 
-    const finalRes = await client.query(
-      'SELECT * FROM microtasks WHERE task_id = $1 ORDER BY id ASC',
-      [updated.task_id]
-    );
+    const taskStatus =
+      microStatuses.every(s => s === 'done') ? 'done' :
+      microStatuses.some(s => s === 'in_progress') ? 'in_progress' : 'todo';
 
-    res.json({ message: 'Status updated and reassigned', microtasks: finalRes.rows });
+    await client.query('UPDATE tasks SET status = $1 WHERE id = $2', [taskStatus, taskId]);
+
+    // 4) Cascade up → subgoal
+    const subgoalId = (await client.query(
+      'SELECT sg.id FROM subgoals sg JOIN tasks t ON sg.id = t.subgoal_id WHERE t.id = $1',
+      [taskId]
+    )).rows[0].id;
+
+    const subStatuses = (await client.query(
+      'SELECT status FROM tasks WHERE subgoal_id = $1',
+      [subgoalId]
+    )).rows.map(r => r.status);
+
+    const subStatus =
+      subStatuses.every(s => s === 'done') ? 'done' :
+      subStatuses.some(s => s === 'in_progress') ? 'in_progress' : 'not_started';
+
+    await client.query('UPDATE subgoals SET status = $1 WHERE id = $2', [subStatus, subgoalId]);
+
+    // 5) Cascade up → goal
+    const goalId = (await client.query(
+      'SELECT g.id FROM goals g JOIN subgoals sg ON g.id = sg.goal_id WHERE sg.id = $1',
+      [subgoalId]
+    )).rows[0].id;
+
+    const goalStatuses = (await client.query(
+      'SELECT status FROM subgoals WHERE goal_id = $1',
+      [goalId]
+    )).rows.map(r => r.status);
+
+    const goalStatus =
+      goalStatuses.every(s => s === 'done') ? 'done' :
+      goalStatuses.some(s => s === 'in_progress') ? 'in_progress' : 'not_started';
+
+    await client.query('UPDATE goals SET status = $1 WHERE id = $2', [goalStatus, goalId]);
+
+    // microtasksController.js (tail of updateMicrotaskStatus)
+// ✅ Commit changes
+await client.query('COMMIT');
+
+const finalRes = await client.query(
+  'SELECT * FROM microtasks WHERE task_id = $1 ORDER BY id ASC',
+  [taskId]
+);
+
+// (nice to have) which microtask is in_progress now?
+const nextRes = await client.query(
+  `SELECT id FROM microtasks
+   WHERE task_id = $1 AND status = 'in_progress'
+   ORDER BY id LIMIT 1`,
+  [taskId]
+);
+const activeMicroId = nextRes.rows[0]?.id || null;
+
+// 👇 single response, then return
+return res.json({
+  ok: true,
+  message: 'Status updated and cascaded',
+  microtasks: finalRes.rows,
+  impact: {
+    task:    { id: taskId,    status: taskStatus },
+    subgoal: { id: subgoalId, status: subStatus },
+    goal:    { id: goalId,    status: goalStatus },
+    activeMicroId
+  }
+});
+
+
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('❌ Error updating microtask:', err.message);
