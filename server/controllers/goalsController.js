@@ -1,5 +1,6 @@
 //goalsController.js
 const pool = require('../db');
+const { limitsFor } = require('../utils/plan');
 
 // Create a goal
 exports.createGoal = async (req, res) => {

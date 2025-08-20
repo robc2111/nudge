@@ -36,16 +36,15 @@ const createUser = async (req, res) => {
 const getUserById = async (req, res) => {
   const requestedId = req.params.id;
   const authenticatedUserId = req.user.id;
-
   if (requestedId !== authenticatedUserId) {
-    return res.status(403).json({ error: "Access denied" });
+    return res.status(403).json({ error: 'Access denied' });
   }
-
   try {
-    const result = await pool.query('SELECT id, name, email FROM users WHERE id = $1', [requestedId]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    const result = await pool.query(
+      'SELECT id, name, email, telegram_id, timezone, plan, plan_status, stripe_customer_id FROM users WHERE id = $1',
+      [requestedId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -53,22 +52,58 @@ const getUserById = async (req, res) => {
 };
 
 const getCurrentUser = async (req, res) => {
-  const authenticatedUserId = req.user.id;
-
   try {
-    const result = await pool.query(
-      'SELECT id, name, email, telegram_id FROM users WHERE id = $1',
-      [authenticatedUserId]
+    const { rows } = await pool.query(
+      `SELECT id, email, name, telegram_id, timezone, plan, plan_status, stripe_customer_id
+       FROM users
+       WHERE id = $1
+       LIMIT 1`,
+      [req.user.id]
     );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.json(result.rows[0]);
+    if (!rows[0]) return res.status(404).json({ error: 'User not found' });
+    res.json(rows[0]);
   } catch (err) {
     console.error('Error loading user:', err.message);
     res.status(500).json({ error: 'Failed to load user' });
+  }
+};
+
+const patchMe = async (req, res) => {
+  const userId = req.user.id;
+  const { name, email, telegram_id, timezone, plan, plan_status } = req.body;
+
+  // build dynamic, ordered set clause
+  const sets = [];
+  const vals = [];
+  let i = 1;
+
+  if (name !== undefined)        { sets.push(`name = $${i++}`);        vals.push(name); }
+  if (email !== undefined)       { sets.push(`email = $${i++}`);       vals.push(email); }
+  if (telegram_id !== undefined) { sets.push(`telegram_id = $${i++}`); vals.push(telegram_id); }
+  if (timezone !== undefined)    { sets.push(`timezone = $${i++}`);    vals.push(timezone); }
+  if (plan !== undefined)        { sets.push(`plan = $${i++}`);        vals.push(plan); }
+  if (plan_status !== undefined) { sets.push(`plan_status = $${i++}`); vals.push(plan_status); }
+
+  if (!sets.length) {
+    // nothing to update — return current snapshot
+    return getCurrentUser(req, res);
+  }
+
+  vals.push(userId);
+  const sql = `
+    UPDATE users
+    SET ${sets.join(', ')}
+    WHERE id = $${i}
+    RETURNING id, email, name, telegram_id, timezone, plan, plan_status, stripe_customer_id
+  `;
+
+  try {
+    const { rows } = await pool.query(sql, vals);
+    if (!rows[0]) return res.status(404).json({ error: 'User not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('❌ Failed to patch user:', err.message);
+    res.status(500).json({ error: 'Failed to update profile' });
   }
 };
 
@@ -76,41 +111,34 @@ const getCurrentUser = async (req, res) => {
 const updateUser = async (req, res) => {
   const authenticatedUserId = req.user.id;
   const targetUserId = req.params.id;
-
   if (authenticatedUserId !== targetUserId) {
     return res.status(403).json({ error: 'Access denied' });
   }
-
   const { name } = req.body;
   try {
     const result = await pool.query(
-      'UPDATE users SET name = $1 WHERE id = $2 RETURNING *',
+      'UPDATE users SET name = $1 WHERE id = $2 RETURNING id, name, email, telegram_id, timezone, plan, plan_status, stripe_customer_id',
       [name, targetUserId]
     );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
+
 // DELETE user
 const deleteUser = async (req, res) => {
   const authenticatedUserId = req.user.id;
   const targetUserId = req.params.id;
-
   if (authenticatedUserId !== targetUserId) {
     return res.status(403).json({ error: 'Access denied' });
   }
-
   try {
     const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING *', [targetUserId]);
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    res.json({ message: "User deleted", user: result.rows[0] });
+    if (result.rowCount === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ message: 'User deleted', user: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -202,6 +230,19 @@ tasks.push({ ...task, microtasks });
   }
 };
 
+// controllers/usersController.js
+exports.me = async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT id, email, name, telegram_id, plan, plan_status, stripe_customer_id
+     FROM users
+     WHERE id = $1
+     LIMIT 1`,
+    [req.user.id]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'User not found' });
+  res.json(rows[0]);
+};
+
 module.exports = {
   getUsers,
   createUser,
@@ -209,5 +250,6 @@ module.exports = {
   updateUser,
   deleteUser,
   getUserDashboard,
-  getCurrentUser
+  getCurrentUser,
+  patchMe
 };

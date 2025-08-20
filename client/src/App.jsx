@@ -17,6 +17,8 @@ const Profile     = lazy(() => import('./pages/Profile'));
 const GoalSetup   = lazy(() => import('./pages/GoalSetup'));
 const EditGoal    = lazy(() => import('./pages/EditGoal'));
 const Reflections = lazy(() => import('./pages/Reflections'));
+const BillingSuccess = lazy(() => import('./pages/BillingSuccess'));
+const BillingCancel = lazy(() => import('./pages/BillingCancel'));
 
 const Loader = () => <div style={{ padding: '2rem' }}>Loading…</div>;
 
@@ -50,6 +52,8 @@ export default function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/privacy" element={<Privacy />} />
+<Route path="/terms" element={<Terms />} />
 
               {/* Private */}
               <Route element={<Protected />}>
@@ -58,6 +62,8 @@ export default function App() {
                 <Route path="/reflections" element={<Reflections />} />
                 <Route path="/goal-setup" element={<GoalSetup />} />
                 <Route path="/edit-goal/:id" element={<EditGoal />} />
+                <Route path="/billing/success" element={<BillingSuccess />} />
+<Route path="/billing/cancel" element={<BillingCancel />} />
               </Route>
 
               {/* 404 */}

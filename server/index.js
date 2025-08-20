@@ -37,6 +37,12 @@ app.use((req, res, next) => {
   next();
 });
 
+const paymentsController = require('./controllers/paymentsController');
+app.post('/api/payments/webhook',
+  express.raw({ type: 'application/json' }),
+  paymentsController.handleWebhook
+);
+
 // ✅ Parse JSON bodies
 app.use(express.json());
 
@@ -53,6 +59,7 @@ app.use('/api/ai', require('./routes/ai'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/gpt', require('./routes/gptRoutes'));
+app.use('/api/payments', require('./routes/payments'));
 
 // ✅ Health check route
 app.get('/', (req, res) => {

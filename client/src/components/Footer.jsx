@@ -1,5 +1,6 @@
 // Footer.jsx
 import { FaInstagram, FaTwitter, FaLinkedin } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
 
 const contacts = [
   { label: 'Contact', email: 'contact@goalcrumbs.com' },
@@ -52,6 +53,10 @@ const Footer = () => {
 })}
         </nav>
       </div>
+      <div className="text-sm space-x-4">
+  <Link to="/privacy" className="underline">Privacy</Link>
+  <Link to="/terms" className="underline">Terms</Link>
+</div>
 
       <p className="text-sm text-gray-600">
         © {new Date().getFullYear()} GoalCrumbs. All rights reserved.
