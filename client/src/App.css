@@ -1083,4 +1083,243 @@ img { max-width: 100%; height: auto; display: block; }
   margin: 0 auto;
   padding: 0 1rem;        /* ✅ side spacing */
 }
+
+/* ===== Responsive upgrades (phones + tablets) ===== */
+
+/* 0) sensible design tokens */
+:root {
+  --container-max: 1100px;
+  --card-max: 360px;
+  --gutter: 1rem;
+}
+
+/* 1) Fluid type (titles/buttons scale nicely) */
+h1 { font-size: clamp(1.6rem, 2.5vw + 1rem, 2.6rem); }
+h2 { font-size: clamp(1.3rem, 2vw + .75rem, 2rem); }
+h3 { font-size: clamp(1.1rem, 1.3vw + .8rem, 1.4rem); }
+.btn { font-size: clamp(.95rem, .4vw + .85rem, 1rem); }
+
+/* 2) App container spacing */
+.landing-page,
+.reflections-container,
+.dashboard,
+.dashboard-controls,
+.header-container,
+.header-inner {
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+}
+
+/* 3) Dashboard → responsive grid */
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding: 1.25rem;
+}
+.dashboard .card {
+  width: 100%;
+  max-width: var(--card-max);
+  margin-inline: auto;
+}
+
+/* 4) Compact the top controls on small screens */
+.dashboard-controls {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  gap: .75rem;
+}
+.dashboard-controls .form-input,
+.goal-selector select {
+  min-width: min(260px, 100%);
+}
+
+/* 5) Textareas & large inputs should not overflow on mobile */
+.goal-textarea {
+  width: min(100%, 720px);
+  min-height: 140px;
+}
+
+/* 6) Header: collapse cleanly on tablets/phones */
+@media (max-width: 992px) {
+  .header-container { gap: .5rem; }
+  .header-nav { gap: .75rem; }
+  .header-user button { padding: .35rem .55rem; }
+}
+
+/* 7) Tablet tweaks (≤ 900px) */
+@media (max-width: 900px) {
+  .hero-section { gap: 1.25rem; }
+  .goalsetup-container { flex-direction: column; align-items: stretch; }
+  .tone-select { width: 100%; }
+  .breakdown-section .card { margin: 1.25rem auto; padding: 1.25rem; }
+}
+
+/* 8) Phone layout (≤ 700px) */
+@media (max-width: 700px) {
+  .header-inner,
+  .header-container { flex-direction: column; align-items: stretch; }
+  .header-center { order: 3; justify-content: flex-start; }
+  .header-user { order: 2; align-self: flex-start; margin-top: .25rem; }
+  .header-nav { justify-content: flex-start; gap: .6rem; }
+
+  .hero-image { max-width: 220px; }
+  .hero-right h1 { font-size: clamp(1.6rem, 6vw, 2.1rem); }
+
+  .dashboard { grid-template-columns: 1fr; }
+  .dashboard .card { max-width: 560px; }
+
+  .status-filter button { width: auto; }
+  .filter-buttons { gap: .5rem; }
+}
+
+/* 9) Very small phones (≤ 400px) */
+@media (max-width: 400px) {
+  .logo { width: 32px; }
+  .logo-text, .app-name { font-size: 1.05rem; }
+  .btn, .dashboard .card .btn { padding: .55rem .8rem; }
+  .dashboard .card li { font-size: .9rem; }
+}
+
+/* 10) Touch targets & wrap safety */
+button, .btn, .filter-btn {
+  min-height: 42px;                /* easier tapping */
+}
+.header-nav a, .footer-link {
+  word-break: break-word;
+}
+
+/* 11) Avoid layout shift with long microtask lines */
+.dashboard .card ul { padding-inline: .25rem; }
+.dashboard .card li { line-height: 1.35; word-break: break-word; }
+
+/* Pricing cards responsive layout */
+.side-by-side-sections {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.pricing-card {
+  flex: 1 1 45%;       /* roughly half width on desktop */
+  max-width: 480px;    /* prevent cards from stretching too wide */
+  margin: 0 auto;
+}
+
+/* Stack cards on small screens */
+@media (max-width: 768px) {
+  .side-by-side-sections {
+    flex-direction: column;
+    align-items: center; /* center them nicely */
+  }
+
+  .pricing-card {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 500px; /* keeps a nice readable width */
+  }
+}
+
+/* Buttons inside pricing cards */
+.pricing-card .cta-button {
+  display: inline-block;
+  margin: 0.5rem 0.25rem 0 0; /* small spacing between */
+}
+
+/* On small screens, stack the Pro card buttons */
+@media (max-width: 768px) {
+  .pricing-card .cta-button {
+    display: block;
+    width: 100%;              /* make them full width */
+    margin: 0.5rem 0;         /* vertical spacing */
+    text-align: center;
+  }
+
+  .pricing-card div {
+    display: flex;
+    flex-direction: column;   /* stack vertically */
+    gap: 0.5rem;              /* spacing between buttons */
+  }
+}
+
+/* already there, just add flex-wrap so they don't overflow */
+.profile-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;                /* ✅ allow wrapping on medium screens */
+}
+
+.profile-buttons a,
+.profile-buttons button {
+  min-width: 180px;
+}
+
+/* Stack on small screens */
+@media (max-width: 700px) {
+  .profile-buttons {
+    flex-direction: column;       /* ✅ vertical stack */
+    align-items: stretch;         /* stretch to container width */
+    gap: 0.75rem;
+  }
+  .profile-buttons a,
+  .profile-buttons button {
+    width: 100%;                  /* full-width buttons */
+  }
+}
+
+/* Filters: 4 columns desktop, 2 on tablets, 1 on phones */
+.reflections-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 900px) {
+  .reflections-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .reflections-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Ensure inputs stretch cleanly in the grid */
+.reflections-filters .form-input {
+  width: 100%;
+}
+
+/* Reflections filter grid */
+.reflections-filters {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 900px) {
+  .reflections-filters {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .reflections-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+.reflections-filters .form-input {
+  width: 100%;
+}
 /* End App.css */

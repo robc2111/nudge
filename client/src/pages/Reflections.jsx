@@ -9,7 +9,12 @@ const DEBOUNCE_MS = 400;
 export default function Reflections() {
   const [reflections, setReflections] = useState([]);
   const [goals, setGoals] = useState([]);
-  const [filters, setFilters] = useState({ goal_id: '', start_date: '', end_date: '', sort: 'desc' });
+  const [filters, setFilters] = useState({
+    goal_id: '',
+    start_date: '',
+    end_date: '',
+    sort: 'desc',
+  });
   const [userId, setUserId] = useState(null);
 
   const [newReflection, setNewReflection] = useState({ goal_id: '', content: '' });
@@ -20,7 +25,7 @@ export default function Reflections() {
   const [error, setError] = useState('');
 
   // Modal state
-  const [openRef, setOpenRef] = useState(null); // the reflection being shown in modal
+  const [openRef, setOpenRef] = useState(null);
 
   // controllers & debounce
   const listCtrl = useRef(null);
@@ -31,7 +36,9 @@ export default function Reflections() {
   // Close modal helpers
   const closeModal = useCallback(() => setOpenRef(null), []);
   useEffect(() => {
-    const onEsc = (e) => { if (e.key === 'Escape') closeModal(); };
+    const onEsc = (e) => {
+      if (e.key === 'Escape') closeModal();
+    };
     document.addEventListener('keydown', onEsc);
     return () => document.removeEventListener('keydown', onEsc);
   }, [closeModal]);
@@ -48,7 +55,9 @@ export default function Reflections() {
         if (mounted) setError('Failed to load account.');
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -108,7 +117,9 @@ export default function Reflections() {
       listCtrl.current = controller;
       fetchReflections(controller.signal);
     }, DEBOUNCE_MS);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, filters.goal_id, filters.start_date, filters.end_date, filters.sort]);
 
@@ -207,7 +218,7 @@ export default function Reflections() {
       </form>
 
       {/* Filters */}
-      <div className="controls-group mb-4" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.75rem' }}>
+      <div className="reflections-filters mb-4">
         <select
           id="flt-goal"
           name="goal_id"
@@ -259,30 +270,29 @@ export default function Reflections() {
         <p className="text-gray-600">No reflections found for these filters.</p>
       ) : (
         <div className="reflections-grid">
-  {reflections.map((ref) => (
-    <button
-      key={ref.id}
-      className="reflection-card reflection-card--clickable"
-      onClick={() => setOpenRef(ref)}
-      aria-label="Open reflection"
-    >
-      <div className="reflection-date">
-        {ref.created_at ? new Date(ref.created_at).toLocaleString() : '—'}
-      </div>
+          {reflections.map((ref) => (
+            <button
+              key={ref.id}
+              className="reflection-card reflection-card--clickable"
+              onClick={() => setOpenRef(ref)}
+              aria-label="Open reflection"
+            >
+              <div className="reflection-date">
+                {ref.created_at ? new Date(ref.created_at).toLocaleString() : '—'}
+              </div>
 
-      <div className="reflection-goal">
-        Goal: <span className="goal-title" title={ref.goal_name || 'N/A'}>
-          {ref.goal_name || 'N/A'}
-        </span>
-      </div>
+              <div className="reflection-goal">
+                Goal: <span className="goal-title" title={ref.goal_name || 'N/A'}>
+                  {ref.goal_name || 'N/A'}
+                </span>
+              </div>
 
-      {/* ✅ Always show a short preview */}
-      <div className="reflection-content reflection-content--clamp">
-        {ref.content || 'No content'}
-      </div>
-    </button>
-  ))}
-</div>
+              <div className="reflection-content reflection-content--clamp">
+                {ref.content || 'No content'}
+              </div>
+            </button>
+          ))}
+        </div>
       )}
 
       {/* Modal */}
