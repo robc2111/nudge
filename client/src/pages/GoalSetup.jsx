@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
+import { toast } from 'react-toastify';
 
 const MAX_LEN = 300;
 
@@ -23,6 +24,18 @@ const GoalSetup = () => {
   // abort controllers (so we don’t set state after unmount)
   const genAbortRef = useRef(null);
   const saveAbortRef = useRef(null);
+
+  const placeholders = [
+  "Describe your goal with what, why, and when. Example: Run a marathon in April 2026 by training 4 days a week.",
+  "Be specific so we can break it down for you: Save £5,000 in 6 months by cutting expenses and freelancing.",
+  "Think of your goal like you’re explaining it to a coach — clear, measurable, and time-bound.",
+  "What do you want to achieve, why is it important, and by when? Example: Learn Spanish to conversational level in 6 months by practicing 30 mins daily.",
+  "Write your goal in natural language, but add details (what, when, why). The more detail, the better the plan."
+];
+
+const [placeholder] = useState(
+  () => placeholders[Math.floor(Math.random() * placeholders.length)]
+);
 
   // ──────────────────────────────
   // Load current user once
@@ -123,12 +136,15 @@ const GoalSetup = () => {
   // Save goal
   // ──────────────────────────────
   const handleSave = async () => {
-    if (!canSave) {
-      if (!userId) setError('User not loaded. Please log in again.');
-      else if (!breakdown?.tone) setError('Please select a coaching tone.');
-      else if (!breakdown?.title) setError('Missing goal title.');
-      return;
-    }
+  if (!canSave) {
+    if (!userId) setError('User not loaded. Please log in again.');
+    else if (!breakdown?.tone) {
+      setError('Please select a coaching tone.');
+      document.getElementById('toneSelect')?.focus();
+      toast.info('Pick a coaching tone to proceed 🙂');
+    } else if (!breakdown?.title) setError('Missing goal title.');
+    return;
+  }
 
     if (saveAbortRef.current) saveAbortRef.current.abort();
     const controller = new AbortController();
@@ -175,22 +191,21 @@ const GoalSetup = () => {
       <div className="flex flex-col items-stretch gap-2 mb-4">
         <label htmlFor="goalText" className="font-medium">Describe your goal</label>
         <textarea
-          id="goalText"
-          className="goal-textarea"
-          placeholder="Describe your goal in natural language..."
-          rows={5}
-          value={goalText}
-          onChange={(e) => setGoalText(e.target.value.slice(0, MAX_LEN))}
-          maxLength={MAX_LEN}
-          disabled={generating || saving}
-        />
+  id="goalText"
+  className="goal-textarea"
+  placeholder={placeholder}
+  rows={5}
+  value={goalText}
+  onChange={(e) => setGoalText(e.target.value.slice(0, MAX_LEN))}
+  maxLength={MAX_LEN}
+  disabled={generating || saving}
+/>
         <p className="text-sm text-gray-500">
           {goalText.length} / {MAX_LEN} characters
         </p>
 
         <button
           className="btn"
-          style={{ width: '100%' }}
           onClick={handleGenerate}
           disabled={!canGenerate || loadingUser}
           aria-busy={generating}
@@ -206,63 +221,62 @@ const GoalSetup = () => {
       {error && <p className="text-red-600 text-center mt-1">{error}</p>}
       {saved && <p className="text-green-600 text-center mt-1">✅ Goal saved successfully</p>}
 
-      {/* AI Breakdown preview */}
-      {breakdown && (
-        <div className="mt-6">
-          <h3 className="font-semibold text-lg">AI Breakdown</h3>
+          {/* AI Breakdown preview */}
+{breakdown && (
+  <div className="breakdown-section">
+    <h3 className="breakdown-heading">AI Breakdown</h3>
 
-          <div className="text-left bg-gray-50 p-4 mt-3 rounded shadow-sm">
-            <h4 className="text-lg font-bold mb-2">{breakdown.title}</h4>
+    {/* Card with right-aligned content */}
+    <div className="card text-right-card">
+      <h4 className="breakdown-title">{breakdown.title}</h4>
 
-            {(breakdown.subgoals ?? []).map((subgoal, i) => (
-              <div key={`${subgoal.title}-${i}`} className="mb-4 pl-4 border-l-4 border-orange-300">
-                <h5 className="text-md font-semibold text-orange-700 mb-1">🧩 {subgoal.title}</h5>
+      {(breakdown.subgoals ?? []).map((subgoal, i) => (
+        <div key={`${subgoal.title}-${i}`} className="breakdown-subgoal">
+          <h5 className="breakdown-subgoal-title">🧩 {subgoal.title}</h5>
 
-                {(subgoal.tasks ?? []).map((task, j) => (
-                  <div key={`${task.title}-${j}`} className="ml-4 mb-2">
-                    <p className="font-medium text-gray-800">🔹 {task.title}</p>
-                    <ul className="list-disc list-inside text-sm text-gray-700 ml-4">
-                      {(task.microtasks ?? []).map((micro, k) => (
-                        <li key={`${micro}-${k}`}>🟠 {micro}</li>
-                      ))}
-                    </ul>
-                  </div>
+          {(subgoal.tasks ?? []).map((task, j) => (
+            <div key={`${task.title}-${j}`} className="breakdown-task">
+              <p className="breakdown-task-title">🔹 {task.title}</p>
+              <ul className="rtl-list">
+                {(task.microtasks ?? []).map((micro, k) => (
+                  <li key={`${micro}-${k}`}>🟠 {micro}</li>
                 ))}
-              </div>
-            ))}
-          </div>
-
-          {/* Tone + Save */}
-          <div className="goalsetup-container">
-            <div className="mt-4">
-              <label className="block mb-1 font-medium" htmlFor="toneSelect">
-                Choose your coaching tone:
-              </label>
-              <select
-                id="toneSelect"
-                className="w-full border p-2 rounded"
-                value={breakdown.tone || ''}
-                onChange={(e) => setBreakdown((prev) => ({ ...prev, tone: e.target.value }))}
-                disabled={saving}
-              >
-                <option value="" disabled>Select tone</option>
-                <option value="friendly">😊 Friendly</option>
-                <option value="strict">💼 Strict</option>
-                <option value="motivational">💪 Motivational</option>
-              </select>
+              </ul>
             </div>
-
-            <button
-              className="btn bg-green-600 text-white mt-4 mb-2 px-4 py-2 rounded disabled:opacity-60"
-              onClick={handleSave}
-              disabled={!canSave}
-              aria-busy={saving}
-            >
-              {saving ? 'Saving…' : 'Confirm & Save'}
-            </button>
-          </div>
+          ))}
         </div>
-      )}
+      ))}
+    </div>
+
+    {/* Tone + Save */}
+    <div className="goalsetup-container">
+      <div className="tone-block">
+        <label className="tone-label" htmlFor="toneSelect">
+  Choose your coaching tone: <span style={{color:'#b91c1c'}}>*</span>
+</label>
+<select
+  id="toneSelect"
+  className="tone-select"
+  value={breakdown.tone || ''}
+  onChange={(e) => setBreakdown((prev) => ({ ...prev, tone: e.target.value }))}
+  required
+>
+  <option value="" disabled>Select tone</option>
+  <option value="friendly">😊 Friendly</option>
+  <option value="strict">💼 Strict</option>
+  <option value="motivational">💪 Motivational</option>
+</select>
+{!breakdown.tone && (
+  <p className="text-sm" style={{color:'#b91c1c'}}>Please select a tone to continue.</p>
+)}
+      </div>
+
+      <button className="btn save" onClick={handleSave} disabled={!canSave} aria-busy={saving}>
+  {saving ? 'Saving…' : 'Confirm & Save'}
+</button>
+    </div>
+  </div>
+)}
     </div>
   );
 };

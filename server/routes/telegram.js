@@ -43,6 +43,40 @@ router.post('/webhook', async (req, res) => {
       return res.sendStatus(200);
     }
 
+    if (message.reply_to_message?.message_id) {
+  const repliedId = message.reply_to_message.message_id;
+
+  // Did we send a weekly prompt with that message_id?
+  const { rows: pRows } = await pool.query(
+    `SELECT id FROM weekly_prompts
+      WHERE user_id = $1 AND telegram_message_id = $2
+      ORDER BY sent_at DESC
+      LIMIT 1`,
+    [user.id, repliedId]
+  );
+
+  if (pRows[0]) {
+    // attach to the latest in-progress goal if present
+    const { rows: gRows } = await pool.query(
+      `SELECT id FROM goals
+         WHERE user_id = $1 AND status = 'in_progress'
+         ORDER BY updated_at DESC NULLS LAST
+         LIMIT 1`,
+      [user.id]
+    );
+    const goalId = gRows[0]?.id || null;
+
+    await pool.query(
+      `INSERT INTO reflections (user_id, goal_id, content, created_at, source, weekly_prompt_id)
+       VALUES ($1, $2, $3, NOW(), 'weekly_checkin', $4)`,
+      [user.id, goalId, text, pRows[0].id]
+    );
+
+    await sendMessage(chatId, "✅ Saved your weekly reflection. Nice work!");
+    return res.sendStatus(200);
+  }
+}
+
     // 2. If user just sent /reflect, prompt them
     if (text.toLowerCase() === '/reflect') {
       reflectionSessions[chatId] = true;

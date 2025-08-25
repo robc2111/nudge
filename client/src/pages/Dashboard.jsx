@@ -14,14 +14,13 @@ const Dashboard = () => {
   const [error, setError] = useState('');
 
   const [statusFilter, setStatusFilter] = useState('in_progress');
-  const [selectedGoalId, setSelectedGoalId] = useState(null);        // UUID (string)
-  const [selectedSubgoalId, setSelectedSubgoalId] = useState(null);   // UUID (string)
-  const [selectedTaskId, setSelectedTaskId] = useState(null);         // UUID (string)
+  const [selectedGoalId, setSelectedGoalId] = useState(null);
+  const [selectedSubgoalId, setSelectedSubgoalId] = useState(null);
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [selectedMicrotaskId, setSelectedMicrotaskId] = useState(null);
 
   const abortRef = useRef(null);
 
-  // Stable list to satisfy exhaustive-deps
   const goalsList = useMemo(() => data?.goals ?? [], [data]);
 
   const selectedGoal = useMemo(
@@ -33,19 +32,16 @@ const Dashboard = () => {
     setError('');
     setLoading(true);
 
-    // cancel prior request (if any)
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      // 1) Validate session
       const me = await axios.get('/users/me', {
         signal: controller.signal,
         timeout: REQ_TIMEOUT_MS,
       });
 
-      // 2) Fetch dashboard (prefer user route, fallback to generic)
       let payload;
       try {
         const res = await axios.get(`/users/${me.data.id}/dashboard`, {
@@ -67,12 +63,9 @@ const Dashboard = () => {
       const defaultGoal = goals.find(g => g.status === 'in_progress') || goals[0] || null;
       setSelectedGoalId(defaultGoal?.id ?? null);
     } catch (err) {
-      // Ignore intentional cancellations (from AbortController or axios timeout cancel)
       if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') {
-        console.info('[Dashboard] request was canceled (expected during refresh/unmount).');
-        return; // do not set error
+        return;
       }
-
       const msg =
         !navigator.onLine
           ? 'You appear to be offline.'
@@ -96,17 +89,16 @@ const Dashboard = () => {
     };
   }, [refreshData]);
 
-  // reset deeper selections when changing parents
-  useEffect(() => setSelectedSubgoalId(null), [selectedGoalId]);
-  useEffect(() => setSelectedTaskId(null), [selectedSubgoalId]);
-  useEffect(() => setSelectedMicrotaskId(null), [selectedTaskId]);
+  // ---------- Filtering helpers ----------
+  const filterByStatus = (arr = [], status) =>
+    status === 'all' ? arr : arr.filter(x => x.status === status);
 
-  // ----- Derived lists -----
-  const subgoals = useMemo(() => selectedGoal?.subgoals ?? [], [selectedGoal]);
+  // ---------- Derived lists (SUBGOALS) ----------
+  const allSubgoals = useMemo(() => selectedGoal?.subgoals ?? [], [selectedGoal]);
 
   const filteredSubgoals = useMemo(
-    () => (statusFilter === 'all' ? subgoals : subgoals.filter(sg => sg.status === statusFilter)),
-    [subgoals, statusFilter]
+    () => filterByStatus(allSubgoals, statusFilter),
+    [allSubgoals, statusFilter]
   );
 
   const effectiveSubgoal =
@@ -117,11 +109,12 @@ const Dashboard = () => {
     else if (effectiveSubgoal.id !== selectedSubgoalId) setSelectedSubgoalId(effectiveSubgoal.id);
   }, [effectiveSubgoal, selectedSubgoalId]);
 
-  const tasks = useMemo(() => effectiveSubgoal?.tasks ?? [], [effectiveSubgoal]);
+  // ---------- Derived lists (TASKS) ----------
+  const allTasks = useMemo(() => effectiveSubgoal?.tasks ?? [], [effectiveSubgoal]);
 
   const filteredTasks = useMemo(
-    () => (statusFilter === 'all' ? tasks : tasks.filter(t => t.status === statusFilter)),
-    [tasks, statusFilter]
+    () => filterByStatus(allTasks, statusFilter),
+    [allTasks, statusFilter]
   );
 
   const effectiveTask =
@@ -132,16 +125,31 @@ const Dashboard = () => {
     else if (effectiveTask.id !== selectedTaskId) setSelectedTaskId(effectiveTask.id);
   }, [effectiveTask, selectedTaskId]);
 
-  const microtasks = useMemo(() => effectiveTask?.microtasks ?? [], [effectiveTask]);
+  // ---------- Derived lists (MICROTASKS) ----------
+  const allMicrotasks = useMemo(() => effectiveTask?.microtasks ?? [], [effectiveTask]);
+
+  const filteredMicrotasks = useMemo(
+    () => filterByStatus(allMicrotasks, statusFilter),
+    [allMicrotasks, statusFilter]
+  );
 
   const selectedMicrotask =
-    microtasks.find(mt => mt.id === selectedMicrotaskId) || null;
+    filteredMicrotasks.find(mt => mt.id === selectedMicrotaskId) || null;
 
-  // ----- Helpers (used) -----
-  const getStatusIcon = (status) =>
+  useEffect(() => {
+    if (!selectedMicrotask && filteredMicrotasks.length > 0) {
+      setSelectedMicrotaskId(filteredMicrotasks[0].id);
+    }
+    if (filteredMicrotasks.length === 0) {
+      setSelectedMicrotaskId(null);
+    }
+  }, [filteredMicrotasks, selectedMicrotask]);
+
+  // ---------- Helpers ----------
+  const getStatusIcon = status =>
     ({ todo: '🕒', in_progress: '⚙️', done: '✅' }[status] ?? '❓');
 
-  const getStatusClass = (status) =>
+  const getStatusClass = status =>
     status === 'done'
       ? 'bg-green-700 text-white'
       : status === 'in_progress'
@@ -152,143 +160,120 @@ const Dashboard = () => {
     const total = items.length;
     const done = items.filter(i => i.status === 'done').length;
     return total ? Math.round((done / total) * 100) : 0;
-  };
-
-  // ----- Actions -----
-  // src/pages/Dashboard.jsx
-// ----- Actions -----
-// ----- Actions -----
-const handleMicrotaskToggle = async (microtaskId, currentStatus) => {
-  const nextStatus = currentStatus === 'done' ? 'in_progress' : 'done';
-
-  try {
-    const { data: resp } = await axios.patch(
-      `/microtasks/${microtaskId}/status`,
-      { status: nextStatus },
-      { timeout: REQ_TIMEOUT_MS }
-    );
-
-    // Be permissive about the shape: proceed if we got microtasks + impact
-    if (!resp || !resp.microtasks || !resp.impact) {
-      throw new Error('Unexpected response shape from /microtasks/:id/status');
-    }
-
-    const { microtasks: freshMicros, impact } = resp;
-
-    // ---- 1) Work on a local clone so we can compute next selections synchronously
-    const newData = structuredClone(data ?? { goals: [] });
-
-    // patch goal → subgoal → task, replace task.microtasks & statuses
-    let patchedGoal = null, patchedSubgoal = null, patchedTask = null;
-
-    newData.goals = (newData.goals || []).map(g => {
-      if (g.id !== impact.goal.id) return g;
-      patchedGoal = {
-        ...g,
-        status: impact.goal.status,
-        subgoals: (g.subgoals || []).map(sg => {
-          if (sg.id !== impact.subgoal.id) return sg;
-          const updatedSg = {
-            ...sg,
-            status: impact.subgoal.status,
-            tasks: (sg.tasks || []).map(t => {
-              if (t.id !== impact.task.id) return t;
-              const updatedT = {
-                ...t,
-                status: impact.task.status,
-                microtasks: freshMicros
-              };
-              patchedTask = updatedT;
-              return updatedT;
-            })
-          };
-          patchedSubgoal = updatedSg;
-          return updatedSg;
-        })
-      };
-      return patchedGoal;
-    });
-
-    // ---- 2) Compute next selections (goal/subgoal/task/microtask) on the clone
-    // Helpers
-    const firstInProgress = arr => (arr || []).find(x => x.status === 'in_progress') || null;
-    const firstNonDoneMicroId = (mts=[]) => {
-      const mt = mts.find(m => m.status === 'in_progress') || mts.find(m => m.status !== 'done');
-      return mt?.id || null;
     };
 
-    let nextGoalId = selectedGoalId;
-    let nextSubgoalId = selectedSubgoalId;
-    let nextTaskId = selectedTaskId;
-    let nextMicroId = selectedMicrotaskId;
+  // ---------- Actions ----------
+  const handleMicrotaskToggle = async (microtaskId, currentStatus) => {
+    const nextStatus = currentStatus === 'done' ? 'in_progress' : 'done';
 
-    // If goal flipped to done, hop to the next in_progress goal (or first goal)
-    if (patchedGoal && patchedGoal.status === 'done') {
-      const gInProg = firstInProgress(newData.goals);
-      if (gInProg) {
-        nextGoalId = gInProg.id;
-      } else if (newData.goals[0]) {
-        nextGoalId = newData.goals[0].id;
+    try {
+      const { data: resp } = await axios.patch(
+        `/microtasks/${microtaskId}/status`,
+        { status: nextStatus },
+        { timeout: REQ_TIMEOUT_MS }
+      );
+
+      if (!resp || !resp.microtasks || !resp.impact) {
+        throw new Error('Unexpected response shape from /microtasks/:id/status');
       }
-      // Reset deeper selections; they’ll be re-derived below
-      nextSubgoalId = null;
-      nextTaskId = null;
-      nextMicroId = null;
-    }
 
-    // If subgoal flipped to done, pick next in_progress subgoal within the same goal
-    if (patchedSubgoal && patchedSubgoal.status === 'done') {
-      const goalNow = newData.goals.find(g => g.id === (patchedGoal?.id || selectedGoalId));
-      const sgInProg = firstInProgress(goalNow?.subgoals || []);
-      if (sgInProg) {
-        nextSubgoalId = sgInProg.id;
-        // choose a task in that subgoal
-        const tInProg = firstInProgress(sgInProg.tasks || []);
-        nextTaskId = tInProg?.id || null;
-        // choose a micro in that task
-        nextMicroId = firstNonDoneMicroId(tInProg?.microtasks || []);
-      } else {
-        // no in_progress subgoal in this goal
+      const { microtasks: freshMicros, impact } = resp;
+
+      const newData = structuredClone(data ?? { goals: [] });
+
+      let patchedGoal = null,
+        patchedSubgoal = null,
+        patchedTask = null;
+
+      newData.goals = (newData.goals || []).map(g => {
+        if (g.id !== impact.goal.id) return g;
+        patchedGoal = {
+          ...g,
+          status: impact.goal.status,
+          subgoals: (g.subgoals || []).map(sg => {
+            if (sg.id !== impact.subgoal.id) return sg;
+            const updatedSg = {
+              ...sg,
+              status: impact.subgoal.status,
+              tasks: (sg.tasks || []).map(t => {
+                if (t.id !== impact.task.id) return t;
+                const updatedT = {
+                  ...t,
+                  status: impact.task.status,
+                  microtasks: freshMicros,
+                };
+                patchedTask = updatedT;
+                return updatedT;
+              }),
+            };
+            patchedSubgoal = updatedSg;
+            return updatedSg;
+          }),
+        };
+        return patchedGoal;
+      });
+
+      const firstInProgress = arr => (arr || []).find(x => x.status === 'in_progress') || null;
+      const firstNonDoneMicroId = (mts = []) => {
+        const mt = mts.find(m => m.status === 'in_progress') || mts.find(m => m.status !== 'done');
+        return mt?.id || null;
+      };
+
+      let nextGoalId = selectedGoalId;
+      let nextSubgoalId = selectedSubgoalId;
+      let nextTaskId = selectedTaskId;
+      let nextMicroId = selectedMicrotaskId;
+
+      if (patchedGoal && patchedGoal.status === 'done') {
+        const gInProg = firstInProgress(newData.goals);
+        nextGoalId = gInProg ? gInProg.id : newData.goals[0]?.id || null;
+        nextSubgoalId = null;
         nextTaskId = null;
         nextMicroId = null;
       }
-    }
 
-    // If task flipped to done, pick next in_progress task within the same subgoal
-    if (patchedTask && patchedTask.status === 'done') {
-      const goalNow = newData.goals.find(g => g.id === (patchedGoal?.id || selectedGoalId));
-      const subNow = goalNow?.subgoals.find(sg => sg.id === (patchedSubgoal?.id || selectedSubgoalId));
-      const tInProg = firstInProgress(subNow?.tasks || []);
-      nextTaskId = tInProg?.id || null;
-      nextMicroId = firstNonDoneMicroId(tInProg?.microtasks || []);
-    } else {
-      // Task still active: use server-reported active micro if given; else first non-done
-      if (resp.impact?.activeMicroId) {
-        nextMicroId = resp.impact.activeMicroId;
-      } else if (patchedTask) {
-        nextMicroId = firstNonDoneMicroId(patchedTask.microtasks || []);
+      if (patchedSubgoal && patchedSubgoal.status === 'done') {
+        const goalNow = newData.goals.find(g => g.id === (patchedGoal?.id || selectedGoalId));
+        const sgInProg = firstInProgress(goalNow?.subgoals || []);
+        if (sgInProg) {
+          nextSubgoalId = sgInProg.id;
+          const tInProg = firstInProgress(sgInProg.tasks || []);
+          nextTaskId = tInProg?.id || null;
+          nextMicroId = firstNonDoneMicroId(tInProg?.microtasks || []);
+        } else {
+          nextTaskId = null;
+          nextMicroId = null;
+        }
       }
+
+      if (patchedTask && patchedTask.status === 'done') {
+        const goalNow = newData.goals.find(g => g.id === (patchedGoal?.id || selectedGoalId));
+        const subNow = goalNow?.subgoals.find(sg => sg.id === (patchedSubgoal?.id || selectedSubgoalId));
+        const tInProg = firstInProgress(subNow?.tasks || []);
+        nextTaskId = tInProg?.id || null;
+        nextMicroId = firstNonDoneMicroId(tInProg?.microtasks || []);
+      } else if (patchedTask) {
+        if (resp.impact?.activeMicroId) {
+          nextMicroId = resp.impact.activeMicroId;
+        } else {
+          nextMicroId = firstNonDoneMicroId(patchedTask.microtasks || []);
+        }
+      }
+
+      setData(newData);
+      if (nextGoalId !== selectedGoalId) setSelectedGoalId(nextGoalId);
+      if (nextSubgoalId !== selectedSubgoalId) setSelectedSubgoalId(nextSubgoalId);
+      if (nextTaskId !== selectedTaskId) setSelectedTaskId(nextTaskId);
+      setSelectedMicrotaskId(nextMicroId);
+
+      refreshData();
+    } catch (err) {
+      console.error('❌ Error updating microtask:', err.response?.data?.error || err.message);
+      refreshData();
     }
+  };
 
-    // ---- 3) Commit new data and selections
-    setData(newData);
-    if (nextGoalId !== selectedGoalId) setSelectedGoalId(nextGoalId);
-    if (nextSubgoalId !== selectedSubgoalId) setSelectedSubgoalId(nextSubgoalId);
-    if (nextTaskId !== selectedTaskId) setSelectedTaskId(nextTaskId);
-    setSelectedMicrotaskId(nextMicroId);
-
-    // ---- 4) Optional reconciliation fetch (keeps counts/derived fields perfect)
-    // You can keep this if you want belt-and-braces syncing. It’s quick.
-    refreshData();
-
-  } catch (err) {
-    console.error('❌ Error updating microtask:', err.response?.data?.error || err.message);
-    // Hard fallback to server truth
-    refreshData();
-  }
-};
-
-  const handleDelete = async (goalId) => {
+  const handleDelete = async goalId => {
     if (!window.confirm('Are you sure you want to delete this goal?')) return;
     try {
       await axios.delete(`/goals/${goalId}`, { timeout: REQ_TIMEOUT_MS });
@@ -305,13 +290,13 @@ const handleMicrotaskToggle = async (microtaskId, currentStatus) => {
     }
   };
 
-  // ----- Render states -----
+  // ---------- Render ----------
   if (error) {
     return (
       <div className="p-8 text-center">
         <p className="text-red-700 font-semibold mb-2">Unable to load your dashboard.</p>
         <p className="text-sm text-gray-700 mb-4">{error}</p>
-        <button className="cta-button" onClick={refreshData}>🔄 Try again</button>
+        <button className="btn" onClick={refreshData}>🔄 Try again</button>
       </div>
     );
   }
@@ -324,7 +309,7 @@ const handleMicrotaskToggle = async (microtaskId, currentStatus) => {
     return (
       <div className="dashboard">
         <p>You don't have any goals yet.</p>
-        <Link to="/goal-setup" className="cta-button">➕ Create Your First Goal</Link>
+        <Link to="/goal-setup" className="btn">➕ Create Your First Goal</Link>
       </div>
     );
   }
@@ -332,10 +317,12 @@ const handleMicrotaskToggle = async (microtaskId, currentStatus) => {
   return (
     <div className="dashboard">
       <div className="dashboard-controls">
+        {/* Goal selector */}
         <div className="controls-group">
           <label htmlFor="goalSelect"><strong>Goal:</strong></label>
           <select
             id="goalSelect"
+            className="form-input"
             value={selectedGoalId ?? ''}
             onChange={(evt) => setSelectedGoalId(evt.target.value)}
           >
@@ -347,6 +334,7 @@ const handleMicrotaskToggle = async (microtaskId, currentStatus) => {
           </select>
         </div>
 
+        {/* Status filter */}
         <div className="controls-group filter-group" role="group" aria-label="Status filter">
           <div className="filter-buttons">
             {['todo', 'in_progress', 'done', 'all'].map(status => (
@@ -357,30 +345,30 @@ const handleMicrotaskToggle = async (microtaskId, currentStatus) => {
                 onClick={() => setStatusFilter(status)}
               >
                 {{
-                  todo: 'To‑do',
+                  todo: 'To-do',
                   in_progress: 'In Progress',
                   done: 'Done',
-                  all: 'All'
+                  all: 'All',
                 }[status]}
               </button>
             ))}
           </div>
         </div>
 
-        <Link to="/goal-setup" className="add-goal-btn">➕ Add New Goal</Link>
+        <Link to="/goal-setup" className="btn">➕ Add New Goal</Link>
       </div>
 
       <div className="dashboard-cards">
         <GoalCard
-          goal={selectedGoal}
-          onSelect={setSelectedSubgoalId}
-          onDelete={handleDelete}
-          selectedId={selectedSubgoalId}
-          getProgress={getProgress}
-          getStatusIcon={getStatusIcon}
-          getStatusClass={getStatusClass}
-          refreshDashboard={refreshData}
-        />
+  goal={{ ...selectedGoal, subgoals: filteredSubgoals }} // ← use filtered list here
+  onSelect={setSelectedSubgoalId}
+  onDelete={handleDelete}
+  selectedId={selectedSubgoalId}
+  getProgress={getProgress}
+  getStatusIcon={getStatusIcon}
+  getStatusClass={getStatusClass}
+  refreshDashboard={refreshData}
+/>
 
         <SubgoalCard
           subgoal={effectiveSubgoal}
@@ -394,7 +382,7 @@ const handleMicrotaskToggle = async (microtaskId, currentStatus) => {
 
         <TaskCard
           task={effectiveTask}
-          microtasks={microtasks}
+          microtasks={filteredMicrotasks}
           selectedMicrotaskId={selectedMicrotaskId}
           setSelectedMicrotaskId={setSelectedMicrotaskId}
           selectedMicrotask={selectedMicrotask}

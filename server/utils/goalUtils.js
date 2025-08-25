@@ -1,5 +1,4 @@
-// goalUtils.js
-// ✅ utils/goalUtils.js
+// utils/goalUtils.js
 const pool = require('../db');
 
 async function getGoalData(goalId) {
@@ -7,16 +6,29 @@ async function getGoalData(goalId) {
   const goal = goalRes.rows[0];
   if (!goal) throw new Error('Goal not found');
 
-  const subgoalsRes = await pool.query('SELECT * FROM subgoals WHERE goal_id = $1', [goalId]);
+  const subgoalsRes = await pool.query(
+    `SELECT * FROM subgoals WHERE goal_id = $1 ORDER BY position ASC, id ASC`,
+    [goalId]
+  );
+
   const subgoals = [];
-
   for (const sg of subgoalsRes.rows) {
-    const tasksRes = await pool.query('SELECT * FROM tasks WHERE subgoal_id = $1', [sg.id]);
-    const tasks = [];
+    const tasksRes = await pool.query(
+      `SELECT * FROM tasks WHERE subgoal_id = $1 ORDER BY position ASC, id ASC`,
+      [sg.id]
+    );
 
+    const tasks = [];
     for (const t of tasksRes.rows) {
-      const microtasksRes = await pool.query('SELECT * FROM microtasks WHERE task_id = $1', [t.id]);
-      tasks.push({ ...t, microtasks: microtasksRes.rows });
+      const microtasksRes = await pool.query(
+        `SELECT * FROM microtasks WHERE task_id = $1 ORDER BY position ASC, id ASC`,
+        [t.id]
+      );
+
+      tasks.push({
+        ...t,
+        microtasks: microtasksRes.rows,
+      });
     }
 
     subgoals.push({ ...sg, tasks });
@@ -29,14 +41,15 @@ function extractDoneItems(goalData) {
   const summary = [];
 
   for (const sg of goalData.subgoals) {
-    const doneTasks = sg.tasks.filter(t =>
+    const doneTasks = (sg.tasks || []).filter(t =>
+      (t.microtasks || []).length > 0 &&
       t.microtasks.every(m => m.status === 'done')
     );
 
     if (doneTasks.length > 0) {
       summary.push({
         subgoal: sg.title,
-        tasks: doneTasks.map(t => t.title)
+        tasks: doneTasks.map(t => t.title),
       });
     }
   }
@@ -76,10 +89,8 @@ Return only JSON:
 }`;
 }
 
-
-
 module.exports = {
   getGoalData,
   extractDoneItems,
-  generatePrompt
+  generatePrompt,
 };

@@ -7,6 +7,22 @@ import { toast } from 'react-toastify';
 const MAX_DESCRIPTION = 500; // ≈ ~100 tokens
 const MIN_DESCRIPTION = 40;  // ensure useful context
 
+// put near top of file
+const toDateInput = (iso) => {
+  if (!iso) return '';
+  // If iso is already 'YYYY-MM-DD', return it unchanged
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  // Otherwise derive a date string (UTC-safe)
+  try { return new Date(iso).toISOString().slice(0, 10); }
+  catch { return ''; }
+};
+
+const fromDateInput = (val) => {
+  // If you store DATE in DB, you can just send 'YYYY-MM-DD'
+  // If you store TIMESTAMPTZ, choose how to convert. Simple option: midnight UTC.
+  return val || null; // keep as 'YYYY-MM-DD' and let server cast to DATE
+};
+
 export default function EditGoal() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -48,55 +64,63 @@ export default function EditGoal() {
   const atLimit = descLen >= MAX_DESCRIPTION;
 
   const handleUpdate = async () => {
-    setError('');
-    if (!goal) return;
+  setError('');
+  if (!goal) return;
 
-    const description = (goal.description || '').trim();
-    if (description.length < MIN_DESCRIPTION) {
-      setError(`Please add a bit more detail (min ${MIN_DESCRIPTION} characters).`);
+  const description = (goal.description || '').trim();
+  if (description.length < MIN_DESCRIPTION) {
+    setError(`Please add a bit more detail (min ${MIN_DESCRIPTION} characters).`);
+    return;
+  }
+  if (description.length > MAX_DESCRIPTION) {
+    setError(`Description is too long (max ${MAX_DESCRIPTION} characters).`);
+    return;
+  }
+
+  // cancel any in-flight mutation
+  if (mutateCtrl.current) mutateCtrl.current.abort();
+  const controller = new AbortController();
+  mutateCtrl.current = controller;
+
+  setLoading(true);
+  try {
+    // 1) Regenerate breakdown with AI (must succeed)
+    const regen = await axios.post(
+      `/ai/goals/${id}/regenerate`,
+      { description },
+      { signal: controller.signal, timeout: 60000 }
+    );
+
+    if (regen.status !== 200 || !regen.data?.ok) {
+      throw new Error(regen.data?.error || 'Regeneration failed');
+    }
+    toast.info(`🧠 AI breakdown regenerated (${regen.data.inserted?.subgoals ?? 0} subgoals)`);
+
+    // 2) Update goal details
+    await axios.put(
+  `/goals/${id}`,
+  {
+    title: goal.title,
+    description,
+    due_date: fromDateInput(goal.due_date), // 'YYYY-MM-DD' or null
+  },
+  { signal: controller.signal, timeout: 15000 }
+);
+    toast.success('✅ Goal updated successfully');
+
+    navigate('/dashboard');
+  } catch (err) {
+    if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') {
+      console.info('[EditGoal] request canceled');
       return;
     }
-    if (description.length > MAX_DESCRIPTION) {
-      setError(`Description is too long (max ${MAX_DESCRIPTION} characters).`);
-      return;
-    }
-
-    // cancel any in‑flight mutation
-    if (mutateCtrl.current) mutateCtrl.current.abort();
-    const controller = new AbortController();
-    mutateCtrl.current = controller;
-
-    setLoading(true);
-    try {
-      // 1) Regenerate breakdown with AI
-      await axios.post(
-        `/ai/goals/${id}/regenerate`,
-        { description },
-        { signal: controller.signal, timeout: 60000 }
-      );
-      toast.info('🧠 AI breakdown regenerated');
-
-      // 2) Update goal details
-      await axios.put(
-        `/goals/${id}`,
-        { title: goal.title, description, due_date: goal.due_date },
-        { signal: controller.signal, timeout: 15000 }
-      );
-      toast.success('✅ Goal updated successfully');
-
-      navigate('/dashboard');
-    } catch (err) {
-      if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') {
-        console.info('[EditGoal] request canceled');
-        return;
-      }
-      console.error('❌ Update error:', err);
-      toast.error('Something went wrong while updating');
-      setError('Something went wrong during update.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    console.error('❌ Update error:', err);
+    toast.error(err?.message || 'Something went wrong while updating');
+    setError(err?.message || 'Something went wrong during update.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // abort any in‑flight mutation on unmount
   useEffect(() => {
@@ -159,13 +183,13 @@ export default function EditGoal() {
               Due Date:
             </label>
             <input
-              id="dueDate"
-              type="date"
-              className="w-full border border-gray-300 p-3 rounded text-base"
-              value={goal.due_date || ''}
-              onChange={(e) => setGoal({ ...goal, due_date: e.target.value })}
-              disabled={loading}
-            />
+  id="dueDate"
+  type="date"
+  className="w-full border border-gray-300 p-3 rounded text-base"
+  value={toDateInput(goal.due_date)}
+  onChange={(e) => setGoal({ ...goal, due_date: e.target.value })}
+  disabled={loading}
+/>
           </div>
 
           <button

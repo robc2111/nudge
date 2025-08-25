@@ -1,5 +1,12 @@
 // utils/statusUtils.js
 function assignStatuses(goal) {
+  goal.subgoals.sort((a, b) => a.position - b.position);
+for (const subgoal of goal.subgoals) {
+  subgoal.tasks.sort((a, b) => a.position - b.position);
+  for (const task of subgoal.tasks) {
+    task.microtasks.sort((a, b) => a.position - b.position);
+  }
+}
   let hasSetInProgressSubgoal = false;
 
   for (const subgoal of goal.subgoals) {

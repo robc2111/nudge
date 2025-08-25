@@ -1,11 +1,11 @@
-// Footer.jsx
+// src/components/Footer.jsx
 import { FaInstagram, FaTwitter, FaLinkedin } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
 const contacts = [
-  { label: 'Contact', email: 'contact@goalcrumbs.com' },
-  { label: 'Support', email: 'support@goalcrumbs.com' },
-  { label: 'Admin', email: 'admin@goalcrumbs.com' },
+  { email: 'contact@goalcrumbs.com' },
+  { email: 'support@goalcrumbs.com' },
+  { email: 'admin@goalcrumbs.com' },
 ];
 
 const socials = [
@@ -16,49 +16,39 @@ const socials = [
 
 const Footer = () => {
   return (
-    <footer className="bg-[#fef0dd] border-t border-gray-300 mt-16 p-8 text-center">
-      <div className="mb-6">
-        <h4 className="font-semibold text-lg mb-2">📧 Contact</h4>
-        <address className="not-italic space-y-1">
+    <footer className="footer">
+      <div className="footer-section">
+        <h4>📧 Contact</h4>
+        <div className="footer-contacts">
           {contacts.map(({ email }) => (
-            <div key={email}>
-              <a
-                href={`mailto:${email}`}
-                className="text-blue-600 hover:underline"
-              >
-                {email}
-              </a>
-            </div>
+            <a key={email} href={`mailto:${email}`} className="footer-link">
+              {email}
+            </a>
           ))}
-        </address>
+        </div>
       </div>
 
-      <div className="mb-6">
-        <h4 className="font-semibold text-lg mb-2">🔗 Social</h4>
-        <nav className="flex justify-center gap-4">
-          {socials.map((item) => {
-  const { icon: Icon, url, label } = item;
+      <div className="footer-section">
+        <h4>🔗 Social</h4>
+        <div className="footer-socials">
+          {socials.map(({ icon, url, label }) => {
+  const Icon = icon;
   return (
-    <a
-      key={label}
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={label}
-      className="text-gray-700 hover:text-[#bd661d] transition"
-    >
+    <a key={label} href={url} target="_blank" rel="noopener noreferrer" aria-label={label}>
       <Icon size={20} />
     </a>
   );
 })}
-        </nav>
+        </div>
       </div>
-      <div className="text-sm space-x-4">
-  <Link to="/privacy" className="underline">Privacy</Link>
-  <Link to="/terms" className="underline">Terms</Link>
-</div>
 
-      <p className="text-sm text-gray-600">
+      <div className="footer-links">
+        <Link to="/privacy" className="footer-link">Privacy</Link>
+        <Link to="/terms" className="footer-link">Terms</Link>
+        <a href="mailto:contact@goalcrumbs.com" className="footer-link">Contact</a>
+      </div>
+
+      <p className="footer-copy">
         © {new Date().getFullYear()} GoalCrumbs. All rights reserved.
       </p>
     </footer>

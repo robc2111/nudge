@@ -1,5 +1,6 @@
 // src/components/SubgoalCard.jsx
 import React, { memo, useCallback } from 'react';
+import { sortByPosition } from '../utils/sorters';
 
 const SubgoalCard = ({
   subgoal,
@@ -10,7 +11,7 @@ const SubgoalCard = ({
   getStatusIcon,
   getStatusClass,
 }) => {
-  const safeTasks = Array.isArray(tasks) ? tasks : [];
+  const safeTasks = Array.isArray(tasks) ? sortByPosition(tasks) : [];
 
   const handleSelect = useCallback(
     (id) => {
@@ -40,7 +41,7 @@ const SubgoalCard = ({
   return (
     <div className="card">
       <img src="/slice.png" alt="Subgoal" />
-      <h3 className={`font-semibold px-2 py-1 rounded ${getStatusClass(subgoal.status)}`}>
+      <h3 className={`font-semibold px-2 py-1 rounded ${getStatusClass(subgoal.status)}`}>Current Subgoal: {" "}
         {subgoal.title}
       </h3>
 

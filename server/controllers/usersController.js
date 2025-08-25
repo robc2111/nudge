@@ -168,15 +168,18 @@ const getUserDashboard = async (req, res) => {
     const allGoals = [];
 
     for (const goal of goals) {
-      const subgoalsResult = await pool.query('SELECT * FROM subgoals WHERE goal_id = $1 ORDER BY order_index', [goal.id]);
+      const subgoalsResult = await pool.query(
+  'SELECT * FROM subgoals WHERE goal_id = $1 ORDER BY position ASC, id ASC',
+  [goal.id]
+);
       const subgoals = [];
 
       for (const sg of subgoalsResult.rows) {
-        const tasksResult = await pool.query('SELECT * FROM tasks WHERE subgoal_id = $1 ORDER BY id', [sg.id]);
+        const tasksResult = await pool.query('SELECT * FROM tasks WHERE subgoal_id = $1 ORDER BY position ASC, id ASC', [sg.id]);
         const tasks = [];
 
         for (const task of tasksResult.rows) {
-          const microtasksResult = await pool.query('SELECT * FROM microtasks WHERE task_id = $1 ORDER BY id', [task.id]);
+          const microtasksResult = await pool.query('SELECT * FROM microtasks WHERE task_id = $1 ORDER BY position ASC, id ASC', [task.id]);
 const microtasks = microtasksResult.rows.map(mt => ({
   id: mt.id,
   title: mt.title,

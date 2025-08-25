@@ -13,14 +13,6 @@ body {
   background: linear-gradient(to right, #fef0dd, #fff9f3);
 }
 
-/* Inputs */
-input, select {
-  margin: 0.5rem;
-  height: 2.5rem;
-  border-radius: 8px;
-  min-width: 150px;
-}
-
 .goal-textarea {
   width: 60%;
   min-height: 160px;
@@ -259,7 +251,7 @@ input, select {
 }
 
 /* Card button group */
-.card-buttons { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+.card-buttons { background-color: #bd661d; display: flex; gap: 0.5rem; margin-top: 0.5rem; }
 
 /* Status filter */
 .status-filter { text-align: center; margin-bottom: 2rem; }
@@ -429,4 +421,666 @@ img { max-width: 100%; height: auto; display: block; }
 .reflection-goal { font-size: 0.9rem; color: #444; font-style: italic; margin-top: 4px; }
 .reflection-content { margin-top: 10px; font-size: 1rem; white-space: pre-wrap; }
 
+/* Add this (or update if you already have .card) in App.css */
+.pricing-card {
+  background-color: #fff;
+  border: 2px solid #ddd;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  flex: 1;
+  border: 2px solid #bd661d;
+}
+
+/* Footer styles */
+.footer {
+  background-color: #fef0dd;
+  border-top: 1px solid #ddd;
+  padding: 2rem;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.footer-section {
+  margin-bottom: 1.5rem;
+}
+
+.footer-contacts,
+.footer-socials,
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem; /* spacing between items */
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+/* Footer styles */
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;            /* adds spacing between links */
+  margin-top: 1rem;
+}
+
+.footer-link {
+  color: #bd661d;       /* brand orange */
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: color 0.2s ease, border-bottom 0.2s ease;
+}
+
+.footer-link:hover {
+  color: #a55217;       /* darker orange on hover */
+  border-bottom: 1px solid #a55217;
+}
+
+
+.footer-social-link {
+  color: #bd661d;
+  transition: color 0.2s ease;
+}
+
+.footer-social-link:hover {
+  color: #a55217;
+}
+
+.footer-copy {
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+/* ===== Auth (Signup/Login) ===== */
+.auth-card {
+  max-width: 520px;
+  margin: 3rem auto;
+  background: #ffffff;
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.05);
+}
+.auth-title {
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin-bottom: 1.25rem;
+}
+.auth-error { color: #b91c1c; text-align: center; margin-bottom: 0.75rem; }
+.auth-success { color: #065f46; text-align: center; margin-bottom: 0.75rem; }
+
+/* two-column alignment: label left (fixed), input right (flex) */
+.auth-form {
+  display: grid;
+  gap: 0.9rem 1rem;
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  align-items: center;
+  gap: 1rem;
+}
+.form-label {
+  justify-self: end;
+  font-weight: 500;
+}
+.form-hint { color: #777; font-weight: 400; }
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #fff;
+  outline: none;
+  color: #333;
+}
+.form-input:focus {
+  border-color: #f1c79f;
+  box-shadow: 0 0 0 3px rgba(189,102,29,0.15);
+}
+
+/* password input + toggle perfectly aligned */
+.password-toggle:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.form-actions { margin-top: 0.5rem; }
+
+.btn-block { width: 100%; }
+.btn-disabled { background-color: #bfbfbf !important; cursor: not-allowed !important; }
+
+/* reuse your brand button style */
+.btn {
+  background-color: #bd661d;
+  color: white;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.2s ease;
+}
+.btn:hover { background-color: #a55217; }
+
+/* login link */
+.brand-link {
+  color: #bd661d;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+.brand-link:hover { color: #a55217; border-bottom-color: #a55217; }
+
+/* mobile: stack labels above inputs */
+@media (max-width: 600px) {
+  .form-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+  .form-label { justify-self: start; }
+}
+
+
+
+/* Wrapper keeps icon snug with input */
+.password-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+/* Style toggle button (no black box) */
+.password-toggle {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  margin-left: -35px; /* overlaps slightly at right edge */
+  padding: 0;
+}
+.password-toggle:focus {
+  outline: none;
+}
+
+/* ===== Dashboard control styles to match auth forms ===== */
+
+/* Make the select look like your inputs */
+.dashboard-controls .form-input {
+  min-width: 220px; /* optional: gives it presence */
+}
+
+/* Filter buttons: spacing + brand look */
+.filter-buttons {
+  display: flex;
+  gap: 0.75rem;                /* ✅ space between options */
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Hover: subtle */
+.filter-btn:hover {
+  border-color: #bd661d33;
+  background: #fff6eb;
+}
+
+/* Selected (active) = black */
+.filter-btn.active {
+  background: #111;            /* ✅ black when selected */
+  color: #fff;
+  border-color: #111;
+}
+
+/* Card action buttons: use your brand btn */
+.dashboard .card .card-buttons .btn,
+.dashboard .card .btn {
+  background-color: #bd661d;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.dashboard .card .btn:hover { background-color: #a55217; }
+
+/* ===== Goal Setup: Breakdown Card ===== */
+.breakdown-section { margin-top: 1.5rem; }
+
+.breakdown-heading {
+  text-align: center;
+  font-weight: 600;
+  font-size: 1.125rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Generic card so it works outside .dashboard too */
+.card {
+  background-color: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.05);
+}
+
+/* Right-aligned content inside the breakdown card */
+.text-right-card { text-align: left; }
+
+/* Titles */
+.breakdown-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem 0;
+}
+
+.breakdown-subgoal {
+  border-right: 4px solid #f1c79f;   /* brand-adjacent accent */
+  padding-right: 1rem;
+  margin-bottom: 1rem;
+}
+
+.breakdown-subgoal-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #bd661d;
+  margin: 0 0 0.25rem 0;
+}
+
+.breakdown-task {
+  margin-right: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.breakdown-task-title {
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 0.25rem 0;
+}
+
+/* Make the breakdown card centered with nice spacing */
+.breakdown-section .card {
+  max-width: 700px;     /* adjust width */
+  margin: 2rem auto;    /* center horizontally + top/bottom spacing */
+  padding: 2rem;        /* more breathing room */
+}
+
+/* Narrower tone selection */
+.tone-select {
+  width: 250px;       /* adjust to taste */
+  max-width: 100%;    /* keep it responsive */
+  display: block;
+  margin: 1rem auto;  /* center horizontally in the card */
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  color: #000;
+  background-color: #fff;
+}
+
+.save {
+  margin-right: 2rem;
+}
+
+/* Right-side bullets with normal LTR text */
+.rtl-list {
+  direction: rtl;               /* bullets on the right */
+  list-style: disc inside;
+  margin: 0.25rem 1.25rem 0.5rem 0;
+  padding: 0;
+}
+.rtl-list li {
+  direction: ltr;               /* keep text direction normal */
+}
+
+/* Tone block layout */
+.goalsetup-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+.tone-block { flex: 1 1 260px; }
+.tone-label { display: block; margin-bottom: 6px; font-weight: 500; }
+
+/* ===== Reflections page layout ===== */
+.reflections-page {
+  max-width: 960px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.page-title {
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+}
+
+/* Add-reflection card spacing */
+.add-reflection-card {
+  margin-bottom: 1.25rem;
+}
+
+/* Filters bar reuse of dashboard-controls: tighten gap a bit on small screens */
+.reflections-filters {
+  gap: 1rem;
+}
+.reflections-filters .controls-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+@media (max-width: 700px) {
+  .reflections-filters .controls-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* Make select/date inputs visually match auth inputs */
+.reflections-filters .form-input {
+  min-width: 180px;
+}
+
+/* Reflection form aligned with auth forms */
+.add-reflection-form {
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  display: grid;
+  gap: 1rem;
+}
+
+/* Match login/signup rows */
+.add-reflection-form .form-row {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  align-items: start;
+  gap: 1rem;
+}
+
+.add-reflection-form .form-label {
+  justify-self: end;
+  font-weight: 500;
+  margin-top: 0.5rem;
+}
+
+/* Inputs same style as auth */
+.add-reflection-form .form-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #fff;
+  color: #333;
+}
+
+.add-reflection-form .form-input:focus {
+  border-color: #f1c79f;
+  box-shadow: 0 0 0 3px rgba(189,102,29,0.15);
+}
+
+/* Textarea wrapper keeps counter aligned */
+.textarea-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.char-counter {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 0.25rem;
+  text-align: right;
+}
+
+/* Reflection goal text handling */
+.reflection-goal {
+  font-size: 0.9rem;
+  color: #444;
+  font-style: italic;
+  margin-top: 4px;
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.reflection-goal .goal-title {
+  display: inline-block;
+  max-width: 220px;   /* adjust based on your card width */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
+/* --- Reflections: clamp long content in cards --- */
+.reflection-card {
+  text-align: left;
+}
+.reflection-card--clickable {
+  cursor: pointer;
+}
+.reflection-content--clamp {
+  /* show up to 5 lines with ellipsis */
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* goal title truncation inside cards */
+.reflection-goal {
+  font-size: 0.9rem;
+  color: #444;
+  font-style: italic;
+  margin-top: 4px;
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+.reflection-goal .goal-title {
+  display: inline-block;
+  max-width: 220px;   /* tweak as needed */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Simple modal --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 50;
+}
+.modal-card {
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  max-width: 760px;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .5rem;
+}
+.modal-close {
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+.modal-meta {
+  font-size: 0.9rem;
+  color: #555;
+  display: grid;
+  gap: .25rem;
+  margin-bottom: .75rem;
+}
+.modal-body {
+  white-space: pre-wrap;
+  line-height: 1.5;
+  color: #222;
+}
+
+/* Counter below textarea used earlier */
+.char-counter {
+  text-align: right;
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: -6px;
+  margin-bottom: 6px;
+}
+
+/* --- Reflection cards: consistent top alignment + preview --- */
+.reflections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  align-items: start;                 /* ✅ every card starts at the top */
+}
+
+.reflection-card {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: box-shadow 0.2s ease-in-out;
+  display: flex;                      /* ✅ top-aligned column */
+  flex-direction: column;
+  justify-content: flex-start;
+  text-align: left;
+  min-height: 160px;                  /* ✅ uniform height so they “feel” even */
+}
+
+.reflection-card--clickable { cursor: pointer; }
+.reflection-card:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+
+.reflection-date { font-size: 0.85rem; color: #666; margin-bottom: 4px; }
+.reflection-goal { font-size: 0.9rem; color: #444; font-style: italic; margin-bottom: 6px; }
+.reflection-goal .goal-title {
+  display: inline-block;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reflection-content {
+  color: #222;
+  line-height: 1.45;
+}
+
+/* Show the first few lines on the card (so users can recognize the entry) */
+.reflection-content--clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;             /* ✅ 3–4 lines is a good teaser */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* --- Modal: contain very long content + wrap --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 50;
+}
+
+.modal-card {
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  max-width: 760px;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+
+  max-height: 80vh;                  /* ✅ contain */
+  overflow: auto;                    /* ✅ scroll inside */
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .5rem;
+}
+.modal-close { background: transparent; border: none; font-size: 1.25rem; cursor: pointer; }
+
+.modal-meta {
+  font-size: 0.9rem;
+  color: #555;
+  display: grid;
+  gap: .25rem;
+  margin-bottom: .75rem;
+}
+
+.modal-body {
+  white-space: pre-wrap;             /* ✅ preserve line breaks */
+  line-height: 1.55;
+  color: #222;
+  word-break: break-word;            /* ✅ break very long words */
+  overflow-wrap: anywhere;           /* ✅ and wrap anywhere if needed */
+}
+
+/* --- Reflections page layout --- */
+.reflections-container {
+  max-width: 1000px;     /* ✅ keeps it centered and not edge-to-edge */
+  margin: 0 auto;
+  padding: 1rem;         /* ✅ adds breathing room on both sides */
+}
+
+/* Form box */
+.add-reflection-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f9f9f9;
+  padding: 16px 20px;     /* ✅ extra side padding */
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+/* Grid also centered with same max width */
+.reflections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  align-items: start;
+  max-width: 1000px;      /* ✅ match container */
+  margin: 0 auto;
+  padding: 0 1rem;        /* ✅ side spacing */
+}
 /* End App.css */

@@ -19,6 +19,8 @@ const EditGoal    = lazy(() => import('./pages/EditGoal'));
 const Reflections = lazy(() => import('./pages/Reflections'));
 const BillingSuccess = lazy(() => import('./pages/BillingSuccess'));
 const BillingCancel = lazy(() => import('./pages/BillingCancel'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const Terms = lazy(() => import('./pages/Terms'));
 
 const Loader = () => <div style={{ padding: '2rem' }}>Loading…</div>;
 

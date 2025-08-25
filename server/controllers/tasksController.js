@@ -1,9 +1,12 @@
+// controllers/tasksController.js
 const pool = require('../db');
 
 // Get all tasks
-exports.getTasks = async (req, res) => {
+exports.getTasks = async (_req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM tasks ORDER BY id DESC');
+    const result = await pool.query(
+      'SELECT * FROM tasks ORDER BY position ASC, id ASC'
+    );
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -26,37 +29,46 @@ exports.getTaskById = async (req, res) => {
 
 // Create a task
 exports.createTask = async (req, res) => {
-  const { subgoal_id, title, status = 'todo' } = req.body;
-
-  if (!subgoal_id || !title) {
-    return res.status(400).json({ error: "subgoal_id and title are required" });
-  }
-
   try {
-    const result = await pool.query(
-      `INSERT INTO tasks (subgoal_id, title, status)
-       VALUES ($1, $2, $3)
-       RETURNING *`,
-      [subgoal_id, title, status]
+    const { subgoal_id, title, status = 'todo' } = req.body;
+    if (!subgoal_id || !title) {
+      return res.status(400).json({ error: 'subgoal_id and title are required' });
+    }
+
+    const { rows: [row] } = await pool.query(
+      'SELECT COALESCE(MAX(position), 0) AS max_pos FROM tasks WHERE subgoal_id = $1',
+      [subgoal_id]
     );
-    res.status(201).json(result.rows[0]);
+    const nextPos = Number(row.max_pos) + 1;
+
+    const { rows: [task] } = await pool.query(
+      `INSERT INTO tasks (subgoal_id, title, status, position)
+       VALUES ($1,$2,$3::status_enum,$4)
+       RETURNING *`,
+      [subgoal_id, title, status, nextPos]
+    );
+
+    res.status(201).json(task);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('createTask error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
 // Update a task
 exports.updateTask = async (req, res) => {
   const { id } = req.params;
-  const { title, status } = req.body;
+  const { title, status, position } = req.body;
 
   try {
     const result = await pool.query(
       `UPDATE tasks
-       SET title = $1, status = $2
-       WHERE id = $3
+       SET title   = COALESCE($1, title),
+           status  = COALESCE($2, status)::status_enum,
+           position= COALESCE($3, position)
+       WHERE id = $4
        RETURNING *`,
-      [title, status, id]
+      [title ?? null, status ?? null, position ?? null, id]
     );
 
     if (result.rows.length === 0) {
@@ -65,6 +77,7 @@ exports.updateTask = async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (err) {
+    console.error('updateTask error:', err);
     res.status(500).json({ error: err.message });
   }
 };

@@ -7,10 +7,10 @@ const { v4: uuidv4 } = require('uuid'); // ✅ added
 const pool = require('../db');
 
 router.post('/register', async (req, res) => {
-  // 🚧 Block all registrations for now
-  return res.status(403).json({
-    error: 'Registrations are temporarily closed. Please check back soon!'
-  });
+  // // 🚧 Block all registrations for now
+  // return res.status(403).json({
+  //   error: 'Registrations are temporarily closed. Please check back soon!'
+  // });
 
   // The rest of the code below is now unreachable
   const { name, email, password, telegram_id } = req.body;

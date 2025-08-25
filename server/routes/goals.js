@@ -11,6 +11,7 @@ router.get('/', goalsController.getAllGoals);
 
 // Get all goals for a user
 router.get('/user/:userId', goalsController.getGoalsByUser);
+router.get('/mine', goalsController.getMyGoals);
 
 // Get a single goal by ID
 router.get('/:id', goalsController.getGoalById);

@@ -93,6 +93,92 @@ async function fetchCurrentTaskForUser(userId) {
     microtasks: mtRes.rows,
     nextIdx,
   };
+}// cron.js (near your other helpers)
+async function fetchReflectionsSinceLastWeeklyPrompt(user) {
+  // Find the most recent weekly prompt we sent this user
+  const { rows: promptRows } = await pool.query(
+    `SELECT sent_at
+       FROM weekly_prompts
+      WHERE user_id = $1
+      ORDER BY sent_at DESC
+      LIMIT 1`,
+    [user.id]
+  );
+
+  const endUtcISO = DateTime.utc().toISO();
+
+  if (promptRows[0]?.sent_at) {
+    // Use the last prompt's sent_at as the window start (UTC)
+    const startUtcISO = DateTime.fromJSDate(promptRows[0].sent_at).toUTC().toISO();
+
+    const { rows } = await pool.query(
+      `SELECT r.content, r.created_at, g.title AS goal_title
+         FROM reflections r
+         LEFT JOIN goals g ON g.id = r.goal_id
+        WHERE r.user_id = $1
+          AND r.created_at >= $2
+          AND r.created_at <= $3
+        ORDER BY r.created_at ASC`,
+      [user.id, startUtcISO, endUtcISO]
+    );
+    return rows;
+  }
+
+  // Fallback: no prior weekly prompt recorded — use a 7-day window in user’s local tz
+  const zone = validZone(user.timezone) ? user.timezone : 'Etc/UTC';
+  const endLocal = DateTime.now().setZone(zone).endOf('day');
+  const startLocal = endLocal.minus({ days: 6 }).startOf('day');
+  const startUtc = startLocal.toUTC().toISO();
+
+  const { rows } = await pool.query(
+    `SELECT r.content, r.created_at, g.title AS goal_title
+       FROM reflections r
+       LEFT JOIN goals g ON g.id = r.goal_id
+      WHERE r.user_id = $1
+        AND r.created_at >= $2
+        AND r.created_at <= $3
+      ORDER BY r.created_at ASC`,
+    [user.id, startUtc, endUtcISO]
+  );
+  return rows;
+}
+
+async function fetchWeeklyReflectionsForUser(user) {
+  // compute the last 7 days in the user's timezone, then convert to UTC for querying
+  const zone = validZone(user.timezone) ? user.timezone : 'Etc/UTC';
+  const endLocal = DateTime.now().setZone(zone).endOf('day');
+  const startLocal = endLocal.minus({ days: 6 }).startOf('day'); // inclusive 7-day window
+  const startUtc = startLocal.toUTC().toISO();
+  const endUtc = endLocal.toUTC().toISO();
+  const tgRes = await axios.post(TELEGRAM_API, {
+  chat_id: user.telegram_id,
+  text: message,
+  parse_mode: 'Markdown',
+  reply_markup: { force_reply: true } // nudges user to reply to THIS message
+});
+
+const sent = tgRes.data?.result;
+if (sent?.message_id) {
+  await pool.query(
+    `INSERT INTO weekly_prompts (user_id, telegram_message_id, sent_at)
+     VALUES ($1, $2, NOW())`,
+    [user.id, sent.message_id]
+  );
+}
+
+  // Assumes a reflections table with (user_id, content, created_at, goal_id)
+  // and optional join to goals for goal title (adjust columns if different)
+  const { rows } = await pool.query(`
+    SELECT r.content, r.created_at, g.title AS goal_title
+    FROM reflections r
+    LEFT JOIN goals g ON g.id = r.goal_id
+    WHERE r.user_id = $1
+      AND r.created_at >= $2
+      AND r.created_at <= $3
+    ORDER BY r.created_at ASC
+  `, [user.id, startUtc, endUtc]);
+
+  return rows;
 }
 
 function renderChecklist(microtasks, nextIdx) {
@@ -138,40 +224,30 @@ Reply with:
   });
 }
 
-function getWeeklyReflectionMessage(tone = 'friendly') {
-  const prompts = {
-    friendly: `
-🪞 *Weekly Reflection Time*  
+// at top: keep existing requires
+// const systemPrompts = require('./prompts');  // already present in your file
 
-Hey there 😊 Let’s gently reflect on your week:
+async function generateWeeklyReflectionMessage(tone = 'friendly', reflections = []) {
+  try {
+    const chatMessages = systemPrompts.weeklyCheckins.buildChat({ tone, reflections });
+    const res = await axios.post('https://api.openai.com/v1/chat/completions', {
+      model: systemPrompts.weeklyCheckins.model,
+      messages: chatMessages,
+      max_tokens: 260,
+      temperature: systemPrompts.weeklyCheckins.temperature,
+    }, {
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-1. What went well?  
-2. What could have gone better?  
-3. What did you learn?
-
-No pressure — just reply whenever you’re ready. 💬`,
-    strict: `
-📋 *Weekly Review*  
-
-Time to audit your progress. Be honest and objective:  
-
-1. Wins this week?  
-2. Weaknesses or setbacks?  
-3. What lessons will guide next week?
-
-Reply directly and stay accountable.`,
-    motivational: `
-🚀 *Weekly Victory Lap!*  
-
-Look at you go! Let’s celebrate and grow:  
-
-1. What made you proud?  
-2. What challenged you?  
-3. What will you build on next?
-
-Shoot me your reflections! 🎯`,
-  };
-  return prompts[tone] || prompts.friendly;
+    return res.data?.choices?.[0]?.message?.content?.trim()
+      || '🪞 **Weekly Reflection**\n\n1) Biggest win this week?\n2) Biggest challenge?\n3) One lesson + next step.\n\nReply here with your answers.';
+  } catch (err) {
+    console.error('GPT weekly check-in error:', err.message);
+    return '🪞 **Weekly Reflection**\n\n1) Biggest win this week?\n2) Biggest challenge?\n3) One lesson + next step.\n\nPlease reply to this message with your answers to 1–3 in one message.';
+  }
 }
 
 async function sendWeeklyReflectionForUser(user) {
@@ -181,7 +257,42 @@ async function sendWeeklyReflectionForUser(user) {
     LIMIT 1
   `, [user.id]);
   const tone = goalToneRes.rows[0]?.tone || 'friendly';
-  const message = getWeeklyReflectionMessage(tone);
+
+  // OLD:
+  // const reflections = await fetchWeeklyReflectionsForUser(user);
+
+  // NEW:
+  const reflections = await fetchReflectionsSinceLastWeeklyPrompt(user);
+
+  const message = await generateWeeklyReflectionMessage(tone, reflections);
+
+  const tgRes = await axios.post(TELEGRAM_API, {
+    chat_id: user.telegram_id,
+    text: message,
+    parse_mode: 'Markdown',
+    reply_markup: { force_reply: true }
+  });
+
+  const sent = tgRes.data?.result;
+  if (sent?.message_id) {
+    await pool.query(
+      `INSERT INTO weekly_prompts (user_id, telegram_message_id, sent_at)
+       VALUES ($1, $2, NOW())`,
+      [user.id, sent.message_id]
+    );
+  }
+}
+
+async function sendWeeklyReflectionForUser(user) {
+  // Find a tone based on an in-progress goal; fallback to friendly
+  const goalToneRes = await pool.query(`
+    SELECT tone FROM goals
+    WHERE user_id = $1 AND status = 'in_progress'
+    LIMIT 1
+  `, [user.id]);
+
+  const tone = goalToneRes.rows[0]?.tone || 'friendly';
+  const message = await generateWeeklyReflectionMessage(tone);
 
   await axios.post(TELEGRAM_API, {
     chat_id: user.telegram_id,
