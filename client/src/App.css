@@ -545,7 +545,12 @@ img { max-width: 100%; height: auto; display: block; }
 /* password input + toggle perfectly aligned */
 .password-toggle:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.form-actions { margin-top: 0.5rem; }
+.form-actions {
+  margin-top: 0.5rem;
+  display: flex;
+  justify-content: center;   /* ✅ center both buttons */
+  gap: 0.75rem;              /* ✅ small spacing */
+}
 
 .btn-block { width: 100%; }
 .btn-disabled { background-color: #bfbfbf !important; cursor: not-allowed !important; }
@@ -876,6 +881,7 @@ img { max-width: 100%; height: auto; display: block; }
   /* show up to 5 lines with ellipsis */
   display: -webkit-box;
   -webkit-line-clamp: 5;
+  line-clamp: 3; 
   -webkit-box-orient: vertical;
   overflow: hidden;
   white-space: normal;
@@ -996,13 +1002,14 @@ img { max-width: 100%; height: auto; display: block; }
 
 /* Show the first few lines on the card (so users can recognize the entry) */
 .reflection-content--clamp {
+  /* show up to 5 lines with ellipsis */
   display: -webkit-box;
-  -webkit-line-clamp: 4;             /* ✅ 3–4 lines is a good teaser */
+  -webkit-line-clamp: 5;  /* Safari / WebKit */
+  line-clamp: 5;          /* Standard (where supported) */
   -webkit-box-orient: vertical;
   overflow: hidden;
   white-space: normal;
   word-break: break-word;
-  overflow-wrap: anywhere;
 }
 
 /* --- Modal: contain very long content + wrap --- */

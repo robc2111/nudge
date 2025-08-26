@@ -1,4 +1,3 @@
-// src/App.jsx
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import Header from './components/Header';
@@ -8,19 +7,20 @@ import ErrorBoundary from './components/ErrorBoundary';
 import NotFound from './pages/NotFound';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import ResetPassword from './pages/ResetPassword';
 
-const LandingPage = lazy(() => import('./pages/LandingPage'));
-const Login       = lazy(() => import('./pages/Login'));
-const Signup      = lazy(() => import('./pages/Signup'));
-const Dashboard   = lazy(() => import('./pages/Dashboard'));
-const Profile     = lazy(() => import('./pages/Profile'));
-const GoalSetup   = lazy(() => import('./pages/GoalSetup'));
-const EditGoal    = lazy(() => import('./pages/EditGoal'));
-const Reflections = lazy(() => import('./pages/Reflections'));
-const BillingSuccess = lazy(() => import('./pages/BillingSuccess'));
+const LandingPage   = lazy(() => import('./pages/LandingPage'));
+const Login = lazy(() => import('./pages/Login'));   // ✅ correct casing
+const SignUp        = lazy(() => import('./pages/SignUp'));
+const Dashboard     = lazy(() => import('./pages/Dashboard'));
+const Profile       = lazy(() => import('./pages/Profile'));
+const GoalSetup     = lazy(() => import('./pages/GoalSetup'));
+const EditGoal      = lazy(() => import('./pages/EditGoal'));
+const Reflections   = lazy(() => import('./pages/Reflections'));
+const BillingSuccess= lazy(() => import('./pages/BillingSuccess'));
 const BillingCancel = lazy(() => import('./pages/BillingCancel'));
-const Privacy = lazy(() => import('./pages/Privacy'));
-const Terms = lazy(() => import('./pages/Terms'));
+const Privacy       = lazy(() => import('./pages/Privacy'));
+const Terms         = lazy(() => import('./pages/Terms'));
 
 const Loader = () => <div style={{ padding: '2rem' }}>Loading…</div>;
 
@@ -53,9 +53,9 @@ export default function App() {
               {/* Public */}
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
+              <Route path="/signup" element={<SignUp />} />
               <Route path="/privacy" element={<Privacy />} />
-<Route path="/terms" element={<Terms />} />
+              <Route path="/terms" element={<Terms />} />
 
               {/* Private */}
               <Route element={<Protected />}>
@@ -65,8 +65,11 @@ export default function App() {
                 <Route path="/goal-setup" element={<GoalSetup />} />
                 <Route path="/edit-goal/:id" element={<EditGoal />} />
                 <Route path="/billing/success" element={<BillingSuccess />} />
-<Route path="/billing/cancel" element={<BillingCancel />} />
+                <Route path="/billing/cancel" element={<BillingCancel />} />
               </Route>
+
+              {/* Password reset */}
+              <Route path="/reset-password" element={<ResetPassword />} />
 
               {/* 404 */}
               <Route path="*" element={<NotFound />} />
