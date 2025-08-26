@@ -1,4 +1,3 @@
-// src/components/TaskCard.jsx
 import React, { useMemo, useState, useCallback } from 'react';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import axios from '../api/axios';
@@ -13,14 +12,17 @@ const TaskCard = ({
   selectedMicrotask,
   handleMicrotaskToggle,
   getStatusIcon,
-  getStatusClass,   // used to keep status styling consistent across cards
+  getStatusClass,   // keep status styling consistent across cards
   getProgress,
   refreshData,
 }) => {
   const [loading, setLoading] = useState(false);
 
-  // Sort microtasks so in_progress → todo → done, then apply tie-breakers
-  const orderedMicros = useMemo(() => sortByPosition(Array.isArray(microtasks) ? microtasks : []), [microtasks]);
+  // Sort microtasks so in_progress → todo → done, then tie-break
+  const orderedMicros = useMemo(
+    () => sortByPosition(Array.isArray(microtasks) ? microtasks : []),
+    [microtasks]
+  );
 
   const progress = getProgress(orderedMicros);
 
@@ -42,8 +44,6 @@ const TaskCard = ({
     [selectMicrotask]
   );
 
-  
-
   const handleBreakdown = async () => {
     if (!selectedMicrotask?.id || !selectedMicrotask?.task_id) return;
     setLoading(true);
@@ -57,8 +57,9 @@ const TaskCard = ({
       refreshData?.();
       setSelectedMicrotaskId(null);
     } catch (err) {
-      console.error('Breakdown failed:', err.response?.data?.error || err.message);
-      toast.error('Breakdown failed');
+      const msg = err.response?.data?.error || err.message || 'Failed to break down microtask';
+      console.error('Breakdown failed:', msg);
+      toast.error(`Breakdown failed: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -121,7 +122,7 @@ const TaskCard = ({
       )}
 
       {selectedMicrotask ? (
-        <div >
+        <div>
           <button
             className="card-buttons"
             onClick={() =>
@@ -137,13 +138,17 @@ const TaskCard = ({
           </button>
 
           <button
-            className="card-buttons"
-            onClick={handleBreakdown}
-            disabled={!selectedMicrotask?.task_id || loading}
-            aria-busy={loading}
-          >
-            {loading ? '⏳ Breaking down…' : '🪄 Break Down'}
-          </button>
+  className="card-buttons"
+  onClick={handleBreakdown}
+  disabled={
+    !selectedMicrotask?.task_id ||
+    loading ||
+    selectedMicrotask?.status === 'done'   // 🚫 disable if done
+  }
+  aria-busy={loading}
+>
+  {loading ? '⏳ Breaking down…' : '🪄 Break Down'}
+</button>
         </div>
       ) : (
         <p className="text-sm text-gray-500 mt-2 italic">
