@@ -1322,4 +1322,77 @@ button, .btn, .filter-btn {
 .reflections-filters .form-input {
   width: 100%;
 }
+
+/* Terms & Privacy reminder for login/signup */
+.auth-terms {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.auth-terms .brand-link {
+  color: #bd661d;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.auth-terms .brand-link:hover {
+  color: #a55217;
+  border-bottom-color: #a55217;
+}
+
+/* ===== Legal Pages (Terms & Privacy) ===== */
+.legal-container {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.05);
+  line-height: 1.65;
+  color: #333;
+  text-align: left;
+}
+
+.legal-title {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  color: #bd661d; /* brand orange */
+}
+
+.legal-updated {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.legal-section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.legal-list {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.legal-list li {
+  margin-bottom: 0.5rem;
+}
+
+.legal-link {
+  color: #bd661d;
+  text-decoration: underline;
+}
+
+.legal-link:hover {
+  color: #a55217;
+}
 /* End App.css */

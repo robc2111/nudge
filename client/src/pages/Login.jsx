@@ -1,4 +1,4 @@
-// Login.jsx
+// src/pages/Login.jsx
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from '../api/axios';
@@ -33,11 +33,11 @@ const Login = () => {
   return (
     <div className="form-page">
       <div className="auth-card">
-        <h2>Log in to GoalCrumbs</h2>
+        <h2 className="auth-title">Log in to GoalCrumbs</h2>
 
-        <form onSubmit={handleSubmit} className="form">
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="form-row">
+            <label htmlFor="email" className="form-label">Email</label>
             <input
               id="email"
               name="email"
@@ -49,8 +49,8 @@ const Login = () => {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
+          <div className="form-row">
+            <label htmlFor="password" className="form-label">Password</label>
             <input
               id="password"
               name="password"
@@ -62,15 +62,24 @@ const Login = () => {
             />
           </div>
 
-          <button type="submit" className="btn">
-            Log In
-          </button>
+          <div className="form-actions">
+            <button type="submit" className="btn btn-block">
+              Log In
+            </button>
+          </div>
         </form>
 
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="auth-error">{error}</p>}
+
+        {/* ✅ Terms & Privacy reminder */}
+<p className="auth-terms">
+  By logging in, you agree to our{' '}
+  <Link to="/terms" className="brand-link">Terms of Service</Link> and{' '}
+  <Link to="/privacy" className="brand-link">Privacy Policy</Link>.
+</p>
 
         <p style={{ textAlign: 'center', marginTop: '1rem' }}>
-          Don’t have an account? <Link to="/signup">Sign up</Link>
+          Don’t have an account? <Link to="/signup" className="brand-link">Sign up</Link>
         </p>
       </div>
     </div>
