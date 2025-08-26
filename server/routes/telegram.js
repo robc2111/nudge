@@ -21,6 +21,81 @@ const sendMessage = async (chatId, text) => {
   });
 };
 
+// Return [{ goal, task, microtasks, nextIdx }] for each in-progress goal
+async function fetchNextAcrossGoals(userId) {
+  // all in-progress goals for this user
+  const { rows: goals } = await pool.query(`
+    SELECT g.id, g.title
+    FROM goals g
+    WHERE g.user_id = $1 AND g.status = 'in_progress'
+    ORDER BY g.created_at, g.id
+  `, [userId]);
+
+  const result = [];
+
+  for (const g of goals) {
+    // first subgoal with any unfinished microtasks
+    const { rows: sgs } = await pool.query(`
+      SELECT sg.id
+      FROM subgoals sg
+      WHERE sg.goal_id = $1
+        AND EXISTS (
+          SELECT 1
+          FROM tasks t
+          JOIN microtasks mt ON mt.task_id = t.id
+          WHERE t.subgoal_id = sg.id
+            AND mt.status <> 'done'
+        )
+      ORDER BY sg.position NULLS LAST, sg.id
+      LIMIT 1
+    `, [g.id]);
+    if (!sgs[0]) continue;
+
+    // first task in that subgoal with unfinished microtasks
+    const { rows: ts } = await pool.query(`
+      SELECT t.id, t.title
+      FROM tasks t
+      WHERE t.subgoal_id = $1
+        AND EXISTS (
+          SELECT 1
+          FROM microtasks mt
+          WHERE mt.task_id = t.id
+            AND mt.status <> 'done'
+        )
+      ORDER BY t.position NULLS LAST, t.id
+      LIMIT 1
+    `, [sgs[0].id]);
+    if (!ts[0]) continue;
+
+    // all microtasks for that task (ordered)
+    const { rows: mts } = await pool.query(`
+      SELECT id, title, status
+      FROM microtasks
+      WHERE task_id = $1
+      ORDER BY position NULLS LAST, id
+    `, [ts[0].id]);
+
+    let nextIdx = mts.findIndex(m => m.status !== 'done');
+    if (nextIdx === -1) nextIdx = null;
+
+    result.push({
+      goal: g,
+      task: ts[0],
+      microtasks: mts,
+      nextIdx
+    });
+  }
+
+  return result;
+}
+
+function renderChecklist(microtasks, nextIdx) {
+  return microtasks.map((m, i) => {
+    const icon = m.status === 'done' ? '✅' : (i === nextIdx ? '🔸' : '⭕');
+    return `${icon} ${m.title}`;
+  }).join('\n');
+}
+
 router.post('/webhook', async (req, res) => {
   try {
     const message = req.body.message;
@@ -126,51 +201,32 @@ router.post('/webhook', async (req, res) => {
       return res.sendStatus(200);
     }
 
-    // 4.5 On-demand "today" command (current task + checklist)
+// 4.5 On-demand "today" command (all in-progress goals)
 if (text.toLowerCase() === '/today') {
-  // pick the first actionable task and also return goal_id
-  const taskRes = await pool.query(`
-    SELECT t.id AS task_id, t.title AS task_title, g.id AS goal_id, g.title AS goal_title
-    FROM tasks t
-    JOIN subgoals sg ON t.subgoal_id = sg.id
-    JOIN goals g     ON sg.goal_id = g.id
-    WHERE g.user_id = $1
-      AND EXISTS (SELECT 1 FROM microtasks mt WHERE mt.task_id = t.id AND mt.status <> 'done')
-    ORDER BY sg.id, t.id
-    LIMIT 1
-  `, [user.id]);
+  const packs = await fetchNextAcrossGoals(user.id);
 
-  if (!taskRes.rows.length) {
-    await sendMessage(chatId, "🎉 No pending microtasks. You’re all caught up!");
+  if (packs.length === 0) {
+    await sendMessage(chatId, "🎉 No pending microtasks. You’re all caught up across all goals!");
     return res.sendStatus(200);
   }
 
-  const { task_id, task_title, goal_id, goal_title } = taskRes.rows[0];
+  // (optional) normalize each goal so one active micro exists per tree
+  for (const p of packs) {
+    await normalizeProgressByGoal(p.goal.id);
+  }
 
-  // normalize so checklist reflects single active item
-  await normalizeProgressByGoal(goal_id);
+  const sections = packs.map((p, idx) => {
+    const checklist = renderChecklist(p.microtasks, p.nextIdx);
+    return `*Goal ${idx + 1}:* ${p.goal.title}
+*Task:* ${p.task.title}
 
-  const mtRes = await pool.query(`
-    SELECT id, title, status
-    FROM microtasks
-    WHERE task_id = $1
-    ORDER BY id
-  `, [task_id]);
-
-  const nextIdx = mtRes.rows.findIndex(m => m.status !== 'done');
-  const checklist = mtRes.rows.map((m, i) => {
-    const icon = m.status === 'done' ? '✅' : (i === nextIdx ? '🔸' : '⭕');
-    return `${icon} ${m.title}`;
-  }).join('\n');
+${checklist}`;
+  }).join('\n\n— — —\n\n');
 
   const msg =
-`🗓️ *Today’s Focus*
+`🗓️ *Today’s Focus Across Your Goals*
 
-*Goal:* ${goal_title}
-*Task:* ${task_title}
-
-*Microtasks:*
-${checklist}
+${sections}
 
 Reply with:
 • \`done [microtask words]\` to check one off
