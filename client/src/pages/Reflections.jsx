@@ -272,8 +272,10 @@ export default function Reflections() {
         <div className="reflections-grid">
           {reflections.map((ref) => (
             <button
-              key={ref.id}
-              className="reflection-card reflection-card--clickable"
+              key={`${ref.type || 'reflection'}-${ref.id}`}
+              className={`reflection-card reflection-card--clickable ${
+                ref.type === 'completed_goal' ? 'reflection-card--goal' : ''
+              }`}
               onClick={() => setOpenRef(ref)}
               aria-label="Open reflection"
             >
@@ -282,7 +284,8 @@ export default function Reflections() {
               </div>
 
               <div className="reflection-goal">
-                Goal: <span className="goal-title" title={ref.goal_name || 'N/A'}>
+                {ref.type === 'completed_goal' ? '🏆 Completed:' : 'Goal:'}{' '}
+                <span className="goal-title" title={ref.goal_name || 'N/A'}>
                   {ref.goal_name || 'N/A'}
                 </span>
               </div>
@@ -304,7 +307,7 @@ export default function Reflections() {
             role="document"
           >
             <div className="modal-header">
-              <h3>Reflection</h3>
+              <h3>{openRef.type === 'completed_goal' ? 'Achievement' : 'Reflection'}</h3>
               <button className="modal-close" onClick={closeModal} aria-label="Close">✕</button>
             </div>
             <div className="modal-meta">

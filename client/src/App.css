@@ -1381,4 +1381,15 @@ button, .btn, .filter-btn {
 .legal-link:hover {
   color: #a55217;
 }
+
+/* app.css */
+.reflection-card--goal {
+  border: 2px solid #4caf50;   /* green accent */
+  background-color: #f0fff0;   /* pale green background */
+}
+
+.reflection-card--goal .reflection-content {
+  font-weight: bold;
+  color: #2e7d32;
+}
 /* End App.css */

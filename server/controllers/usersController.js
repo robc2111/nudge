@@ -1,5 +1,5 @@
 //usersController.js
-// usersController.js
+const { DateTime } = require('luxon'); 
 const { assignStatuses } = require('../utils/statusUtils');
 const pool = require('../db');
 
@@ -68,11 +68,31 @@ const getCurrentUser = async (req, res) => {
   }
 };
 
+/** Friendly aliases → IANA zones (extend as you like). */
+const TZ_ALIASES = {
+  montenegro: 'Europe/Podgorica',
+  podgorica: 'Europe/Podgorica',
+  belgrade: 'Europe/Belgrade',
+  cet: 'Europe/Belgrade',  // optional
+};
+
+
+/** Return a valid IANA zone or null if invalid. */
+function normalizeTz(input) {
+  if (!input) return null;
+  const raw = String(input).trim();
+  // exact IANA first
+  if (DateTime.local().setZone(raw).isValid) return raw;
+  // try aliases
+  const alias = TZ_ALIASES[raw.toLowerCase()];
+  if (alias && DateTime.local().setZone(alias).isValid) return alias;
+  return null;
+}
+
 const patchMe = async (req, res) => {
   const userId = req.user.id;
   const { name, email, telegram_id, timezone, plan, plan_status } = req.body;
 
-  // build dynamic, ordered set clause
   const sets = [];
   const vals = [];
   let i = 1;
@@ -80,21 +100,24 @@ const patchMe = async (req, res) => {
   if (name !== undefined)        { sets.push(`name = $${i++}`);        vals.push(name); }
   if (email !== undefined)       { sets.push(`email = $${i++}`);       vals.push(email); }
   if (telegram_id !== undefined) { sets.push(`telegram_id = $${i++}`); vals.push(telegram_id); }
-  if (timezone !== undefined)    { sets.push(`timezone = $${i++}`);    vals.push(timezone); }
+
+  if (timezone !== undefined) {
+    const tz = normalizeTz(timezone);
+    if (!tz) return res.status(400).json({ error: 'Please choose a valid timezone.' });
+    sets.push(`timezone = $${i++}`); vals.push(tz);
+  }
+
   if (plan !== undefined)        { sets.push(`plan = $${i++}`);        vals.push(plan); }
   if (plan_status !== undefined) { sets.push(`plan_status = $${i++}`); vals.push(plan_status); }
 
-  if (!sets.length) {
-    // nothing to update — return current snapshot
-    return getCurrentUser(req, res);
-  }
+  if (!sets.length) return getCurrentUser(req, res);
 
   vals.push(userId);
   const sql = `
     UPDATE users
-    SET ${sets.join(', ')}
-    WHERE id = $${i}
-    RETURNING id, email, name, telegram_id, timezone, plan, plan_status, stripe_customer_id
+       SET ${sets.join(', ')}
+     WHERE id = $${i}
+  RETURNING id, email, name, telegram_id, timezone, plan, plan_status, stripe_customer_id
   `;
 
   try {
