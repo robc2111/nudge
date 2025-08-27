@@ -1,4 +1,5 @@
 // server/cron.js
+// CommonJS (require) version – works with the rest of your server.
 const path = require('path');
 const tryLoad = (p) => { try { require('dotenv').config({ path: p }); } catch {} };
 tryLoad(path.resolve(__dirname, './.env'));   // server/.env
@@ -6,6 +7,8 @@ tryLoad(path.resolve(__dirname, '../.env'));  // root .env (optional)
 
 const cron = require('node-cron');
 const { DateTime } = require('luxon');
+const axios = require('axios');
+
 const pool = require('./db');
 const systemPrompts = require('./prompts');
 const { normalizeProgressByGoal } = require('./utils/progressUtils');
@@ -17,7 +20,7 @@ const { sendTelegram } = require('./utils/telegram');
    ────────────────────────────── */
 const DAILY_NUDGE_LOCAL_TIME = { hour: 8,  minute: 0 }; // 08:00 local
 const WEEKLY_LOCAL_TIME      = { hour: 18, minute: 0 }; // 18:00 local
-const WEEKLY_ISO_WEEKDAY     = 7; // 1=Mon..7=Sun
+const WEEKLY_ISO_WEEKDAY     = 7;                       // 1=Mon..7=Sun
 
 function validZone(tz) {
   try { return tz && DateTime.local().setZone(tz).isValid; } catch { return false; }
@@ -37,15 +40,12 @@ function isLocalWeeklyNow(tz, { hour, minute }, isoWeekday) {
    Daily nudge (multi-goal)
    ────────────────────────────── */
 async function sendDailyNudgeForUser(user) {
-  // show next task for each *in-progress* goal
   const packs = await fetchNextAcrossGoals(user.id, { onlyInProgress: true });
-
   if (packs.length === 0) {
     console.log(`[daily] No pending work for user ${user.id} (${user.name}) — skipping daily message.`);
     return;
   }
 
-  // Keep each goal tree tidy (single in_progress per level)
   for (const p of packs) {
     try { await normalizeProgressByGoal(p.goal.id); }
     catch (e) { console.warn(`[daily] normalizeProgressByGoal failed (goal ${p.goal.id}):`, e.message); }
@@ -58,23 +58,25 @@ async function sendDailyNudgeForUser(user) {
 ${renderChecklist(p.microtasks, p.nextIdx)}`)
     .join('\n\n— — —\n\n');
 
-  const message = `🌞 *Good morning! Here’s your focus across all goals:*\n\n${sections}\n\nReply with:\n• \`done [microtask words]\` to check one off\n• /reflect to log a quick reflection`;
+  const text = `🌞 *Good morning! Here’s your focus across all goals:*\n\n${sections}\n\nReply with:\n• \`done [microtask words]\` to check one off\n• /reflect to log a quick reflection`;
 
-  await sendTelegram({ chat_id: user.telegram_id, text: message });
+  await sendTelegram({ chat_id: user.telegram_id, text, parse_mode: 'Markdown' });
   console.log(`[daily] Sent daily message to user ${user.id} with ${packs.length} section(s).`);
 }
 
 /* ──────────────────────────────
-   Weekly reflections
+   Weekly reflections – per goal
    ────────────────────────────── */
-async function fetchReflectionsSinceLastWeeklyPrompt(user) {
+
+// Reflections since the last weekly prompt for this specific goal (or last 7 local days if none yet)
+async function fetchReflectionsSinceLastWeeklyPromptForGoal(userId, goalId) {
   const { rows: promptRows } = await pool.query(
     `SELECT sent_at
-     FROM weekly_prompts
-     WHERE user_id = $1
-     ORDER BY sent_at DESC
-     LIMIT 1`,
-    [user.id]
+       FROM weekly_prompts
+      WHERE user_id = $1 AND goal_id = $2
+      ORDER BY sent_at DESC
+      LIMIT 1`,
+    [userId, goalId]
   );
 
   const endUtcISO = DateTime.utc().toISO();
@@ -83,43 +85,71 @@ async function fetchReflectionsSinceLastWeeklyPrompt(user) {
     const startUtcISO = DateTime.fromJSDate(promptRows[0].sent_at).toUTC().toISO();
     const { rows } = await pool.query(
       `SELECT r.content, r.created_at, g.title AS goal_title
-       FROM reflections r
-       LEFT JOIN goals g ON g.id = r.goal_id
-       WHERE r.user_id = $1
-         AND r.created_at >= $2
-         AND r.created_at <= $3
-       ORDER BY r.created_at ASC`,
-      [user.id, startUtcISO, endUtcISO]
+         FROM reflections r
+         JOIN goals g ON g.id = r.goal_id
+        WHERE r.user_id = $1
+          AND r.goal_id = $2
+          AND r.created_at >= $3 AND r.created_at <= $4
+        ORDER BY r.created_at ASC`,
+      [userId, goalId, startUtcISO, endUtcISO]
     );
     return rows;
   }
 
-  const zone = validZone(user.timezone) ? user.timezone : 'Etc/UTC';
+  // First weekly prompt for this goal → last 7 local days
+  const { rows: userRows } = await pool.query(
+    `SELECT timezone FROM users WHERE id = $1`,
+    [userId]
+  );
+  const zone = userRows[0]?.timezone && validZone(userRows[0].timezone) ? userRows[0].timezone : 'Etc/UTC';
   const endLocal   = DateTime.now().setZone(zone).endOf('day');
   const startLocal = endLocal.minus({ days: 6 }).startOf('day');
   const startUtc   = startLocal.toUTC().toISO();
 
   const { rows } = await pool.query(
     `SELECT r.content, r.created_at, g.title AS goal_title
-     FROM reflections r
-     LEFT JOIN goals g ON g.id = r.goal_id
-     WHERE r.user_id = $1
-       AND r.created_at >= $2
-       AND r.created_at <= $3
-     ORDER BY r.created_at ASC`,
-    [user.id, startUtc, endUtcISO]
+       FROM reflections r
+       JOIN goals g ON g.id = r.goal_id
+      WHERE r.user_id = $1
+        AND r.goal_id = $2
+        AND r.created_at >= $3 AND r.created_at <= $4
+      ORDER BY r.created_at ASC`,
+    [userId, goalId, startUtc, endUtcISO]
   );
   return rows;
 }
 
-async function generateWeeklyReflectionMessage(tone = 'friendly', reflections = []) {
+// Completed microtasks for a given goal in the last N days
+async function getCompletedMicrotasksLastNDaysForGoal(userId, goalId, days = 7) {
+  const { rows } = await pool.query(
+    `SELECT mt.title AS micro_title,
+            COALESCE(mt.completed_at, mt.created_at, NOW()) AS done_at,
+            g.title AS goal_title,
+            t.title AS task_title
+       FROM microtasks mt
+       JOIN tasks t     ON t.id = mt.task_id
+       JOIN subgoals sg ON sg.id = t.subgoal_id
+       JOIN goals g     ON g.id = sg.goal_id
+      WHERE g.user_id = $1
+        AND g.id = $2
+        AND mt.status = 'done'
+        AND COALESCE(mt.completed_at, mt.created_at, NOW()) >= NOW() - INTERVAL '${days} days'
+      ORDER BY done_at DESC
+      LIMIT 25`,
+    [userId, goalId]
+  );
+  return rows;
+}
+
+// Ask OpenAI to craft the weekly message for one goal
+async function generateWeeklyReflectionMessageForGoal({ tone, reflections, completed }) {
   try {
-    const chatMessages = systemPrompts.weeklyCheckins.buildChat({ tone, reflections });
-    const res = await require('axios').post(
+    const messages = systemPrompts.weeklyCheckins.buildMessages({ tone, reflections, completed });
+    const res = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
         model: systemPrompts.weeklyCheckins.model,
-        messages: chatMessages,
+        messages,
         max_tokens: 260,
         temperature: systemPrompts.weeklyCheckins.temperature,
       },
@@ -130,44 +160,51 @@ async function generateWeeklyReflectionMessage(tone = 'friendly', reflections = 
         },
       }
     );
-
     return (
       res.data?.choices?.[0]?.message?.content?.trim() ||
       '🪞 **Weekly Reflection**\n\n1) Biggest win this week?\n2) Biggest challenge?\n3) One lesson + next step.\n\nReply here with your answers.'
     );
   } catch (err) {
     console.error('GPT weekly check-in error:', err.message);
-    return '🪞 **Weekly Reflection**\n\n1) Biggest win this week?\n2) Biggest challenge?\n3) One lesson + next step.\n\nPlease reply to this message with your answers to 1–3 in one message.';
+    return '🪞 **Weekly Reflection**\n\n1) Biggest win this week?\n2) Biggest challenge?\n3) One lesson + next step.\n\nReply here with your answers.';
   }
 }
 
-async function sendWeeklyReflectionForUser(user) {
-  const { rows: tones } = await pool.query(
-    `SELECT tone FROM goals
-     WHERE user_id = $1 AND status = 'in_progress'
-     LIMIT 1`,
+// Send one weekly message **per in-progress goal**
+async function sendWeeklyReflectionsPerGoal(user) {
+  const { rows: goals } = await pool.query(
+    `SELECT id, title, tone
+       FROM goals
+      WHERE user_id = $1 AND status = 'in_progress'
+      ORDER BY created_at DESC`,           
     [user.id]
   );
-  const tone = tones[0]?.tone || 'friendly';
+  if (!goals.length) return;
 
-  const reflections = await fetchReflectionsSinceLastWeeklyPrompt(user);
-  const message = await generateWeeklyReflectionMessage(tone, reflections);
+  for (const goal of goals) {
+    const tone         = goal.tone || 'friendly';
+    const reflections  = await fetchReflectionsSinceLastWeeklyPromptForGoal(user.id, goal.id);
+    const completed    = await getCompletedMicrotasksLastNDaysForGoal(user.id, goal.id, 7);
+    const body         = await generateWeeklyReflectionMessageForGoal({ tone, reflections, completed });
+    const text         = `🎯 *${goal.title}*\n\n${body}`;
 
-  const sent = await sendTelegram({
-    chat_id: user.telegram_id,
-    text: message,
-    reply_markup: { force_reply: true },
-  }).then(r => r.data?.result).catch(e => {
-    console.error('Weekly Telegram send failed:', e.message);
-    return null;
-  });
+    const sent = await sendTelegram({
+      chat_id: user.telegram_id,
+      text,
+      parse_mode: 'Markdown',
+      reply_markup: { force_reply: true },
+    }).then(r => r.data?.result).catch(e => {
+      console.error('Weekly Telegram send failed:', e.message);
+      return null;
+    });
 
-  if (sent?.message_id) {
-    await pool.query(
-      `INSERT INTO weekly_prompts (user_id, telegram_message_id, sent_at)
-       VALUES ($1, $2, NOW())`,
-      [user.id, sent.message_id]
-    );
+    if (sent?.message_id) {
+      await pool.query(
+        `INSERT INTO weekly_prompts (user_id, goal_id, telegram_message_id, sent_at)
+         VALUES ($1, $2, $3, NOW())`,
+        [user.id, goal.id, sent.message_id]
+      );
+    }
   }
 }
 
@@ -178,8 +215,8 @@ cron.schedule('* * * * *', async () => {
   try {
     const { rows: users } = await pool.query(
       `SELECT id, name, telegram_id, timezone
-       FROM users
-       WHERE telegram_id IS NOT NULL`
+         FROM users
+        WHERE telegram_id IS NOT NULL`
     );
     for (const user of users) {
       if (isLocalTimeNow(user.timezone, DAILY_NUDGE_LOCAL_TIME)) {
@@ -196,12 +233,12 @@ cron.schedule('* * * * *', async () => {
   try {
     const { rows: users } = await pool.query(
       `SELECT id, name, telegram_id, timezone
-       FROM users
-       WHERE telegram_id IS NOT NULL`
+         FROM users
+        WHERE telegram_id IS NOT NULL`
     );
     for (const user of users) {
       if (isLocalWeeklyNow(user.timezone, WEEKLY_LOCAL_TIME, WEEKLY_ISO_WEEKDAY)) {
-        try { await sendWeeklyReflectionForUser(user); }
+        try { await sendWeeklyReflectionsPerGoal(user); }
         catch (err) { console.error(`Weekly reflection error (user ${user.id}):`, err.message); }
       }
     }
@@ -211,7 +248,7 @@ cron.schedule('* * * * *', async () => {
 });
 
 /* ──────────────────────────────
-   Manual run
+   Manual one-off test
    ────────────────────────────── */
 if (require.main === module) {
   (async () => {
@@ -219,14 +256,14 @@ if (require.main === module) {
     try {
       const { rows: users } = await pool.query(
         `SELECT id, name, telegram_id, timezone
-         FROM users
-         WHERE telegram_id IS NOT NULL
-         LIMIT 1`
+           FROM users
+          WHERE telegram_id IS NOT NULL
+          LIMIT 1`
       );
       if (users[0]) {
         await sendDailyNudgeForUser(users[0]);
-        await sendWeeklyReflectionForUser(users[0]);
-        console.log('✅ Sent test daily + weekly messages for first user with Telegram.');
+        await sendWeeklyReflectionsPerGoal(users[0]); // <— per-goal
+        console.log('✅ Sent test daily + per-goal weekly messages for first Telegram user.');
       } else {
         console.log('ℹ️ No users with telegram_id found.');
       }

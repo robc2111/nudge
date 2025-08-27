@@ -1,46 +1,67 @@
 // server/prompts/weeklyCheckins.js
-// Generates short, tone-aware weekly reflection prompts for Telegram.
-// If recent reflections are provided, the bot gives feedback on them first.
+// Generates short, tone-aware weekly reflection prompts for Telegram,
+// including recent reflections and microtasks completed this week.
 
 module.exports = {
   model: 'gpt-4',
   temperature: 0.5,
 
   /**
-   * Build chat messages for OpenAI given tone + recent reflections.
+   * Build chat messages for OpenAI given tone + recent reflections + completed items.
    * @param {Object} opts
    * @param {'friendly'|'strict'|'motivational'} [opts.tone='friendly']
    * @param {Array<{created_at:string, goal_title?:string, content:string}>} [opts.reflections=[]]
+   * @param {Array<{done_at:string, goal_title?:string, task_title?:string, micro_title:string}>} [opts.completed=[]]
    * @returns {Array<{role:'system'|'user', content:string}>}
    */
-  buildMessages: ({ tone = 'friendly', reflections = [] } = {}) => {
-    // Compact the reflections into a short context string (max ~1000 chars)
-    const rows = reflections
-      .slice(-8) // last 8 entries max
+  buildMessages: ({ tone = 'friendly', reflections = [], completed = [] } = {}) => {
+    const compact = (s, n = 1000) => (s || '').slice(0, n);
+
+    // Reflections context
+    const reflRows = reflections
+      .slice(-8)
       .map(r => {
         const date = (r.created_at || '').toString().slice(0, 10);
         const goal = r.goal_title ? ` [${r.goal_title}]` : '';
         const text = (r.content || '').replace(/\s+/g, ' ').trim();
         return `- ${date}${goal}: ${text}`;
       })
-      .join('\n')
-      .slice(0, 1000);
+      .join('\n');
+
+    // Completed microtasks context
+    const compRows = completed
+      .slice(0, 12)
+      .map(c => {
+        const d = (c.done_at || '').toString().slice(0, 10);
+        const g = c.goal_title ? ` [${c.goal_title}]` : '';
+        const t = c.task_title ? ` — ${c.task_title}` : '';
+        return `• ${d}${g}${t}: ${c.micro_title}`;
+      })
+      .join('\n');
+
+    const hasReflections = reflections.length > 0;
+    const hasCompleted   = completed.length > 0;
+
+    const system = `You are a short, clear coaching assistant. Match the user's selected tone: "${tone}". Keep replies helpful, specific, and concise.`;
 
     const user = `
 Compose a weekly check-in message for a Telegram productivity bot.
 
 INPUT: Recent reflections from the last 7 days (may be empty):
-${hasReflections ? rows : '(no reflections found in the last 7 days)'}
+${hasReflections ? compact(reflRows) : '(no reflections found in the last 7 days)'}
+INPUT: Microtasks completed in the last 7 days (may be empty):
+${hasCompleted ? compact(compRows) : '(no microtasks marked done in the last 7 days)'}
 
 OUTPUT FORMAT (Markdown, not MarkdownV2):
 1) First line: **Weekly Reflection**
-2) If reflections exist: 2–3 sentences of feedback summarizing themes, progress, and blockers (be specific, concise, and tone-aligned).
+2) If reflections exist: 2–3 sentences of feedback summarizing themes, progress, and blockers (tone-aligned).
    If none: 1 sentence prompting them to reflect next week (tone-aligned).
-3) Then exactly 3 numbered questions:
+3) If completed items exist: add a very short "Done this week:" line and list up to 5 bullets (microtask titles only, no dates).
+4) Then exactly 3 numbered questions:
    1. Biggest win this week?
    2. Biggest challenge or setback?
    3. One lesson + your next step for next week.
-4) Last line: Reply here with your answers.
+5) Last line: Reply here with your answers.
 
 STRICT RULES:
 - ≤130 words total.
@@ -57,3 +78,6 @@ STRICT RULES:
     ];
   },
 };
+
+// Backward compatibility alias for older callers
+module.exports.buildChat = module.exports.buildMessages;

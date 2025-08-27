@@ -47,7 +47,13 @@ async function handleMarkDone({ text, user, chatId }) {
   }
 
   // 1) mark as done
-  await pool.query(`UPDATE microtasks SET status = 'done' WHERE id = $1`, [hit.id]);
+  await pool.query(
+  `UPDATE microtasks
+      SET status = 'done',
+          completed_at = COALESCE(completed_at, NOW())
+    WHERE id = $1`,
+  [hit.id]
+);
 
   // 2) cascade normalization
   const cascade = await cascadeAfterMicrotaskDone(hit.id);
@@ -99,37 +105,32 @@ router.post('/webhook', async (req, res) => {
     }
 
     // 1.5) Handle replies to weekly prompts (only if not a done-command)
-    if (message.reply_to_message?.message_id) {
-      const repliedId = message.reply_to_message.message_id;
+   // server/routes/telegram.js  (in the section that handles reply_to_message)
+if (message.reply_to_message?.message_id) {
+  const repliedId = message.reply_to_message.message_id;
 
-      const { rows: pRows } = await pool.query(
-        `SELECT id FROM weekly_prompts
-         WHERE user_id = $1 AND telegram_message_id = $2
-         ORDER BY sent_at DESC
-         LIMIT 1`,
-        [user.id, repliedId]
-      );
+  const { rows: pRows } = await pool.query(
+    `SELECT id, goal_id
+       FROM weekly_prompts
+      WHERE user_id = $1 AND telegram_message_id = $2
+      ORDER BY sent_at DESC
+      LIMIT 1`,
+    [user.id, repliedId]
+  );
 
-      if (pRows[0]) {
-        const { rows: gRows } = await pool.query(
-          `SELECT id FROM goals
-           WHERE user_id = $1 AND status = 'in_progress'
-           ORDER BY updated_at DESC NULLS LAST
-           LIMIT 1`,
-          [user.id]
-        );
-        const goalId = gRows[0]?.id || null;
+  if (pRows[0]) {
+    const goalId = pRows[0].goal_id || null;
 
-        await pool.query(
-          `INSERT INTO reflections (user_id, goal_id, content, created_at, source, weekly_prompt_id)
-           VALUES ($1, $2, $3, NOW(), 'weekly_checkin', $4)`,
-          [user.id, goalId, text, pRows[0].id]
-        );
+    await pool.query(
+      `INSERT INTO reflections (user_id, goal_id, content, created_at, source, weekly_prompt_id)
+       VALUES ($1, $2, $3, NOW(), 'weekly_checkin', $4)`,
+      [user.id, goalId, text, pRows[0].id]
+    );
 
-        await sendMessage(chatId, '✅ Saved your weekly reflection. Nice work!');
-        return res.sendStatus(200);
-      }
-    }
+    await sendMessage(chatId, '✅ Saved your weekly reflection for this goal. Nice work!');
+    return res.sendStatus(200);
+  }
+}
 
     // 2) /reflect
     if (textLower === '/reflect') {
