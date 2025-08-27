@@ -1,7 +1,25 @@
-// controllers/goalsController.js
 const pool = require('../db');
 const { limitsFor } = require('../utils/plan');
 const { normalizeProgressByGoal } = require('../utils/progressUtils');
+
+async function getUserPlan(userId) {
+  const { rows } = await pool.query(
+    `SELECT plan FROM users WHERE id = $1 LIMIT 1`,
+    [userId]
+  );
+  return (rows[0]?.plan || 'free').toLowerCase();
+}
+
+async function countActiveGoals(userId) {
+  const { rows } = await pool.query(
+    `SELECT COUNT(*)::int AS c
+       FROM goals
+      WHERE user_id = $1
+        AND status IN ('in_progress')`,
+    [userId]
+  );
+  return rows[0]?.c ?? 0;
+}
 
 // Create a goal
 exports.createGoal = async (req, res) => {
@@ -9,18 +27,32 @@ exports.createGoal = async (req, res) => {
   console.log("🛬 POST /api/goals hit");
 
   try {
-    const authUserId = req.user?.sub || req.body.user_id;
-    const { title, description, due_date, subgoals = [], tone = null } = req.body || {};
+    const authUserId =
+      req.user?.id || req.user?.sub || req.body.user_id;
 
+    const { title, description, due_date, subgoals = [], tone = null } = req.body || {};
     if (!authUserId || !title) {
       return res.status(400).json({ error: "user_id and title are required" });
+    }
+
+    // 🔒 Enforce plan limit
+    const plan = await getUserPlan(authUserId);
+    const activeCount = await countActiveGoals(authUserId);
+    const { activeGoals: limit } = limitsFor(plan);
+    if (activeCount >= limit) {
+      return res.status(403).json({
+        error: 'You’ve reached the goal limit for your plan.',
+        code: 'GOAL_LIMIT_REACHED',
+        plan,
+        limit
+      });
     }
 
     await client.query('BEGIN');
 
     const { rows: [goal] } = await client.query(
-      `INSERT INTO goals (user_id, title, description, due_date, tone)
-       VALUES ($1,$2,$3,$4,$5)
+      `INSERT INTO goals (user_id, title, description, due_date, tone, status, created_at)
+       VALUES ($1,$2,$3,$4,$5,'in_progress', NOW())
        RETURNING id`,
       [authUserId, title, description || null, due_date || null, tone]
     );
@@ -49,8 +81,8 @@ exports.createGoal = async (req, res) => {
         // Microtasks
         for (const [mIdx, micro] of (task.microtasks || []).entries()) {
           await client.query(
-            `INSERT INTO microtasks (user_id, task_id, title, position)
-             VALUES ($1,$2,$3,$4)`,
+            `INSERT INTO microtasks (user_id, task_id, title, position, status)
+             VALUES ($1,$2,$3,$4,'todo')`,
             [authUserId, taskId, micro, mIdx + 1]
           );
         }
@@ -103,7 +135,7 @@ exports.getGoalsByUser = async (req, res) => {
 
 // If you use JWT, much nicer:
 exports.getMyGoals = async (req, res) => {
-  const userId = req.user?.sub;
+  const userId = req.user?.id || req.user?.sub;
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
   try {
     const { rows } = await pool.query(

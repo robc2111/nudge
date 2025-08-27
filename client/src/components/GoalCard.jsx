@@ -9,6 +9,7 @@ const GoalCard = ({
   selectedId,
   getProgress,
   getStatusIcon,
+  canDelete = true,   // ✅ new prop to control visibility
 }) => {
   const navigate = useNavigate();
 
@@ -91,13 +92,17 @@ const GoalCard = ({
         <button className="card-buttons" onClick={() => navigate(`/edit-goal/${goal.id}`)}>
           📝 Edit Goal
         </button>
-        <button
-          className="card-buttons"
-          onClick={() => onDelete?.(goal.id)}
-          style={{ backgroundColor: '#a43d0e' }}
-        >
-          🗑️ Delete Goal
-        </button>
+
+        {/* ✅ Only render delete if allowed */}
+        {canDelete && (
+          <button
+            className="card-buttons"
+            onClick={() => onDelete?.(goal.id)}
+            style={{ backgroundColor: '#a43d0e' }}
+          >
+            🗑️ Delete Goal
+          </button>
+        )}
       </div>
     </div>
   );

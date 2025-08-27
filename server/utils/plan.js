@@ -1,9 +1,14 @@
-// plan.js
-// utils/plan.js
-const FREE_GOAL_LIMIT = Number(process.env.FREE_GOAL_LIMIT ?? 1);
-const PRO_GOAL_LIMIT  = process.env.PRO_GOAL_LIMIT ? Number(process.env.PRO_GOAL_LIMIT) : Infinity;
+// server/utils/plan.js
+// Central place for plan limits so controllers/routes stay clean.
 
-function limitsFor(plan = 'free') {
-  return plan === 'pro' ? PRO_GOAL_LIMIT : FREE_GOAL_LIMIT;
+const PLAN_LIMITS = {
+  free: { activeGoals: 1 },
+  pro:  { activeGoals: 9999 }, // effectively unlimited
+};
+
+function limitsFor(plan) {
+  const key = String(plan || 'free').toLowerCase();
+  return PLAN_LIMITS[key] || PLAN_LIMITS.free;
 }
-module.exports = { limitsFor, FREE_GOAL_LIMIT, PRO_GOAL_LIMIT };
+
+module.exports = { PLAN_LIMITS, limitsFor };

@@ -1,7 +1,7 @@
 // src/pages/Dashboard.jsx
 import { useEffect, useMemo, useCallback, useState, useRef } from 'react';
 import axios from '../api/axios';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import GoalCard from '../components/GoalCard';
 import SubgoalCard from '../components/SubgoalCard';
 import TaskCard from '../components/TaskCard';
@@ -10,6 +10,7 @@ const REQ_TIMEOUT_MS = 12000;
 
 const Dashboard = () => {
   const [data, setData] = useState(null);
+  const [me, setMe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -19,8 +20,8 @@ const Dashboard = () => {
   const [selectedMicrotaskId, setSelectedMicrotaskId] = useState(null);
 
   const abortRef = useRef(null);
+  const navigate = useNavigate();
 
-  // ---------- helpers ----------
   const getStatusIcon = (status) =>
     ({ todo: '🕒', in_progress: '⚙️', done: '✅' }[status] ?? '❓');
 
@@ -40,7 +41,6 @@ const Dashboard = () => {
   const firstInProgressOrFirst = (arr = []) =>
     arr.find((x) => x.status === 'in_progress') || arr[0] || null;
 
-  // ---------- data fetch ----------
   const refreshData = useCallback(async () => {
     setError('');
     setLoading(true);
@@ -50,14 +50,16 @@ const Dashboard = () => {
     abortRef.current = controller;
 
     try {
-      const me = await axios.get('/users/me', {
+      // load /users/me so we can gate goal creation
+      const meRes = await axios.get('/users/me', {
         signal: controller.signal,
         timeout: REQ_TIMEOUT_MS,
       });
+      setMe(meRes.data);
 
       let payload;
       try {
-        const res = await axios.get(`/users/${me.data.id}/dashboard`, {
+        const res = await axios.get(`/users/${meRes.data.id}/dashboard`, {
           signal: controller.signal,
           timeout: REQ_TIMEOUT_MS,
         });
@@ -98,9 +100,7 @@ const Dashboard = () => {
     return () => abortRef.current?.abort();
   }, [refreshData]);
 
-  // ---------- memoized picks ----------
   const goalsList = useMemo(() => data?.goals ?? [], [data]);
-
   const selectedGoal = useMemo(
     () => goalsList.find((g) => g.id === selectedGoalId) || null,
     [goalsList, selectedGoalId]
@@ -132,7 +132,6 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!selectedMicrotask && allMicrotasks.length > 0) {
-      // prefer in_progress micro, else first
       const firstPick =
         allMicrotasks.find((m) => m.status === 'in_progress') || allMicrotasks[0];
       setSelectedMicrotaskId(firstPick.id);
@@ -140,7 +139,6 @@ const Dashboard = () => {
     if (allMicrotasks.length === 0) setSelectedMicrotaskId(null);
   }, [allMicrotasks, selectedMicrotask]);
 
-  // ---------- actions ----------
   const handleMicrotaskToggle = async (microtaskId, currentStatus) => {
     const nextStatus = currentStatus === 'done' ? 'in_progress' : 'done';
 
@@ -190,7 +188,6 @@ const Dashboard = () => {
         return patchedGoal;
       });
 
-      // keep selection sensible after toggles
       const firstInProg = (arr) => (arr || []).find((x) => x.status === 'in_progress') || null;
       const firstNonDoneMicroId = (mts = []) => {
         const mt =
@@ -266,7 +263,11 @@ const Dashboard = () => {
     }
   };
 
-  // ---------- render ----------
+  const plan = me?.plan?.toLowerCase?.() || 'free';
+  const activeGoalCount = me?.activeGoalCount ?? 0;
+  const atFreeLimit = plan === 'free' && activeGoalCount >= 1;
+  const canDeleteGoals = plan !== 'free';
+
   if (error) {
     return (
       <div className="p-8 text-center">
@@ -287,9 +288,20 @@ const Dashboard = () => {
     return (
       <div className="dashboard">
         <p>You don't have any goals yet.</p>
-        <Link to="/goal-setup" className="btn">
+        <button
+          className="btn"
+          disabled={atFreeLimit}
+          onClick={() => !atFreeLimit && navigate('/goal-setup')}
+          title={atFreeLimit ? 'Upgrade to create more goals' : ''}
+        >
           ➕ Create Your First Goal
-        </Link>
+        </button>
+        {atFreeLimit && (
+          <p className="auth-error" style={{ marginTop: 8 }}>
+            You’re on the Free plan (1 active goal).{' '}
+            <Link to="/profile#billing" className="brand-link">Upgrade</Link> to add more.
+          </p>
+        )}
       </div>
     );
   }
@@ -297,7 +309,6 @@ const Dashboard = () => {
   return (
     <div className="dashboard">
       <div className="dashboard-controls">
-        {/* Goal selector */}
         <div className="controls-group">
           <label htmlFor="goalSelect">
             <strong>Goal:</strong>
@@ -316,25 +327,42 @@ const Dashboard = () => {
           </select>
         </div>
 
-        <Link to="/goal-setup" className="btn">
+        <button
+          className={`btn ${atFreeLimit ? 'btn-disabled' : ''}`}
+          disabled={atFreeLimit}
+          onClick={() => !atFreeLimit && navigate('/goal-setup')}
+          title={atFreeLimit ? 'Upgrade to create more goals' : ''}
+        >
           ➕ Add New Goal
-        </Link>
+        </button>
       </div>
+
+      {/* 🔔 Free-plan banner ABOVE the cards */}
+      {atFreeLimit && (
+  <div className="plan-banner">
+    <span style={{ fontWeight: 700 }}>Free plan</span> allows 1 active goal.{' '}
+    <Link to="/profile#billing" className="brand-link" style={{ fontWeight: 700, textDecoration: 'underline' }}>
+      Upgrade →
+    </Link>{' '}
+    to add more.
+  </div>
+)}
 
       <div className="dashboard-cards">
         <GoalCard
-          goal={selectedGoal}               // ✅ all subgoals (no filtering)
+          goal={selectedGoal}
           onSelect={setSelectedSubgoalId}
           onDelete={handleDelete}
           selectedId={selectedSubgoalId}
           getProgress={getProgress}
           getStatusIcon={getStatusIcon}
           getStatusClass={getStatusClass}
+          canDelete={canDeleteGoals}
         />
 
         <SubgoalCard
           subgoal={effectiveSubgoal}
-          tasks={allTasks}                  // ✅ all tasks
+          tasks={allTasks}
           selectedTaskId={effectiveTask?.id ?? null}
           setSelectedTaskId={setSelectedTaskId}
           getProgress={getProgress}
@@ -344,7 +372,7 @@ const Dashboard = () => {
 
         <TaskCard
           task={effectiveTask}
-          microtasks={allMicrotasks}        // ✅ all microtasks
+          microtasks={allMicrotasks}
           selectedMicrotaskId={selectedMicrotaskId}
           setSelectedMicrotaskId={setSelectedMicrotaskId}
           selectedMicrotask={selectedMicrotask}

@@ -1399,4 +1399,122 @@ button, .btn, .filter-btn {
   font-weight: bold;
   color: #2e7d32;
 }
+
+/* Banner */
+.banner {
+  max-width: 1100px;
+  margin: 0 auto 16px;
+  padding: 12px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 10px;
+  border: 1px solid #f1c38c;
+  background: #fff6e9;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+
+.banner-warning { /* semantic hook if you want other variants later */ }
+
+.banner-text {
+  font-size: 0.95rem;
+  color: #7a4a10;
+}
+
+.banner-text strong {
+  color: #5e3809;
+}
+
+.banner-sub {
+  opacity: 0.95;
+  margin-left: 4px;
+}
+
+.banner-cta {
+  font-weight: 700;
+  text-decoration: underline;
+  color: #a24c12;
+  white-space: nowrap;
+}
+
+.banner-cta:hover {
+  text-decoration: none;
+  color: #7f3a0d;
+}
+
+/* keep cards centered; if your container uses a grid/flex, make sure it spans full width */
+.dashboard-cards {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+/* Center the cards container if not already */
+.dashboard-cards {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* Upgrade banner */
+.banner {
+  max-width: 1100px;
+  margin: 0 auto 16px;
+  padding: 12px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 10px;
+  border: 1px solid #f1c38c;
+  background: #fff6e9;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+
+.banner-text {
+  font-size: 0.95rem;
+  color: #7a4a10;
+}
+
+.banner-text strong {
+  color: #5e3809;
+}
+
+.banner-sub {
+  opacity: 0.95;
+  margin-left: 4px;
+}
+
+.banner-cta {
+  font-weight: 700;
+  text-decoration: underline;
+  color: #000;
+  white-space: nowrap;
+}
+
+.banner-cta:hover {
+  text-decoration: none;
+  color: #ffeeba;
+}
+
+/* app.css */
+.plan-banner {
+  background: #a24c12;
+  color: #fef0dd;
+  border: 1px solid #ffeeba;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  text-align: center;
+  font-weight: 500;
+  width: 100%;
+}
+
+/* good: grid just for cards */
+.dashboard-cards {
+  display: grid;              /* or flex */
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+/* avoid this (would affect the banner too) */
+/* .dashboard > * { display: grid; ... } */
 /* End App.css */

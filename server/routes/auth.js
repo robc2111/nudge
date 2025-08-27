@@ -14,7 +14,7 @@ router.post('/register', async (req, res) => {
 
   // The rest of the code below is now unreachable
   const { name, email, password, telegram_id } = req.body;
-
+console.log('[auth/login] body keys:', Object.keys(req.body || {}));
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = uuidv4();
@@ -40,7 +40,7 @@ router.post('/register', async (req, res) => {
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
-
+console.log('[auth/login] body keys:', Object.keys(req.body || {}));
   try {
     const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (userResult.rows.length === 0) return res.status(400).json({ error: 'User not found' });

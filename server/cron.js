@@ -142,31 +142,39 @@ async function getCompletedMicrotasksLastNDaysForGoal(userId, goalId, days = 7) 
 }
 
 // Ask OpenAI to craft the weekly message for one goal
+async function openaiChatWithRetry(payload, max = 3) {
+  const axios = require('axios');
+  let lastErr;
+  for (let attempt = 1; attempt <= max; attempt++) {
+    try {
+      return await axios.post(
+        'https://api.openai.com/v1/chat/completions',
+        payload,
+        { headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, timeout: 15000 }
+      );
+    } catch (e) {
+      lastErr = e;
+      const msg = e?.code || e?.message || '';
+      console.warn(`[weekly/openai] attempt ${attempt} failed:`, msg);
+      if (attempt < max) await new Promise(r => setTimeout(r, 1000 * attempt)); // 1s,2s,3s
+    }
+  }
+  throw lastErr;
+}
+
 async function generateWeeklyReflectionMessageForGoal({ tone, reflections, completed }) {
   try {
     const messages = systemPrompts.weeklyCheckins.buildMessages({ tone, reflections, completed });
-    const res = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        model: systemPrompts.weeklyCheckins.model,
-        messages,
-        max_tokens: 260,
-        temperature: systemPrompts.weeklyCheckins.temperature,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-    return (
-      res.data?.choices?.[0]?.message?.content?.trim() ||
-      '🪞 **Weekly Reflection**\n\n1) Biggest win this week?\n2) Biggest challenge?\n3) One lesson + next step.\n\nReply here with your answers.'
-    );
+    const res = await openaiChatWithRetry({
+      model: systemPrompts.weeklyCheckins.model,
+      messages,
+      max_tokens: 260,
+      temperature: systemPrompts.weeklyCheckins.temperature,
+    });
+    return res.data?.choices?.[0]?.message?.content?.trim();
   } catch (err) {
-    console.error('GPT weekly check-in error:', err.message);
-    return '🪞 **Weekly Reflection**\n\n1) Biggest win this week?\n2) Biggest challenge?\n3) One lesson + next step.\n\nReply here with your answers.';
+    console.error('[weekly] OpenAI failed:', err?.code || err?.message || err);
+    return '🪞 **Weekly Reflection**\n\n1) Biggest win this week?\n2) Biggest challenge?\n3) One lesson + next step.\n\nPlease reply with your answers.';
   }
 }
 

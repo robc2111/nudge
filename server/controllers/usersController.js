@@ -1,10 +1,21 @@
-//usersController.js
 const { DateTime } = require('luxon'); 
 const { assignStatuses } = require('../utils/statusUtils');
 const pool = require('../db');
 
+// helpers
+async function countActiveGoals(userId) {
+  const { rows } = await pool.query(
+    `SELECT COUNT(*)::int AS c
+       FROM goals
+      WHERE user_id = $1
+        AND status IN ('in_progress')`,
+    [userId]
+  );
+  return rows[0]?.c ?? 0;
+}
+
 // GET all users
-const getUsers = async (req, res) => {
+const getUsers = async (_req, res) => {
   try {
     const result = await pool.query('SELECT * FROM users');
     res.json(result.rows);
@@ -23,8 +34,8 @@ const createUser = async (req, res) => {
 
   try {
     const result = await pool.query(
-      'INSERT INTO users (telegram_id, name) VALUES ($1, $2) RETURNING *',
-      [telegram_id, name]
+      'INSERT INTO users (telegram_id, name, plan) VALUES ($1, $2, $3) RETURNING *',
+      [telegram_id, name, 'free']
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -61,29 +72,31 @@ const getCurrentUser = async (req, res) => {
       [req.user.id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'User not found' });
-    res.json(rows[0]);
+
+    const activeGoalCount = await countActiveGoals(req.user.id);
+
+    res.json({
+      ...rows[0],
+      activeGoalCount,
+    });
   } catch (err) {
     console.error('Error loading user:', err.message);
     res.status(500).json({ error: 'Failed to load user' });
   }
 };
 
-/** Friendly aliases → IANA zones (extend as you like). */
+/** Friendly aliases → IANA zones */
 const TZ_ALIASES = {
   montenegro: 'Europe/Podgorica',
   podgorica: 'Europe/Podgorica',
   belgrade: 'Europe/Belgrade',
-  cet: 'Europe/Belgrade',  // optional
+  cet: 'Europe/Belgrade',
 };
 
-
-/** Return a valid IANA zone or null if invalid. */
 function normalizeTz(input) {
   if (!input) return null;
   const raw = String(input).trim();
-  // exact IANA first
   if (DateTime.local().setZone(raw).isValid) return raw;
-  // try aliases
   const alias = TZ_ALIASES[raw.toLowerCase()];
   if (alias && DateTime.local().setZone(alias).isValid) return alias;
   return null;
@@ -123,7 +136,13 @@ const patchMe = async (req, res) => {
   try {
     const { rows } = await pool.query(sql, vals);
     if (!rows[0]) return res.status(404).json({ error: 'User not found' });
-    res.json(rows[0]);
+
+    const activeGoalCount = await countActiveGoals(userId);
+
+    res.json({
+      ...rows[0],
+      activeGoalCount,
+    });
   } catch (err) {
     console.error('❌ Failed to patch user:', err.message);
     res.status(500).json({ error: 'Failed to update profile' });
@@ -149,7 +168,6 @@ const updateUser = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
 
 // DELETE user
 const deleteUser = async (req, res) => {
@@ -192,9 +210,9 @@ const getUserDashboard = async (req, res) => {
 
     for (const goal of goals) {
       const subgoalsResult = await pool.query(
-  'SELECT * FROM subgoals WHERE goal_id = $1 ORDER BY position ASC, id ASC',
-  [goal.id]
-);
+        'SELECT * FROM subgoals WHERE goal_id = $1 ORDER BY position ASC, id ASC',
+        [goal.id]
+      );
       const subgoals = [];
 
       for (const sg of subgoalsResult.rows) {
@@ -203,13 +221,13 @@ const getUserDashboard = async (req, res) => {
 
         for (const task of tasksResult.rows) {
           const microtasksResult = await pool.query('SELECT * FROM microtasks WHERE task_id = $1 ORDER BY position ASC, id ASC', [task.id]);
-const microtasks = microtasksResult.rows.map(mt => ({
-  id: mt.id,
-  title: mt.title,
-  status: mt.status,
-  task_id: mt.task_id // ✅ Explicitly include this
-}));
-tasks.push({ ...task, microtasks });
+          const microtasks = microtasksResult.rows.map(mt => ({
+            id: mt.id,
+            title: mt.title,
+            status: mt.status,
+            task_id: mt.task_id
+          }));
+          tasks.push({ ...task, microtasks });
         }
 
         subgoals.push({ ...sg, tasks });
@@ -256,17 +274,27 @@ tasks.push({ ...task, microtasks });
   }
 };
 
-// controllers/usersController.js
+// minimal "me" alias (if you still export it)
 exports.me = async (req, res) => {
-  const { rows } = await pool.query(
-    `SELECT id, email, name, telegram_id, plan, plan_status, stripe_customer_id
-     FROM users
-     WHERE id = $1
-     LIMIT 1`,
-    [req.user.id]
-  );
-  if (!rows[0]) return res.status(404).json({ error: 'User not found' });
-  res.json(rows[0]);
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, email, name, telegram_id, plan, plan_status, stripe_customer_id
+       FROM users
+       WHERE id = $1
+       LIMIT 1`,
+      [req.user.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'User not found' });
+
+    const activeGoalCount = await countActiveGoals(req.user.id);
+
+    res.json({
+      ...rows[0],
+      activeGoalCount,
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to load user' });
+  }
 };
 
 module.exports = {
