@@ -8,6 +8,7 @@ import NotFound from './pages/NotFound';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ResetPassword from './pages/ResetPassword';
+import PlanGuard from './components/PlanGuard';
 
 const LandingPage   = lazy(() => import('./pages/LandingPage'));
 const Login = lazy(() => import('./pages/Login'));   // ✅ correct casing
@@ -62,7 +63,14 @@ export default function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/reflections" element={<Reflections />} />
-                <Route path="/goal-setup" element={<GoalSetup />} />
+                <Route
+    path="/goal-setup"
+    element={
+      <PlanGuard>
+        <GoalSetup />
+      </PlanGuard>
+    }
+  />
                 <Route path="/edit-goal/:id" element={<EditGoal />} />
                 <Route path="/billing/success" element={<BillingSuccess />} />
                 <Route path="/billing/cancel" element={<BillingCancel />} />

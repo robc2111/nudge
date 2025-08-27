@@ -570,11 +570,11 @@ img { max-width: 100%; height: auto; display: block; }
 
 /* login link */
 .brand-link {
-  color: #bd661d;
+  color: #fff;
   text-decoration: none;
   border-bottom: 1px solid transparent;
 }
-.brand-link:hover { color: #a55217; border-bottom-color: #a55217; }
+.brand-link:hover { font-weight: bold; border-bottom-color: #a55217; }
 
 /* mobile: stack labels above inputs */
 @media (max-width: 600px) {
@@ -1514,6 +1514,47 @@ button, .btn, .filter-btn {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 24px;
 }
+
+/* === targeted overrides (only banner + upgrade CTAs) === */
+
+/* keep banner centered and tighten vertical space */
+.plan-banner {
+  max-width: 1100px;          /* center width */
+  margin: 6px auto 10px;      /* less space above/below */        /* warm, readable */
+  border: 1px solid #f1c38c;  /* subtle border */
+}
+
+/* high-contrast CTA inside banner */
+.plan-banner .plan-cta {
+  background: #ffffff;        /* pops against banner bg */
+  color: #a24c12;
+  border: 2px solid #a24c12;
+  padding: 0.5rem 0.9rem;
+  border-radius: 10px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.plan-banner .plan-cta:hover {
+  color: #ffe7cf;        /* clear hover */
+  
+}
+
+/* make profile Upgrade button stand out, but don’t touch other buttons */
+.upgrade-btn {
+  background: #ffffff;
+  color: #bd661d;
+  border: 2px solid #bd661d;
+  border-radius: 10px;
+  font-weight: 800;
+  padding: 0.65rem 1.2rem;
+}
+.upgrade-btn:hover {
+  background: #fcefe3;
+}
+
+/* if the gap between top controls and banner feels large on your build */
+.dashboard-controls { margin-bottom: 8px !important; }
 
 /* avoid this (would affect the banner too) */
 /* .dashboard > * { display: grid; ... } */
