@@ -1,5 +1,6 @@
 // server/routes/telegram.js
 const express = require('express');
+const { DateTime } = require('luxon');
 const router = express.Router();
 
 const pool = require('../db');
@@ -9,13 +10,28 @@ const { sendTelegram } = require('../utils/telegram');
 
 const reflectionSessions = {}; // in-memory
 
-function isWeeklyReflectionWindow() {
-  const now = new Date();
-  const weekday = now.getDay(); // 0 = Sun
-  const hour = now.getHours();
-  return weekday === 0 && hour >= 18 && hour <= 23;
+function validZone(tz) {
+  try { return tz && DateTime.local().setZone(tz).isValid; } catch { return false; }
 }
 
+function isUserWeeklyReflectionWindow(userTz, { hourStart = 18, hourEnd = 23, isoWeekday = 7 } = {}) {
+  const zone = validZone(userTz) ? userTz : 'Etc/UTC';
+  const now = DateTime.now().setZone(zone); // user-local time
+  return now.weekday === isoWeekday && now.hour >= hourStart && now.hour <= hourEnd;
+}
+
+function isUserWeeklyReflectionWindow(
+  userTz,
+  { hourStart = 18, hourEnd = 23, isoWeekday = 7 } = {}
+) {
+  const zone = validZone(userTz) ? userTz : 'Etc/UTC';
+  const now = DateTime.now().setZone(zone);
+  return (
+    now.weekday === isoWeekday &&
+    now.hour >= hourStart &&
+    (now.hour < hourEnd || (now.hour === hourEnd && now.minute === 0))
+  );
+}
 const sendMessage = (chatId, text, extra = {}) =>
   sendTelegram({ chat_id: chatId, text, parse_mode: 'Markdown', ...extra });
 
@@ -171,7 +187,7 @@ if (message.reply_to_message?.message_id) {
     }
 
     // 4) weekly auto capture window
-    if (isWeeklyReflectionWindow()) {
+   if (isUserWeeklyReflectionWindow(user.timezone)) { 
       const { rows } = await pool.query(
         `SELECT id FROM goals WHERE user_id = $1 AND status = 'in_progress' LIMIT 1`,
         [user.id]
