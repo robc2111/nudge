@@ -1,7 +1,7 @@
 // src/pages/Profile.jsx
 import React, { useEffect, useRef, useState } from 'react';
 import axios from '../api/axios';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 const REQ_TIMEOUT_MS = 15000;
@@ -52,6 +52,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const fetchCtrl = useRef(null);
+  const location = useLocation();
 
   const [tz, setTz] = useState('');
   const [savingTz, setSavingTz] = useState(false);
@@ -79,13 +80,22 @@ export default function Profile() {
     (async () => {
       setLoading(true);
       setError('');
+
       try {
+        // Helpful when we arrive here from Stripe portal (return_url=/profile)
+        // or after checkout completion—sync plan first, then fetch user.
+        await axios.post('/payments/sync-plan').catch(() => { /* non-fatal */ });
+
         const res = await axios.get('/users/me', {
           signal: controller.signal,
           timeout: REQ_TIMEOUT_MS,
         });
+
         setUser(res.data);
         setTz(res.data.timezone || guessBrowserTZ());
+
+        // Optional: store cached user if you use it elsewhere
+        // localStorage.setItem('user', JSON.stringify(res.data));
       } catch (err) {
         if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return;
         console.error('❌ Error loading user:', err);
@@ -96,7 +106,7 @@ export default function Profile() {
     })();
 
     return () => controller.abort();
-  }, []);
+  }, [location.key]); // re-run if we navigate back here
 
   if (loading) {
     return (

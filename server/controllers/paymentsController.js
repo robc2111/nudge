@@ -4,6 +4,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-06-20',
 });
 const pool = require('../db');
+const { limitsFor } = require('../utils/plan');
 
 const APP_BASE = process.env.APP_BASE_URL || 'http://localhost:5173';
 const PRICE_ID = process.env.STRIPE_PRICE_MONTHLY;
@@ -16,7 +17,6 @@ const PRICE_ID = process.env.STRIPE_PRICE_MONTHLY;
  * Always persists the id back to the users table.
  */
 async function ensureStripeCustomer(user) {
-  // Try stored id (and verify it is valid in this mode)
   if (user.stripe_customer_id) {
     try {
       await stripe.customers.retrieve(user.stripe_customer_id);
@@ -26,14 +26,12 @@ async function ensureStripeCustomer(user) {
     }
   }
 
-  // Try by email to avoid duplicates in this mode
   let custId = null;
   if (user.email) {
     const { data } = await stripe.customers.list({ email: user.email, limit: 1 });
     if (data[0]) custId = data[0].id;
   }
 
-  // Create if still missing
   if (!custId) {
     const created = await stripe.customers.create({
       email: user.email || undefined,
@@ -43,7 +41,6 @@ async function ensureStripeCustomer(user) {
     custId = created.id;
   }
 
-  // Persist to DB
   await pool.query(
     `UPDATE users SET stripe_customer_id = $1 WHERE id = $2`,
     [custId, user.id]
@@ -52,8 +49,62 @@ async function ensureStripeCustomer(user) {
   return custId;
 }
 
+/** Enforce per-plan active goal limit, preferring user's keep_active_goal_id if set. */
+async function enforceGoalLimitForPlan(userId, plan) {
+  const { activeGoals: limit } = limitsFor(plan);
+
+  // Unlimited / high cap – nothing to do
+  if (limit >= 9999) return;
+
+  // Get preference (may be null)
+  const { rows: prefRows } = await pool.query(
+    `SELECT keep_active_goal_id FROM users WHERE id = $1`,
+    [userId]
+  );
+  const preferredId = prefRows[0]?.keep_active_goal_id || null;
+
+  // Fetch currently in-progress goals (newest first)
+  const { rows: activeRows } = await pool.query(
+    `SELECT id
+       FROM goals
+      WHERE user_id = $1 AND status = 'in_progress'
+      ORDER BY created_at DESC, id DESC`,
+    [userId]
+  );
+  if (!activeRows.length) return;
+
+  // Reorder so the preferred goal (if any) is first
+  let ordered = activeRows.map(r => r.id);
+  if (preferredId && ordered.includes(preferredId)) {
+    ordered = [preferredId, ...ordered.filter(id => id !== preferredId)];
+  }
+
+  const keep = ordered.slice(0, Math.max(0, limit));
+  const demote = ordered.slice(Math.max(0, limit));
+
+  if (demote.length) {
+    await pool.query(
+      `UPDATE goals
+          SET status = 'not_started'
+        WHERE user_id = $1
+          AND id = ANY($2::uuid[])`,
+      [userId, demote]
+    );
+  }
+
+  if (keep.length) {
+    await pool.query(
+      `UPDATE goals
+          SET status = 'in_progress'
+        WHERE user_id = $1
+          AND id = ANY($2::uuid[])`,
+      [userId, keep]
+    );
+  }
+}
+
 /** POST /api/payments/checkout -> { url } */
-exports.checkout = async (req, res) => {
+async function checkout(req, res) {
   try {
     if (!PRICE_ID) return res.status(500).json({ error: 'Missing STRIPE_PRICE_MONTHLY' });
 
@@ -82,10 +133,10 @@ exports.checkout = async (req, res) => {
     console.error('createCheckoutSession error:', err?.message || err);
     return res.status(500).json({ error: 'Could not create checkout session' });
   }
-};
+}
 
 /** POST /api/payments/portal -> { url } */
-exports.portalLink = async (req, res) => {
+async function portalLink(req, res) {
   try {
     const { rows } = await pool.query(
       `SELECT id, email, name, stripe_customer_id FROM users WHERE id = $1 LIMIT 1`,
@@ -106,19 +157,37 @@ exports.portalLink = async (req, res) => {
     console.error('portalLink error:', err?.message || err);
     return res.status(500).json({ error: 'Could not create portal session' });
   }
-};
+}
+
+/** POST /api/payments/sync-plan -> syncs enforcement after manual changes */
+async function syncPlanForMe(req, res) {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, plan FROM users WHERE id = $1 LIMIT 1`,
+      [req.user.id]
+    );
+    const me = rows[0];
+    if (!me) return res.status(404).json({ error: 'User not found' });
+
+    await enforceGoalLimitForPlan(me.id, me.plan || 'free');
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('syncPlanForMe error:', e.message);
+    return res.status(500).json({ error: 'Failed to sync plan/goal limits' });
+  }
+}
 
 /**
  * POST /api/payments/webhook
  * IMPORTANT: this route must receive the *raw* body. The router sets express.raw().
  */
-exports.handleWebhook = async (req, res) => {
+async function handleWebhook(req, res) {
   const sig = req.headers['stripe-signature'];
   let event;
 
   try {
     event = stripe.webhooks.constructEvent(
-      req.rawBody,                     // provided by express.raw() in the route
+      req.rawBody,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
@@ -173,6 +242,9 @@ exports.handleWebhook = async (req, res) => {
             `UPDATE users SET plan = $1, plan_status = $2 WHERE id = $3`,
             [status === 'active' ? 'pro' : 'free', status, uid]
           );
+
+          const isActive = ['active', 'trialing'].includes(sub.status);
+          await enforceGoalLimitForPlan(uid, isActive ? 'pro' : 'free');
         }
         break;
       }
@@ -193,6 +265,7 @@ exports.handleWebhook = async (req, res) => {
             `UPDATE subscriptions SET status = 'canceled' WHERE stripe_subscription_id = $1`,
             [sub.id]
           );
+          await enforceGoalLimitForPlan(uid, 'free');
         }
         break;
       }
@@ -207,4 +280,12 @@ exports.handleWebhook = async (req, res) => {
     console.error('Webhook handler failed:', err);
     return res.status(500).send('Server error');
   }
+}
+
+module.exports = {
+  checkout,
+  portalLink,
+  syncPlanForMe,
+  handleWebhook,
+  enforceGoalLimitForPlan, // exported for plan routes
 };

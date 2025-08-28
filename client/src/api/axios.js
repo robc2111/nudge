@@ -23,6 +23,7 @@ let redirecting = false;
 instance.interceptors.response.use(
   (res) => res,
   (err) => {
+    // If unauthorized, clear session and bounce to login
     if (err?.response?.status === 401 && !redirecting) {
       redirecting = true;
       localStorage.removeItem('token');
@@ -33,6 +34,9 @@ instance.interceptors.response.use(
       if (!onLogin) {
         const from = encodeURIComponent(here);
         window.location.replace(`/login?from=${from}`);
+      } else {
+        // If we're already on login, avoid redirect loop
+        redirecting = false;
       }
     }
     return Promise.reject(err);

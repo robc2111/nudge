@@ -56,13 +56,13 @@ app.use('/api/check_ins', require('./routes/check_ins'));
 app.use('/api/reflections', require('./routes/reflections'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/auth', require('./routes/auth'));
-
-// 🔑 mount password reset here (clear, dedicated prefix)
 app.use('/api/password', require('./routes/passwordReset'));
-
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/gpt', require('./routes/gptRoutes'));
 app.use('/api/payments', require('./routes/payments'));
+
+// 🔒 plan management (choose active on Free)
+app.use('/api/plan', require('./routes/plan'));
 
 app.get('/', (req, res) => res.send('🚀 GoalCrumbs API is running'));
 

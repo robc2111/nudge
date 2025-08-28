@@ -1556,6 +1556,12 @@ button, .btn, .filter-btn {
 /* if the gap between top controls and banner feels large on your build */
 .dashboard-controls { margin-bottom: 8px !important; }
 
+.lock-badge {
+  font-size: 0.95rem;
+  margin-left: .5rem;
+  opacity: .85;
+}
+
 /* avoid this (would affect the banner too) */
 /* .dashboard > * { display: grid; ... } */
 /* End App.css */

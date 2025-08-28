@@ -1,6 +1,8 @@
 // src/components/GoalCard.jsx
 import React, { useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from '../api/axios';
+import { toast } from 'react-toastify';
 
 const GoalCard = ({
   goal,
@@ -9,7 +11,9 @@ const GoalCard = ({
   selectedId,
   getProgress,
   getStatusIcon,
-  canDelete = true,   // ✅ new prop to control visibility
+  canDelete = true,
+  userPlan = 'free',        // 👈 pass plan down (free/pro)
+  onRefresh,               // 👈 optional: refresh dashboard after actions
 }) => {
   const navigate = useNavigate();
 
@@ -44,6 +48,18 @@ const GoalCard = ({
     [handleSelect]
   );
 
+  const isLockedByPlan = userPlan === 'free' && goal?.status !== 'in_progress';
+
+  async function makeActive() {
+    try {
+      await axios.post('/plan/choose-active', { goal_id: goal.id });
+      toast.success('This goal is now your active goal.');
+      onRefresh?.();
+    } catch (e) {
+      toast.error(e.response?.data?.error || 'Failed to set active goal');
+    }
+  }
+
   if (!goal) {
     return (
       <div className="card">
@@ -55,8 +71,16 @@ const GoalCard = ({
 
   return (
     <div className="card">
-      <img src="/cake.png" alt="Goal" />
-      <h3>Goal: {goal.title}</h3>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <img src="/cake.png" alt="Goal" />
+        <h3 style={{ margin: 0 }}>
+          Goal: {goal.title}{' '}
+          {isLockedByPlan && (
+            <span className="lock-badge" title="Free plan: only 1 active goal at a time">🔒</span>
+          )}
+        </h3>
+      </div>
+
       <p>📊 Progress: {progress}%</p>
 
       <h4 style={{ marginTop: '0.75rem' }}>Subgoals</h4>
@@ -88,12 +112,12 @@ const GoalCard = ({
         })}
       </ul>
 
-      <div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
         <button className="card-buttons" onClick={() => navigate(`/edit-goal/${goal.id}`)}>
           📝 Edit Goal
         </button>
 
-        {/* ✅ Only render delete if allowed */}
+        {/* Only render delete if allowed */}
         {canDelete && (
           <button
             className="card-buttons"
@@ -101,6 +125,17 @@ const GoalCard = ({
             style={{ backgroundColor: '#a43d0e' }}
           >
             🗑️ Delete Goal
+          </button>
+        )}
+
+        {/* Free-plan: allow choosing which goal is the active one */}
+        {isLockedByPlan && (
+          <button
+            className="card-buttons"
+            onClick={makeActive}
+            title="Make this your one active goal on the Free plan"
+          >
+            ⭐ Make Active
           </button>
         )}
       </div>

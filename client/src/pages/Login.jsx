@@ -25,8 +25,13 @@ const Login = () => {
       const res = await axios.post('/auth/login', form);
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
-      const from = location.state?.from?.pathname || '/dashboard';
-      navigate(from, { replace: true });
+
+      // ✅ read the query param ?from=/path set by the axios interceptor
+      const params = new URLSearchParams(location.search);
+      const fromQuery = params.get('from');
+      const target = fromQuery || '/dashboard';
+
+      navigate(target, { replace: true });
     } catch {
       setError('Login failed');
     }
@@ -39,28 +44,27 @@ const Login = () => {
     setResetEmail((prev) => prev || form.email);
   };
 
-  // Backend reset (one call, correct path)
   const handleReset = async (e) => {
-  e.preventDefault();
-  setResetMsg('');
-  setError('');
+    e.preventDefault();
+    setResetMsg('');
+    setError('');
 
-  if (!resetEmail) {
-    setError('Please enter your email to reset your password.');
-    return;
-  }
+    if (!resetEmail) {
+      setError('Please enter your email to reset your password.');
+      return;
+    }
 
-  try {
-    setResetLoading(true);
-    // ✅ matches server: /api/password/forgot-password (axios base is /api)
-    await axios.post('/password/forgot-password', { email: resetEmail });
-    setResetMsg('If an account exists for that email, a reset link has been sent.');
-  } catch {
-    setResetMsg('If an account exists for that email, a reset link has been sent.');
-  } finally {
-    setResetLoading(false);
-  }
-};
+    try {
+      setResetLoading(true);
+      // axios base is /api, so this hits /api/password/forgot-password
+      await axios.post('/password/forgot-password', { email: resetEmail });
+      setResetMsg('If an account exists for that email, a reset link has been sent.');
+    } catch {
+      setResetMsg('If an account exists for that email, a reset link has been sent.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   return (
     <div className="form-page">
@@ -78,6 +82,7 @@ const Login = () => {
               onChange={handleChange}
               className="form-input"
               required
+              autoComplete="email"
             />
           </div>
 
@@ -91,6 +96,7 @@ const Login = () => {
               onChange={handleChange}
               className="form-input"
               required
+              autoComplete="current-password"
             />
           </div>
 
@@ -116,6 +122,7 @@ const Login = () => {
                 onChange={(e) => setResetEmail(e.target.value)}
                 required
                 disabled={resetLoading}
+                autoComplete="email"
               />
             </div>
             <div className="form-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
