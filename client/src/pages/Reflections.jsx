@@ -1,6 +1,6 @@
-// src/pages/Reflections.jsx
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import axios from '../api/axios';
+import { setSEO } from '../lib/seo';
 
 const MAX_LEN = 500;
 const REQ_TIMEOUT_MS = 15000;
@@ -24,16 +24,21 @@ export default function Reflections() {
   const [loadingGoals, setLoadingGoals] = useState(false);
   const [error, setError] = useState('');
 
-  // Modal state
   const [openRef, setOpenRef] = useState(null);
 
-  // controllers & debounce
   const listCtrl = useRef(null);
   const goalsCtrl = useRef(null);
   const addCtrl = useRef(null);
   const debounceRef = useRef(null);
 
-  // Close modal helpers
+  useEffect(() => {
+    setSEO({
+      title: 'Your Reflections - GoalCrumbs',
+      description:
+        'Review and add weekly reflections tied to your goals to stay accountable.',
+    });
+  }, []);
+
   const closeModal = useCallback(() => setOpenRef(null), []);
   useEffect(() => {
     const onEsc = (e) => {
@@ -43,7 +48,7 @@ export default function Reflections() {
     return () => document.removeEventListener('keydown', onEsc);
   }, [closeModal]);
 
-  // ───────── user & goals ─────────
+  // user id
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -60,6 +65,7 @@ export default function Reflections() {
     };
   }, []);
 
+  // goals
   useEffect(() => {
     if (!userId) return;
     if (goalsCtrl.current) goalsCtrl.current.abort();
@@ -85,7 +91,7 @@ export default function Reflections() {
     return () => controller.abort();
   }, [userId]);
 
-  // ───────── reflections list (debounced) ─────────
+  // list (debounced)
   const fetchReflections = async (signal) => {
     try {
       setLoading(true);
@@ -131,7 +137,7 @@ export default function Reflections() {
     };
   }, []);
 
-  // ───────── add reflection ─────────
+  // add new
   const handleAddReflection = async (e) => {
     e.preventDefault();
     setError('');
@@ -177,7 +183,7 @@ export default function Reflections() {
     <div className="reflections-container">
       <h1 className="auth-title" style={{ marginBottom: '1rem' }}>🪞 Your Reflections</h1>
 
-      {/* Add Reflection Form */}
+      {/* Add Reflection */}
       <form onSubmit={handleAddReflection} className="add-reflection-form mb-6">
         <label htmlFor="ref-goal" className="form-label">Goal</label>
         <select
@@ -263,7 +269,7 @@ export default function Reflections() {
         </select>
       </div>
 
-      {/* Reflections Grid */}
+      {/* Grid */}
       {loading ? (
         <p>Loading reflections…</p>
       ) : reflections.length === 0 ? (
@@ -301,11 +307,7 @@ export default function Reflections() {
       {/* Modal */}
       {openRef && (
         <div className="modal-overlay" onClick={closeModal} role="dialog" aria-modal="true">
-          <div
-            className="modal-card"
-            onClick={(e) => e.stopPropagation()}
-            role="document"
-          >
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} role="document">
             <div className="modal-header">
               <h3>{openRef.type === 'completed_goal' ? 'Achievement' : 'Reflection'}</h3>
               <button className="modal-close" onClick={closeModal} aria-label="Close">✕</button>

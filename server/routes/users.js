@@ -1,5 +1,4 @@
-//user.js
-// routes/user.js
+// routes/users.js
 const express = require('express');
 const router = express.Router();
 
@@ -16,7 +15,7 @@ const {
   getUserDashboard,
 } = require('../controllers/usersController');
 
-// Public (or protect later as needed)
+// Public (keep as-is or protect later)
 router.get('/', getUsers);
 router.post('/', createUser);
 
@@ -25,6 +24,7 @@ router.get('/me', verifyToken, getCurrentUser);
 router.patch('/me', verifyToken, patchMe);
 
 router.get('/:userId/dashboard', verifyToken, getUserDashboard);
+
 router.get('/:id', verifyToken, getUserById);
 router.put('/:id', verifyToken, updateUser);
 router.delete('/:id', verifyToken, deleteUser);

@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import GoalCard from '../components/GoalCard';
 import SubgoalCard from '../components/SubgoalCard';
 import TaskCard from '../components/TaskCard';
+import { setSEO } from '../lib/seo';
 
 const REQ_TIMEOUT_MS = 12000;
 
@@ -21,6 +22,13 @@ const Dashboard = () => {
 
   const abortRef = useRef(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setSEO({
+      title: 'Dashboard - GoalCrumbs',
+      description: 'Track progress across goals, subgoals, tasks, and microtasks.',
+    });
+  }, []);
 
   const getStatusIcon = (status) =>
     ({ todo: '🕒', in_progress: '⚙️', done: '✅' }[status] ?? '❓');
@@ -50,7 +58,6 @@ const Dashboard = () => {
     abortRef.current = controller;
 
     try {
-      // load /users/me so we can gate goal creation
       const meRes = await axios.get('/users/me', {
         signal: controller.signal,
         timeout: REQ_TIMEOUT_MS,
@@ -337,16 +344,16 @@ const Dashboard = () => {
         </button>
       </div>
 
-      {/* 🔔 Free-plan banner ABOVE the cards */}
+      {/* Free-plan banner */}
       {atFreeLimit && (
-  <div className="plan-banner">
-    <span style={{ fontWeight: 700 }}>Free plan</span> allows 1 active goal.{' '}
-    <Link to="/profile#billing" className="brand-link" style={{ fontWeight: 700, textDecoration: 'underline' }}>
-      Upgrade →
-    </Link>{' '}
-    to add more.
-  </div>
-)}
+        <div className="plan-banner">
+          <span style={{ fontWeight: 700 }}>Free plan</span> allows 1 active goal.{' '}
+          <Link to="/profile#billing" className="brand-link" style={{ fontWeight: 700, textDecoration: 'underline' }}>
+            Upgrade →
+          </Link>{' '}
+          to add more.
+        </div>
+      )}
 
       <div className="dashboard-cards">
         <GoalCard

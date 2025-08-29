@@ -1562,6 +1562,25 @@ button, .btn, .filter-btn {
   opacity: .85;
 }
 
+/* styles.css (or equivalent) */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 24px;
+}
+.switch input { display: none; }
+.switch .slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background: #c7c7c7; border-radius: 999px; transition: .2s;
+}
+.switch .slider:before {
+  content: ""; position: absolute; height: 18px; width: 18px;
+  left: 3px; top: 3px; background: white; border-radius: 50%; transition: .2s;
+}
+.switch input:checked + .slider { background: #22c55e; }
+.switch input:checked + .slider:before { transform: translateX(18px); }
+
 /* avoid this (would affect the banner too) */
 /* .dashboard > * { display: grid; ... } */
 /* End App.css */

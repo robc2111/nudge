@@ -1,8 +1,8 @@
-// src/pages/Profile.jsx
 import React, { useEffect, useRef, useState } from 'react';
 import axios from '../api/axios';
 import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { setSEO } from '../lib/seo';
 
 const REQ_TIMEOUT_MS = 15000;
 
@@ -57,6 +57,16 @@ export default function Profile() {
   const [tz, setTz] = useState('');
   const [savingTz, setSavingTz] = useState(false);
 
+  const [telegramEnabled, setTelegramEnabled] = useState(true);
+  const [savingTel, setSavingTel] = useState(false);
+
+  useEffect(() => {
+    setSEO({
+      title: 'Your Profile - GoalCrumbs',
+      description: 'Manage your account, billing and preferences for GoalCrumbs.',
+    });
+  }, []);
+
   async function saveTimezone() {
     if (!tz) return;
     setSavingTz(true);
@@ -72,6 +82,21 @@ export default function Profile() {
     }
   }
 
+  async function saveTelegramEnabled(next) {
+    setSavingTel(true);
+    try {
+      const { data } = await axios.patch('/users/me', { telegram_enabled: next });
+      setUser(data);
+      toast.success(next ? 'Telegram reminders enabled' : 'Telegram reminders disabled');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to update Telegram preference');
+      setTelegramEnabled((prev) => !prev); // revert UI if failed
+    } finally {
+      setSavingTel(false);
+    }
+  }
+
   useEffect(() => {
     if (fetchCtrl.current) fetchCtrl.current.abort();
     const controller = new AbortController();
@@ -82,9 +107,8 @@ export default function Profile() {
       setError('');
 
       try {
-        // Helpful when we arrive here from Stripe portal (return_url=/profile)
-        // or after checkout completion—sync plan first, then fetch user.
-        await axios.post('/payments/sync-plan').catch(() => { /* non-fatal */ });
+        // keep plan fresh if returning from Stripe
+        await axios.post('/payments/sync-plan').catch(() => {});
 
         const res = await axios.get('/users/me', {
           signal: controller.signal,
@@ -93,12 +117,10 @@ export default function Profile() {
 
         setUser(res.data);
         setTz(res.data.timezone || guessBrowserTZ());
-
-        // Optional: store cached user if you use it elsewhere
-        // localStorage.setItem('user', JSON.stringify(res.data));
+        setTelegramEnabled(res.data.telegram_enabled !== false);
       } catch (err) {
         if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return;
-        console.error('❌ Error loading user:', err);
+        console.error('❌ Error loading your profile:', err);
         setError('Failed to load your profile. Please try again.');
       } finally {
         setLoading(false);
@@ -106,7 +128,7 @@ export default function Profile() {
     })();
 
     return () => controller.abort();
-  }, [location.key]); // re-run if we navigate back here
+  }, [location.key]);
 
   if (loading) {
     return (
@@ -128,7 +150,6 @@ export default function Profile() {
 
   return (
     <div style={{ maxWidth: "700px", margin: "2rem auto" }}>
-      {/* Profile card */}
       <div className="auth-card">
         <h1 className="auth-title">👤 Your Profile</h1>
         {error && <p className="auth-error">{error}</p>}
@@ -189,6 +210,30 @@ export default function Profile() {
               Defaulting to your browser timezone: <code>{guessBrowserTZ()}</code>
             </div>
           )}
+        </div>
+
+        {/* Telegram reminders toggle */}
+        <div className="form-row">
+          <label className="form-label">Telegram reminders</label>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <input
+              id="tg-enabled"
+              type="checkbox"
+              checked={telegramEnabled}
+              onChange={(e) => {
+                const next = e.target.checked;
+                setTelegramEnabled(next);
+                saveTelegramEnabled(next);
+              }}
+              disabled={savingTel}
+            />
+            <label htmlFor="tg-enabled">
+              {telegramEnabled ? 'Enabled' : 'Disabled'}
+            </label>
+          </div>
+          <div style={{ marginTop: 6, color: '#666', fontSize: '0.9rem' }}>
+            Turn off to stop GoalCrumbs from sending you reminders on Telegram.
+          </div>
         </div>
       </div>
 

@@ -1,7 +1,7 @@
-// src/pages/Signup.jsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
+import { setSEO } from '../lib/seo';
 
 const MIN_PASSWORD = 8;
 
@@ -13,12 +13,20 @@ export default function Signup() {
     email: '',
     telegram_id: '',
     password: '',
-    agree: false,   // ✅ added checkbox state
+    agree: false,
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [showPw, setShowPw] = useState(false);
+
+  useEffect(() => {
+    setSEO({
+      title: 'Create GoalCrumbs Account | GoalCrumbs',
+      description:
+        'Create your GoalCrumbs account to break big goals into tiny crumbs with AI nudges and a clean dashboard.',
+    });
+  }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -54,7 +62,7 @@ export default function Signup() {
       });
 
       if (res.data?.token) localStorage.setItem('token', res.data.token);
-      if (res.data?.user)  localStorage.setItem('user', JSON.stringify(res.data.user));
+      if (res.data?.user) localStorage.setItem('user', JSON.stringify(res.data.user));
 
       setSuccess(true);
       setTimeout(() => navigate('/dashboard'), 700);
@@ -78,10 +86,10 @@ export default function Signup() {
       {success && <p className="auth-success">🎉 Registration successful!</p>}
 
       <form onSubmit={handleSubmit} className="auth-form">
-        {/* Username */}
+        {/* Name */}
         <div>
-          <label htmlFor="username" className="block font-medium mb-1">
-            Username
+          <label htmlFor="name" className="block font-medium mb-1">
+            Name
           </label>
           <input
             id="name"
@@ -133,7 +141,9 @@ export default function Signup() {
 
         {/* Password */}
         <div>
-          <label htmlFor="password" className="block font-medium mb-1">Password</label>
+          <label htmlFor="password" className="block font-medium mb-1">
+            Password
+          </label>
           <div className="password-wrapper">
             <input
               id="password"
@@ -146,6 +156,7 @@ export default function Signup() {
               disabled={submitting}
               required
               minLength={MIN_PASSWORD}
+              autoComplete="new-password"
             />
             <button
               type="button"
@@ -159,7 +170,7 @@ export default function Signup() {
           </div>
         </div>
 
-        {/* ✅ Terms + Privacy Checkbox */}
+        {/* Terms + Privacy */}
         <div className="form-row">
           <label className="form-label">
             <input

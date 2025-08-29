@@ -1,6 +1,8 @@
-import { useState } from 'react';
+// src/pages/Login.jsx
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from '../api/axios';
+import { setSEO } from '../lib/seo';
 
 const Login = () => {
   const [form, setForm] = useState({ email: '', password: '' });
@@ -12,6 +14,13 @@ const Login = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    setSEO({
+      title: 'Log in to GoalCrumbs',
+      description: 'Sign in to GoalCrumbs to continue working on your goals.',
+    });
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -26,7 +35,6 @@ const Login = () => {
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
 
-      // ✅ read the query param ?from=/path set by the axios interceptor
       const params = new URLSearchParams(location.search);
       const fromQuery = params.get('from');
       const target = fromQuery || '/dashboard';
@@ -56,7 +64,6 @@ const Login = () => {
 
     try {
       setResetLoading(true);
-      // axios base is /api, so this hits /api/password/forgot-password
       await axios.post('/password/forgot-password', { email: resetEmail });
       setResetMsg('If an account exists for that email, a reset link has been sent.');
     } catch {

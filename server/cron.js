@@ -14,6 +14,7 @@ const systemPrompts = require('./prompts');
 const { normalizeProgressByGoal } = require('./utils/progressUtils');
 const { fetchNextAcrossGoals, renderChecklist } = require('./utils/goalHelpers');
 const { sendTelegram } = require('./utils/telegram');
+const { isTelegramEnabled } = require('./utils/telegramGuard');
 
 /* ──────────────────────────────
    Local-time windows
@@ -40,6 +41,9 @@ function isLocalWeeklyNow(tz, { hour, minute }, isoWeekday) {
    Daily nudge (multi-goal)
    ────────────────────────────── */
 async function sendDailyNudgeForUser(user) {
+  // respect user's toggle
+  if (!(await isTelegramEnabled(user.id))) return;
+
   const packs = await fetchNextAcrossGoals(user.id, { onlyInProgress: true });
   if (packs.length === 0) {
     console.log(`[daily] No pending work for user ${user.id} (${user.name}) — skipping daily message.`);
@@ -141,9 +145,28 @@ async function getCompletedMicrotasksLastNDaysForGoal(userId, goalId, days = 7) 
   return rows;
 }
 
-// Ask OpenAI to craft the weekly message for one goal
+// Ask OpenAI to craft the weekly message for one goal (with retry)
 async function openaiChatWithRetry(payload, max = 3) {
-  const axios = require('axios');
+  if (!process.env.OPENAI_API_KEY) {
+    // Fallback message if OpenAI is disabled
+    return {
+      data: {
+        choices: [{
+          message: {
+            content:
+`🪞 **Weekly Reflection**
+
+1) Biggest win this week?
+2) Biggest challenge or setback?
+3) One lesson + your next step for next week.
+
+Reply here with your answers.`,
+          }
+        }]
+      }
+    };
+  }
+
   let lastErr;
   for (let attempt = 1; attempt <= max; attempt++) {
     try {
@@ -180,11 +203,14 @@ async function generateWeeklyReflectionMessageForGoal({ tone, reflections, compl
 
 // Send one weekly message **per in-progress goal**
 async function sendWeeklyReflectionsPerGoal(user) {
+  // respect user's toggle
+  if (!(await isTelegramEnabled(user.id))) return;
+
   const { rows: goals } = await pool.query(
     `SELECT id, title, tone
        FROM goals
       WHERE user_id = $1 AND status = 'in_progress'
-      ORDER BY created_at DESC`,           
+      ORDER BY created_at DESC`,
     [user.id]
   );
   if (!goals.length) return;
@@ -224,7 +250,8 @@ cron.schedule('* * * * *', async () => {
     const { rows: users } = await pool.query(
       `SELECT id, name, telegram_id, timezone
          FROM users
-        WHERE telegram_id IS NOT NULL`
+        WHERE telegram_id IS NOT NULL
+        AND telegram_enabled = true`
     );
     for (const user of users) {
       if (isLocalTimeNow(user.timezone, DAILY_NUDGE_LOCAL_TIME)) {
@@ -242,7 +269,8 @@ cron.schedule('* * * * *', async () => {
     const { rows: users } = await pool.query(
       `SELECT id, name, telegram_id, timezone
          FROM users
-        WHERE telegram_id IS NOT NULL`
+        WHERE telegram_id IS NOT NULL
+        AND telegram_enabled = true`
     );
     for (const user of users) {
       if (isLocalWeeklyNow(user.timezone, WEEKLY_LOCAL_TIME, WEEKLY_ISO_WEEKDAY)) {
@@ -256,7 +284,7 @@ cron.schedule('* * * * *', async () => {
 });
 
 /* ──────────────────────────────
-   Manual one-off test
+   Manual one-off test (node server/cron.js)
    ────────────────────────────── */
 if (require.main === module) {
   (async () => {
@@ -265,12 +293,12 @@ if (require.main === module) {
       const { rows: users } = await pool.query(
         `SELECT id, name, telegram_id, timezone
            FROM users
-          WHERE telegram_id IS NOT NULL
+          WHERE telegram_id IS NOT NULL AND telegram_enabled = true
           LIMIT 1`
       );
       if (users[0]) {
         await sendDailyNudgeForUser(users[0]);
-        await sendWeeklyReflectionsPerGoal(users[0]); // <— per-goal
+        await sendWeeklyReflectionsPerGoal(users[0]); // per-goal
         console.log('✅ Sent test daily + per-goal weekly messages for first Telegram user.');
       } else {
         console.log('ℹ️ No users with telegram_id found.');

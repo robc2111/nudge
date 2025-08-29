@@ -1,4 +1,4 @@
-const { DateTime } = require('luxon'); 
+const { DateTime } = require('luxon');
 const { assignStatuses } = require('../utils/statusUtils');
 const pool = require('../db');
 
@@ -34,8 +34,10 @@ const createUser = async (req, res) => {
 
   try {
     const result = await pool.query(
-      'INSERT INTO users (telegram_id, name, plan) VALUES ($1, $2, $3) RETURNING *',
-      [telegram_id, name, 'free']
+      `INSERT INTO users (telegram_id, name, plan, telegram_enabled)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [telegram_id, name, 'free', true]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -52,7 +54,10 @@ const getUserById = async (req, res) => {
   }
   try {
     const result = await pool.query(
-      'SELECT id, name, email, telegram_id, timezone, plan, plan_status, stripe_customer_id FROM users WHERE id = $1',
+      `SELECT id, name, email, telegram_id, timezone,
+              plan, plan_status, stripe_customer_id, telegram_enabled
+         FROM users
+        WHERE id = $1`,
       [requestedId]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
@@ -65,10 +70,11 @@ const getUserById = async (req, res) => {
 const getCurrentUser = async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, email, name, telegram_id, timezone, plan, plan_status, stripe_customer_id
-       FROM users
-       WHERE id = $1
-       LIMIT 1`,
+      `SELECT id, email, name, telegram_id, timezone,
+              plan, plan_status, stripe_customer_id, telegram_enabled
+         FROM users
+        WHERE id = $1
+        LIMIT 1`,
       [req.user.id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'User not found' });
@@ -104,7 +110,15 @@ function normalizeTz(input) {
 
 const patchMe = async (req, res) => {
   const userId = req.user.id;
-  const { name, email, telegram_id, timezone, plan, plan_status } = req.body;
+  const {
+    name,
+    email,
+    telegram_id,
+    timezone,
+    plan,
+    plan_status,
+    telegram_enabled, // ✅ NEW
+  } = req.body;
 
   const sets = [];
   const vals = [];
@@ -123,6 +137,11 @@ const patchMe = async (req, res) => {
   if (plan !== undefined)        { sets.push(`plan = $${i++}`);        vals.push(plan); }
   if (plan_status !== undefined) { sets.push(`plan_status = $${i++}`); vals.push(plan_status); }
 
+  if (typeof telegram_enabled === 'boolean') {
+    sets.push(`telegram_enabled = $${i++}`);
+    vals.push(telegram_enabled);
+  }
+
   if (!sets.length) return getCurrentUser(req, res);
 
   vals.push(userId);
@@ -130,7 +149,8 @@ const patchMe = async (req, res) => {
     UPDATE users
        SET ${sets.join(', ')}
      WHERE id = $${i}
-  RETURNING id, email, name, telegram_id, timezone, plan, plan_status, stripe_customer_id
+  RETURNING id, email, name, telegram_id, timezone,
+            plan, plan_status, stripe_customer_id, telegram_enabled
   `;
 
   try {
@@ -159,7 +179,11 @@ const updateUser = async (req, res) => {
   const { name } = req.body;
   try {
     const result = await pool.query(
-      'UPDATE users SET name = $1 WHERE id = $2 RETURNING id, name, email, telegram_id, timezone, plan, plan_status, stripe_customer_id',
+      `UPDATE users
+          SET name = $1
+        WHERE id = $2
+    RETURNING id, name, email, telegram_id, timezone,
+              plan, plan_status, stripe_customer_id, telegram_enabled`,
       [name, targetUserId]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
@@ -191,19 +215,22 @@ const getUserDashboard = async (req, res) => {
   const authenticatedUserId = req.user.id;
 
   if (!requestedUserId || typeof requestedUserId !== 'string') {
-    return res.status(400).json({ error: "Invalid user ID" });
+    return res.status(400).json({ error: 'Invalid user ID' });
   }
 
   if (requestedUserId !== authenticatedUserId) {
-    return res.status(403).json({ error: "Access denied" });
+    return res.status(403).json({ error: 'Access denied' });
   }
 
   try {
     const userResult = await pool.query('SELECT id, name FROM users WHERE id = $1', [authenticatedUserId]);
-    if (userResult.rows.length === 0) return res.status(404).json({ error: "User not found" });
+    if (userResult.rows.length === 0) return res.status(404).json({ error: 'User not found' });
 
     const user = userResult.rows[0];
-    const goalResult = await pool.query('SELECT * FROM goals WHERE user_id = $1 ORDER BY created_at DESC', [authenticatedUserId]);
+    const goalResult = await pool.query(
+      'SELECT * FROM goals WHERE user_id = $1 ORDER BY created_at DESC',
+      [authenticatedUserId]
+    );
     const goals = goalResult.rows;
 
     const allGoals = [];
@@ -216,16 +243,22 @@ const getUserDashboard = async (req, res) => {
       const subgoals = [];
 
       for (const sg of subgoalsResult.rows) {
-        const tasksResult = await pool.query('SELECT * FROM tasks WHERE subgoal_id = $1 ORDER BY position ASC, id ASC', [sg.id]);
+        const tasksResult = await pool.query(
+          'SELECT * FROM tasks WHERE subgoal_id = $1 ORDER BY position ASC, id ASC',
+          [sg.id]
+        );
         const tasks = [];
 
         for (const task of tasksResult.rows) {
-          const microtasksResult = await pool.query('SELECT * FROM microtasks WHERE task_id = $1 ORDER BY position ASC, id ASC', [task.id]);
-          const microtasks = microtasksResult.rows.map(mt => ({
+          const microtasksResult = await pool.query(
+            'SELECT * FROM microtasks WHERE task_id = $1 ORDER BY position ASC, id ASC',
+            [task.id]
+          );
+          const microtasks = microtasksResult.rows.map((mt) => ({
             id: mt.id,
             title: mt.title,
             status: mt.status,
-            task_id: mt.task_id
+            task_id: mt.task_id,
           }));
           tasks.push({ ...task, microtasks });
         }
@@ -244,12 +277,12 @@ const getUserDashboard = async (req, res) => {
             if (mt.status === 'done') done += 1;
           }
 
-          const next = task.microtasks.find(mt => mt.status !== 'done');
+          const next = task.microtasks.find((mt) => mt.status !== 'done');
           if (!current.microtaskId && next) {
             current = {
               subgoalId: sg.id,
               taskId: task.id,
-              microtaskId: next.id
+              microtaskId: next.id,
             };
           }
         }
@@ -261,16 +294,15 @@ const getUserDashboard = async (req, res) => {
         ...goal,
         subgoals,
         percentage_complete: parseFloat(percentage_complete),
-        current
+        current,
       });
     }
 
     const statusProcessedGoals = allGoals.map(assignStatuses);
     return res.json({ user, goals: statusProcessedGoals });
-
   } catch (err) {
-    console.error("❌ Error generating dashboard:", err.message);
-    return res.status(500).json({ error: "Internal server error" });
+    console.error('❌ Error generating dashboard:', err.message);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };
 
@@ -278,10 +310,11 @@ const getUserDashboard = async (req, res) => {
 exports.me = async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, email, name, telegram_id, plan, plan_status, stripe_customer_id
-       FROM users
-       WHERE id = $1
-       LIMIT 1`,
+      `SELECT id, email, name, telegram_id,
+              plan, plan_status, stripe_customer_id, telegram_enabled
+         FROM users
+        WHERE id = $1
+        LIMIT 1`,
       [req.user.id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'User not found' });
@@ -305,5 +338,5 @@ module.exports = {
   deleteUser,
   getUserDashboard,
   getCurrentUser,
-  patchMe
+  patchMe,
 };
