@@ -213,7 +213,7 @@ const GoalSetup = () => {
 
       {/* Compose goal */}
       <div className="flex flex-col items-stretch gap-2 mb-4">
-        <label htmlFor="goalText" className="font-medium">Describe your goal</label>
+        <label htmlFor="goalText" className="font-medium describe">Describe your goal</label>
         <textarea
           id="goalText"
           className="goal-textarea"

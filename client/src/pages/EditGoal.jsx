@@ -146,7 +146,7 @@ export default function EditGoal() {
 
           <div className="mb-6 text-left">
             <div className="flex items-start mb-2 gap-3">
-              <label htmlFor="description" className="font-medium flex-1 pr-2">
+              <label htmlFor="description" className="font-medium flex-1 pr-2 describe">
                 Description / Details{' '}
                 <span className="text-gray-500 text-sm">
                   (what, why, constraints, timeframe, resources)
@@ -193,7 +193,7 @@ export default function EditGoal() {
           </div>
 
           <button
-            className={`w-full py-3 text-white rounded text-lg font-semibold transition ${
+            className={`w-full py-3 text-white edit-btn rounded text-lg font-semibold transition btn ${
               loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
             }`}
             onClick={handleUpdate}
