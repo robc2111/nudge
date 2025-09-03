@@ -3,6 +3,7 @@ import axios from '../api/axios';
 import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { setSEO } from '../lib/seo';
+import DeleteAccountSection from '../components/DeleteAccountSection';
 
 const REQ_TIMEOUT_MS = 15000;
 
@@ -243,6 +244,7 @@ export default function Profile() {
         <Link to="/reflections" className="btn">📝 Reflections</Link>
         <Link to="/goal-setup" className="btn">➕ Add New Goal</Link>
         {user?.plan === 'pro' ? <ManageSubscriptionButton /> : <UpgradeButton />}
+        {user && <DeleteAccountSection />}
       </div>
     </div>
   );

@@ -71,7 +71,7 @@ const GoalCard = ({
 
   return (
     <div className="card">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div >
         <img src="/cake.png" alt="Goal" />
         <h3 style={{ margin: 0 }}>
           Goal: {goal.title}{' '}

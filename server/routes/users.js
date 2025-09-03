@@ -1,4 +1,4 @@
-// routes/users.js
+// server/routes/users.js
 const express = require('express');
 const router = express.Router();
 
@@ -13,20 +13,40 @@ const {
   updateUser,
   deleteUser,
   getUserDashboard,
+  deleteMe, // optional
 } = require('../controllers/usersController');
 
-// Public (keep as-is or protect later)
+const { validate } = require('../validation/middleware');
+const { UserPatchSchema, UserIdParam, UserDashboardParams } = require('../validation/schemas');
+
+// Public
 router.get('/', getUsers);
 router.post('/', createUser);
 
 // Authenticated
 router.get('/me', verifyToken, getCurrentUser);
-router.patch('/me', verifyToken, patchMe);
+router.patch('/me', verifyToken, validate(UserPatchSchema, 'body'), patchMe);
+if (typeof deleteMe === 'function') {
+  router.delete('/me', verifyToken, deleteMe);
+}
 
-router.get('/:userId/dashboard', verifyToken, getUserDashboard);
+router.get(
+  '/:userId/dashboard',
+  verifyToken,
+  validate(UserDashboardParams, 'params'),
+  getUserDashboard
+);
 
-router.get('/:id', verifyToken, getUserById);
-router.put('/:id', verifyToken, updateUser);
-router.delete('/:id', verifyToken, deleteUser);
+router.get('/:id', verifyToken, validate(UserIdParam, 'params'), getUserById);
+
+router.put(
+  '/:id',
+  verifyToken,
+  validate(UserIdParam, 'params'),
+  validate(UserPatchSchema, 'body'),
+  updateUser
+);
+
+router.delete('/:id', verifyToken, validate(UserIdParam, 'params'), deleteUser);
 
 module.exports = router;

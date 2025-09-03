@@ -1,10 +1,12 @@
-// server/routes/passwordReset.js
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcrypt');
 const pool = require('../db');
 const { sendResetEmail } = require('../utils/email');
 const { issueResetTokenForUser, consumeResetToken } = require('../utils/resetToken');
+
+const { validate } = require('../validation/middleware');
+const { ForgotPasswordBody, ResetPasswordBody } = require('../validation/schemas');
 
 const router = express.Router();
 
@@ -15,9 +17,8 @@ const forgotLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-router.post('/forgot-password', forgotLimiter, async (req, res) => {
+router.post('/forgot-password', forgotLimiter, validate(ForgotPasswordBody, 'body'), async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
-  // Always return generic to avoid account enumeration
   try {
     if (email) {
       const { rows } = await pool.query(
@@ -41,12 +42,9 @@ router.post('/forgot-password', forgotLimiter, async (req, res) => {
   }
 });
 
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', validate(ResetPasswordBody, 'body'), async (req, res) => {
   const token = String(req.body?.token || '');
   const password = String(req.body?.password || '');
-
-  if (!token || !password) return res.status(400).json({ error: 'Missing token or password' });
-  if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
   try {
     const userId = await consumeResetToken(token);

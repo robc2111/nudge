@@ -1,6 +1,7 @@
-//reflections.js
 const express = require('express');
 const router = express.Router();
+const verifyToken = require('../middleware/verifyToken');
+
 const {
   getReflections,
   getReflectionById,
@@ -9,10 +10,13 @@ const {
   deleteReflection
 } = require('../controllers/reflectionsController');
 
-router.get('/', getReflections);
-router.get('/:id', getReflectionById);
-router.post('/', createReflection);
-router.put('/:id', updateReflection);
-router.delete('/:id', deleteReflection);
+const { validate } = require('../validation/middleware');
+const { IdParam, ReflectionCreateSchema, ReflectionUpdateSchema } = require('../validation/schemas');
+
+router.get('/', verifyToken, getReflections);
+router.get('/:id', verifyToken, validate(IdParam, 'params'), getReflectionById);
+router.post('/', verifyToken, validate(ReflectionCreateSchema, 'body'), createReflection);
+router.put('/:id', verifyToken, validate(IdParam, 'params'), validate(ReflectionUpdateSchema, 'body'), updateReflection);
+router.delete('/:id', verifyToken, validate(IdParam, 'params'), deleteReflection);
 
 module.exports = router;

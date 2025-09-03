@@ -1,8 +1,9 @@
+// server/controllers/usersController.js
 const { DateTime } = require('luxon');
 const { assignStatuses } = require('../utils/statusUtils');
 const pool = require('../db');
 
-// helpers
+// ------- helpers -------
 async function countActiveGoals(userId) {
   const { rows } = await pool.query(
     `SELECT COUNT(*)::int AS c
@@ -14,7 +15,7 @@ async function countActiveGoals(userId) {
   return rows[0]?.c ?? 0;
 }
 
-// GET all users
+// ------- CRUD (existing) -------
 const getUsers = async (_req, res) => {
   try {
     const result = await pool.query('SELECT * FROM users');
@@ -24,12 +25,10 @@ const getUsers = async (_req, res) => {
   }
 };
 
-// POST create a new user
 const createUser = async (req, res) => {
   if (!req.body || !req.body.telegram_id) {
     return res.status(400).json({ error: 'Missing telegram_id in request body' });
   }
-
   const { telegram_id, name } = req.body;
 
   try {
@@ -45,7 +44,6 @@ const createUser = async (req, res) => {
   }
 };
 
-// GET user by ID
 const getUserById = async (req, res) => {
   const requestedId = req.params.id;
   const authenticatedUserId = req.user.id;
@@ -98,7 +96,6 @@ const TZ_ALIASES = {
   belgrade: 'Europe/Belgrade',
   cet: 'Europe/Belgrade',
 };
-
 function normalizeTz(input) {
   if (!input) return null;
   const raw = String(input).trim();
@@ -117,7 +114,7 @@ const patchMe = async (req, res) => {
     timezone,
     plan,
     plan_status,
-    telegram_enabled, // ✅ NEW
+    telegram_enabled,
   } = req.body;
 
   const sets = [];
@@ -169,7 +166,6 @@ const patchMe = async (req, res) => {
   }
 };
 
-// PUT update user
 const updateUser = async (req, res) => {
   const authenticatedUserId = req.user.id;
   const targetUserId = req.params.id;
@@ -193,7 +189,6 @@ const updateUser = async (req, res) => {
   }
 };
 
-// DELETE user
 const deleteUser = async (req, res) => {
   const authenticatedUserId = req.user.id;
   const targetUserId = req.params.id;
@@ -209,6 +204,82 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// ------- NEW: DELETE /api/users/me (with confirmation) -------
+const deleteMe = async (req, res) => {
+  const userId = req.user.id;
+  const { confirm, acknowledge } = req.body || {};
+
+  // one-line debug (remove after verifying)
+  console.log('[users:delete-me]', { uid: userId, confirm, acknowledge });
+
+  if ((confirm || '').toUpperCase() !== 'DELETE' || acknowledge !== true) {
+    return res.status(403).json({ error: 'Please type DELETE and tick the box to confirm.' });
+  }
+
+  try {
+    await pool.query('BEGIN');
+
+    // Defensive cascades (if your FKs already cascade, these will delete zero rows quickly)
+    await pool.query(
+      `DELETE FROM reflections WHERE user_id = $1`,
+      [userId]
+    );
+    await pool.query(
+      `DELETE FROM check_ins WHERE user_id = $1`,
+      [userId]
+    );
+    await pool.query(
+      `DELETE FROM microtasks
+        WHERE task_id IN (
+          SELECT t.id
+            FROM tasks t
+            JOIN subgoals sg ON sg.id = t.subgoal_id
+            JOIN goals g ON g.id = sg.goal_id
+           WHERE g.user_id = $1
+        )`,
+      [userId]
+    );
+    await pool.query(
+      `DELETE FROM tasks
+        WHERE subgoal_id IN (
+          SELECT sg.id
+            FROM subgoals sg
+            JOIN goals g ON g.id = sg.goal_id
+           WHERE g.user_id = $1
+        )`,
+      [userId]
+    );
+    await pool.query(
+      `DELETE FROM subgoals
+        WHERE goal_id IN (
+          SELECT g.id
+            FROM goals g
+           WHERE g.user_id = $1
+        )`,
+      [userId]
+    );
+    await pool.query(
+      `DELETE FROM goals WHERE user_id = $1`,
+      [userId]
+    );
+
+    // finally, the user
+    const { rowCount } = await pool.query(
+      `DELETE FROM users WHERE id = $1`,
+      [userId]
+    );
+
+    await pool.query('COMMIT');
+
+    if (!rowCount) return res.status(404).json({ error: 'User not found' });
+    return res.json({ ok: true });
+  } catch (err) {
+    await pool.query('ROLLBACK');
+    console.error('❌ deleteMe error:', err.message);
+    return res.status(500).json({ error: 'Failed to delete account' });
+  }
+};
+
 // GET /api/users/:userId/dashboard
 const getUserDashboard = async (req, res) => {
   const requestedUserId = req.params.userId;
@@ -217,7 +288,6 @@ const getUserDashboard = async (req, res) => {
   if (!requestedUserId || typeof requestedUserId !== 'string') {
     return res.status(400).json({ error: 'Invalid user ID' });
   }
-
   if (requestedUserId !== authenticatedUserId) {
     return res.status(403).json({ error: 'Access denied' });
   }
@@ -276,14 +346,9 @@ const getUserDashboard = async (req, res) => {
             total += 1;
             if (mt.status === 'done') done += 1;
           }
-
           const next = task.microtasks.find((mt) => mt.status !== 'done');
           if (!current.microtaskId && next) {
-            current = {
-              subgoalId: sg.id,
-              taskId: task.id,
-              microtaskId: next.id,
-            };
+            current = { subgoalId: sg.id, taskId: task.id, microtaskId: next.id };
           }
         }
       }
@@ -339,4 +404,5 @@ module.exports = {
   getUserDashboard,
   getCurrentUser,
   patchMe,
+  deleteMe, // <-- export new handler
 };

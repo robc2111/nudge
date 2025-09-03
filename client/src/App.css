@@ -464,15 +464,15 @@ img { max-width: 100%; height: auto; display: block; }
   border: none;
   transition: background-color 0.2s ease;
 }
-.btn:hover { background-color: #a55217; }
+.btn:hover { background-color: #a55217; text-decoration: none;}
 
 /* login link */
 .brand-link {
-  color: #bd661d;
+  color: white;
   text-decoration: none;
   border-bottom: 1px solid transparent;
 }
-.brand-link:hover { font-weight: bold; border-bottom-color: #a55217; }
+.brand-link:hover { font-weight: bold; border-bottom-color: #a55217; color: silver;}
 
 /* mobile: stack labels above inputs */
 @media (max-width: 600px) {
@@ -1144,3 +1144,43 @@ html, body, #root, .dashboard {
   text-decoration: underline;
 }
 .legal-card .legal-link:hover { color: #a55217; }
+
+/* Keep button-links white, no underline, on every state */
+a.btn,
+a.btn:link,
+a.btn:visited,
+a.btn:hover,
+a.btn:active,
+a.btn:focus {
+  color: #fff;
+  text-decoration: none;
+}
+
+/* Delete button (danger variant) */
+.btn-delete {
+  background-color: #dc2626;   /* red-600 */
+  color: #fff;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.btn-delete:hover {
+  background-color: #b91c1c;   /* darker red */
+  transform: translateY(-2px);
+}
+
+.btn-delete:active {
+  background-color: #991b1b;   /* darkest red */
+  transform: translateY(0);   /* reset press */
+}
+
+.btn-delete:disabled {
+  background-color: #fca5a5;   /* red-300 */
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+

@@ -1,4 +1,3 @@
-// server/routes/telegram.js
 const express = require('express');
 const { DateTime } = require('luxon');
 const router = express.Router();
@@ -14,12 +13,7 @@ function validZone(tz) {
   try { return tz && DateTime.local().setZone(tz).isValid; } catch { return false; }
 }
 
-function isUserWeeklyReflectionWindow(userTz, { hourStart = 18, hourEnd = 23, isoWeekday = 7 } = {}) {
-  const zone = validZone(userTz) ? userTz : 'Etc/UTC';
-  const now = DateTime.now().setZone(zone); // user-local time
-  return now.weekday === isoWeekday && now.hour >= hourStart && now.hour <= hourEnd;
-}
-
+// ✅ single definition (removed duplicate)
 function isUserWeeklyReflectionWindow(
   userTz,
   { hourStart = 18, hourEnd = 23, isoWeekday = 7 } = {}
@@ -32,6 +26,7 @@ function isUserWeeklyReflectionWindow(
     (now.hour < hourEnd || (now.hour === hourEnd && now.minute === 0))
   );
 }
+
 const sendMessage = (chatId, text, extra = {}) =>
   sendTelegram({ chat_id: chatId, text, parse_mode: 'Markdown', ...extra });
 
@@ -62,19 +57,16 @@ async function handleMarkDone({ text, user, chatId }) {
     return;
   }
 
-  // 1) mark as done
   await pool.query(
-  `UPDATE microtasks
-      SET status = 'done',
-          completed_at = COALESCE(completed_at, NOW())
-    WHERE id = $1`,
-  [hit.id]
-);
+    `UPDATE microtasks
+        SET status = 'done',
+            completed_at = COALESCE(completed_at, NOW())
+      WHERE id = $1`,
+    [hit.id]
+  );
 
-  // 2) cascade normalization
   const cascade = await cascadeAfterMicrotaskDone(hit.id);
 
-  // 3) ack + next-up
   await sendMessage(chatId, `✅ Marked *${hit.title}* as done! 🎉`);
 
   if (cascade?.activeMicroId) {
@@ -93,7 +85,7 @@ async function handleMarkDone({ text, user, chatId }) {
 router.post('/webhook', async (req, res) => {
   try {
     const message = req.body.message;
-     console.log('📩 Webhook payload:', JSON.stringify(req.body, null, 2));
+    console.log('📩 Webhook payload:', JSON.stringify(req.body, null, 2));
     if (!message || !message.text) return res.sendStatus(200);
 
     const chatId = message.chat.id;
@@ -114,41 +106,40 @@ router.post('/webhook', async (req, res) => {
       return res.sendStatus(200);
     }
 
-    // 🚨 PRIORITY: mark-as-done should work even when replying to any message (incl. weekly)
+    // mark-as-done high priority
     if (/^(done|complete|✔)\s/i.test(textLower)) {
       await handleMarkDone({ text, user, chatId });
       return res.sendStatus(200);
     }
 
-    // 1.5) Handle replies to weekly prompts (only if not a done-command)
-   // server/routes/telegram.js  (in the section that handles reply_to_message)
-if (message.reply_to_message?.message_id) {
-  const repliedId = message.reply_to_message.message_id;
+    // replies to weekly prompts
+    if (message.reply_to_message?.message_id) {
+      const repliedId = message.reply_to_message.message_id;
 
-  const { rows: pRows } = await pool.query(
-    `SELECT id, goal_id
-       FROM weekly_prompts
-      WHERE user_id = $1 AND telegram_message_id = $2
-      ORDER BY sent_at DESC
-      LIMIT 1`,
-    [user.id, repliedId]
-  );
+      const { rows: pRows } = await pool.query(
+        `SELECT id, goal_id
+           FROM weekly_prompts
+          WHERE user_id = $1 AND telegram_message_id = $2
+          ORDER BY sent_at DESC
+          LIMIT 1`,
+        [user.id, repliedId]
+      );
 
-  if (pRows[0]) {
-    const goalId = pRows[0].goal_id || null;
+      if (pRows[0]) {
+        const goalId = pRows[0].goal_id || null;
 
-    await pool.query(
-      `INSERT INTO reflections (user_id, goal_id, content, created_at, source, weekly_prompt_id)
-       VALUES ($1, $2, $3, NOW(), 'weekly_checkin', $4)`,
-      [user.id, goalId, text, pRows[0].id]
-    );
+        await pool.query(
+          `INSERT INTO reflections (user_id, goal_id, content, created_at, source, weekly_prompt_id)
+           VALUES ($1, $2, $3, NOW(), 'weekly_checkin', $4)`,
+          [user.id, goalId, text, pRows[0].id]
+        );
 
-    await sendMessage(chatId, '✅ Saved your weekly reflection for this goal. Nice work!');
-    return res.sendStatus(200);
-  }
-}
+        await sendMessage(chatId, '✅ Saved your weekly reflection for this goal. Nice work!');
+        return res.sendStatus(200);
+      }
+    }
 
-    // 2) /reflect
+    // /reflect
     if (textLower === '/reflect') {
       reflectionSessions[chatId] = true;
       await sendMessage(
@@ -158,7 +149,7 @@ if (message.reply_to_message?.message_id) {
       return res.sendStatus(200);
     }
 
-    // 3) reflection reply
+    // reflection reply
     if (reflectionSessions[chatId]) {
       reflectionSessions[chatId] = false;
 
@@ -186,8 +177,8 @@ if (message.reply_to_message?.message_id) {
       return res.sendStatus(200);
     }
 
-    // 4) weekly auto capture window
-   if (isUserWeeklyReflectionWindow(user.timezone)) { 
+    // weekly auto capture
+    if (isUserWeeklyReflectionWindow(user.timezone)) {
       const { rows } = await pool.query(
         `SELECT id FROM goals WHERE user_id = $1 AND status = 'in_progress' LIMIT 1`,
         [user.id]
@@ -203,9 +194,9 @@ if (message.reply_to_message?.message_id) {
       return res.sendStatus(200);
     }
 
-    // 4.5) /today → show the next task for each goal with remaining microtasks
+    // /today
     if (textLower === '/today') {
-      const packs = await fetchNextAcrossGoals(user.id); // uses in-progress/has-work criteria
+      const packs = await fetchNextAcrossGoals(user.id);
 
       if (packs.length === 0) {
         await sendMessage(chatId, '🎉 No pending microtasks. You’re all caught up across all goals!');
@@ -231,7 +222,7 @@ ${renderChecklist(p.microtasks, p.nextIdx)}`)
       return res.sendStatus(200);
     }
 
-    // 5) /goals
+    // /goals
     if (textLower === '/goals') {
       const { rows } = await pool.query(
         `SELECT title FROM goals WHERE user_id = $1 AND status = 'in_progress'`,
@@ -245,7 +236,7 @@ ${renderChecklist(p.microtasks, p.nextIdx)}`)
       return res.sendStatus(200);
     }
 
-    // 6) tones
+    // tones
     async function updateUserTone(userId, tone, chatId) {
       const updateRes = await pool.query(
         `UPDATE goals SET tone = $1
@@ -296,7 +287,7 @@ Just reply with one of the keywords.`
       return res.sendStatus(200);
     }
 
-    // 9) help
+    // help
     if (textLower === '/help') {
       await sendMessage(
         chatId,
@@ -313,7 +304,7 @@ Here’s what I can do:
       return res.sendStatus(200);
     }
 
-    // 10) fallback
+    // fallback
     await sendMessage(
       chatId,
       `Hi ${user.name}, I didn’t understand that command. 🤔

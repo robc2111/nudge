@@ -1,6 +1,7 @@
-//check_ins.js
 const express = require('express');
 const router = express.Router();
+const verifyToken = require('../middleware/verifyToken');
+
 const {
   getCheckIns,
   getCheckInById,
@@ -9,10 +10,13 @@ const {
   deleteCheckIn
 } = require('../controllers/checkInsController');
 
-router.get('/', getCheckIns);            // Get all check-ins
-router.get('/:id', getCheckInById);      // Get check-in by ID
-router.post('/', createCheckIn);         // Create a check-in
-router.put('/:id', updateCheckIn);       // Update a check-in
-router.delete('/:id', deleteCheckIn);    // Delete a check-in
+const { validate } = require('../validation/middleware');
+const { IdParam, CheckInCreateSchema, CheckInUpdateSchema } = require('../validation/schemas');
+
+router.get('/', verifyToken, getCheckIns);
+router.get('/:id', verifyToken, validate(IdParam, 'params'), getCheckInById);
+router.post('/', verifyToken, validate(CheckInCreateSchema, 'body'), createCheckIn);
+router.put('/:id', verifyToken, validate(IdParam, 'params'), validate(CheckInUpdateSchema, 'body'), updateCheckIn);
+router.delete('/:id', verifyToken, validate(IdParam, 'params'), deleteCheckIn);
 
 module.exports = router;

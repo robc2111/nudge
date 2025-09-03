@@ -1,5 +1,5 @@
 // src/components/Footer.jsx
-import { FaInstagram, FaTwitter, FaLinkedin } from 'react-icons/fa';
+import { FaInstagram, FaTwitter, FaLinkedin, FaFacebook } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
 const contacts = [
@@ -9,9 +9,10 @@ const contacts = [
 ];
 
 const socials = [
-  { icon: FaInstagram, url: 'https://instagram.com/goalcrumbs', label: 'Instagram' },
+  { icon: FaInstagram, url: 'https://instagram.com/goal_crumbs', label: 'Instagram' },
   { icon: FaTwitter, url: 'https://twitter.com/goalcrumbs', label: 'Twitter' },
-  { icon: FaLinkedin, url: 'https://www.linkedin.com/company/goalcrumbs', label: 'LinkedIn' },
+  { icon: FaLinkedin, url: 'https://www.linkedin.com/company/108292953', label: 'LinkedIn' },
+  { icon: FaFacebook, url: 'https://www.facebook.com/goalcrumbs', label: 'Facebook' }
 ];
 
 const Footer = () => {
