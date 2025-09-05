@@ -42,20 +42,22 @@ const Header = () => {
           </Link>
         </div>
 
-        <nav className="header-nav">
-          <Link to="/">Home</Link>
-          {token ? (
-            <>
-              <Link to="/dashboard">Dashboard</Link>
-              <Link to="/profile">Profile</Link>
-            </>
-          ) : (
-            <>
-              <Link to="/login">Login</Link>
-              <Link to="/signup">Sign Up</Link>
-            </>
-          )}
-        </nav>
+        // src/components/Header.jsx (nav section)
+<nav className="header-nav">
+  <Link to="/">Home</Link>
+  <Link to="/faq">FAQs</Link> {/* ← show for all users */}
+  {token ? (
+    <>
+      <Link to="/dashboard">Dashboard</Link>
+      <Link to="/profile">Profile</Link>
+    </>
+  ) : (
+    <>
+      <Link to="/login">Login</Link>
+      <Link to="/signup">Sign Up</Link>
+    </>
+  )}
+</nav>
 
         <div className="header-user">
           {user && (

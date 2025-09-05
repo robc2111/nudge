@@ -22,6 +22,7 @@ const BillingSuccess= lazy(() => import('./pages/BillingSuccess'));
 const BillingCancel = lazy(() => import('./pages/BillingCancel'));
 const Privacy       = lazy(() => import('./pages/Privacy'));
 const Terms         = lazy(() => import('./pages/Terms'));
+const FAQ = lazy(() => import('./pages/FAQ'));
 
 const Loader = () => <div style={{ padding: '2rem' }}>Loading…</div>;
 
@@ -57,6 +58,7 @@ export default function App() {
               <Route path="/signup" element={<SignUp />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
+              <Route path="/faq" element={<FAQ />} />
 
               {/* Private */}
               <Route element={<Protected />}>

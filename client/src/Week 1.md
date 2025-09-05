@@ -3,9 +3,6 @@ Week 1
 
 
 Day 3 (Wed)
-	•	Large: Deployment readiness → test migrations + add rollback procedure
-	
-	- Add faqs page to help with LLM optimisation
 	- Register for self employed tax (sole trader)
 
 Day 4 (Thu)
@@ -41,6 +38,7 @@ Day 8 (Tue)
 	•	Quick: Disable/hide Delete Goal button for free plan (UI polish)
 	•	Medium: Manual test: stripe checkout/cancel/portal
 	•	Large: Security: rate limiting for login/auth/AI endpoints
+	- review faqs
 
 Day 9 (Wed)
 	•	Quick: Polish error states (e.g. profile load, dashboard load)

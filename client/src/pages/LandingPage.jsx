@@ -41,42 +41,50 @@ export default function LandingPage() {
       </section>
 
       <section className="side-by-side-sections">
-        <div className="how-it-works-section">
-          <h2>How It Works 🍰</h2>
-          <div>
-            <img src="/cake.png" alt="Goal" />
-            <p><strong>Goal:</strong> Describe your mission. We set smart defaults.</p>
-          </div>
-          <div>
-            <img src="/slice.png" alt="Subgoal" />
-            <p><strong>Subgoal:</strong> We slice your goal into weekly milestones.</p>
-          </div>
-          <div>
-            <img src="/crumbs.png" alt="Tasks" />
-            <p><strong>Tasks → Microtasks:</strong> Tiny steps with daily nudges and weekly check-ins.</p>
-          </div>
-          <div>
-            <img src="/ant.png" alt="Daily Reminders" />
-            <p>
-              <strong>Daily Reminders:</strong> Your next microtask sent over Telegram —
-              like an ant carrying crumbs, tiny consistent actions add up.
-            </p>
-          </div>
-        </div>
+  <div className="how-it-works-section">
+    <h2>How It Works 🍰</h2>
+    <div>
+      <img src="/cake.png" alt="Goal" />
+      <p><strong>Goal:</strong> Describe your mission. We set smart defaults.</p>
+    </div>
+    <div>
+      <img src="/slice.png" alt="Subgoal" />
+      <p><strong>Subgoal:</strong> We slice your goal into weekly milestones.</p>
+    </div>
+    <div>
+      <img src="/crumbs.png" alt="Tasks" />
+      <p><strong>Tasks → Microtasks:</strong> Tiny steps with daily nudges and weekly check-ins.</p>
+    </div>
+    <div>
+      <img src="/ant.png" alt="Daily Reminders" />
+      <p>
+        <strong>Daily Reminders:</strong> Your next microtask sent over Telegram —
+        like an ant carrying crumbs, tiny consistent actions add up.
+      </p>
+    </div>
 
-        <div className="mx-auto max-w-screen-xl px-6 md:px-10 py-12 md:py-16 text-center">
-          <h2 className="text-2xl md:text-3xl font-bold">See Your Progress at a Glance</h2>
-          <img
-            className="mx-auto mt-6 rounded-2xl shadow-md w-full max-w-5xl"
-            src="/dashboard.png"
-            alt="GoalCrumbs dashboard preview"
-            loading="lazy"
-            width={500}
-            height={350}
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-          />
-        </div>
-      </section>
+    {/* ➕ Add FAQ link here */}
+    <p style={{ marginTop: '1rem' }}>
+      Want more details? Check out our{" "}
+      <Link to="/faq" className="cta-button secondary">
+        Frequently Asked Questions
+      </Link>
+    </p>
+  </div>
+
+  <div className="mx-auto max-w-screen-xl px-6 md:px-10 py-12 md:py-16 text-center">
+    <h2 className="text-2xl md:text-3xl font-bold">See Your Progress at a Glance</h2>
+    <img
+      className="mx-auto mt-6 rounded-2xl shadow-md w-full max-w-5xl"
+      src="/dashboard.png"
+      alt="GoalCrumbs dashboard preview"
+      loading="lazy"
+      width={500}
+      height={350}
+      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+    />
+  </div>
+</section>
 
       <section id="plans" className="about-section">
         <h2>Choose Your Plan</h2>
