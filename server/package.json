@@ -5,7 +5,13 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "node index.js",
-    "preview:weekly": "node scripts/preview-weekly.js --user"
+    "preview:weekly": "node scripts/preview-weekly.js --user",
+
+    "migrate:up": "cross-env NODE_ENV=production node-pg-migrate up -m ./migrations --create-schema --envPath ./.env",
+    "migrate:down": "cross-env NODE_ENV=production node-pg-migrate down -m ./migrations --envPath ./.env",
+
+    "migrate:status": "node scripts/migrate-status.js",
+    "migrate:test": "node scripts/test-migrations.js"
   },
   "keywords": [],
   "author": "",
@@ -31,5 +37,9 @@
     "stripe": "^18.4.0",
     "uuid": "^11.1.0",
     "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "cross-env": "^10.0.0",
+    "node-pg-migrate": "^8.0.3"
   }
 }

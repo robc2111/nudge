@@ -3,10 +3,8 @@ Week 1
 
 
 Day 3 (Wed)
-	•	Quick: Remove dead routes (obsolete weekly reflection, etc.)
-	•	Medium: Validation with zod/yup on user/goal inputs
 	•	Large: Deployment readiness → test migrations + add rollback procedure
-	- Trademark GoalCrumbs
+	
 	- Add faqs page to help with LLM optimisation
 	- Register for self employed tax (sole trader)
 
@@ -27,6 +25,7 @@ Day 6 (Sat)
 	•	Medium: Account deletion integration with Stripe (cancel subscription on delete)
 	•	Large: Test matrix (Free vs Pro, Telegram enabled/disabled, timezones)
 	- ensure weekly checkin acts as an accoutability partner by monitoring progress and giving a message that reflects this
+	- Trademark GoalCrumbs
 
 ⸻
 
