@@ -21,7 +21,8 @@ const Header = () => {
   useEffect(() => {
     if (!token) return;
 
-    api.get('/users/me')
+    api
+      .get('/users/me')
       .then((res) => {
         setUser(res.data);
         localStorage.setItem('user', JSON.stringify(res.data));
@@ -42,22 +43,21 @@ const Header = () => {
           </Link>
         </div>
 
-        // src/components/Header.jsx (nav section)
-<nav className="header-nav">
-  <Link to="/">Home</Link>
-  <Link to="/faq">FAQs</Link> {/* ← show for all users */}
-  {token ? (
-    <>
-      <Link to="/dashboard">Dashboard</Link>
-      <Link to="/profile">Profile</Link>
-    </>
-  ) : (
-    <>
-      <Link to="/login">Login</Link>
-      <Link to="/signup">Sign Up</Link>
-    </>
-  )}
-</nav>
+        <nav className="header-nav">
+          <Link to="/">Home</Link>
+          <Link to="/faq">FAQs</Link> {/* ← show for all users */}
+          {token ? (
+            <>
+              <Link to="/dashboard">Dashboard</Link>
+              <Link to="/profile">Profile</Link>
+            </>
+          ) : (
+            <>
+              <Link to="/login">Login</Link>
+              <Link to="/signup">Sign Up</Link>
+            </>
+          )}
+        </nav>
 
         <div className="header-user">
           {user && (

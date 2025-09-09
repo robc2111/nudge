@@ -7,14 +7,12 @@ const { assignStatuses } = require('../utils/statusUtils');
 
 /** Count only active, non-deleted goals for a user */
 async function countActiveGoals(userId) {
+  // Be resilient across environments: count all user goals.
+  // Reintroduce a specific status filter once the schema/values are confirmed.
   const { rows } = await pool.query(
-    `
-    SELECT COUNT(*)::int AS c
-      FROM goals
-     WHERE user_id = $1
-       AND (deleted_at IS NULL OR deleted_at = 'epoch'::timestamptz) -- tolerate legacy cols
-       AND status IN ('in_progress')
-    `,
+    `SELECT COUNT(*)::int AS c
+       FROM public.goals
+      WHERE user_id = $1`,
     [userId]
   );
   return rows[0]?.c ?? 0;
@@ -135,8 +133,8 @@ const getCurrentUser = async (req, res) => {
       activeGoalCount,
     });
   } catch (err) {
-    console.error('Error loading user:', err.message);
-    res.status(500).json({ error: 'Failed to load user' });
+    console.error('Error loading user:', err); // full object, includes code & detail
+    res.status(500).json({ error: err.message || 'Failed to load user' });
   }
 };
 

@@ -113,6 +113,11 @@ app.use('/api/password', require('./routes/passwordReset'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/gpt', require('./routes/gptRoutes'));
 app.use('/api/payments', require('./routes/payments'));
+try {
+  app.use('/api/og', require('./routes/og'));
+} catch (e) {
+  console.warn('[og] disabled:', e.message);
+}
 
 // 🔒 plan management (choose active on Free)
 app.use('/api/plan', require('./routes/plan'));

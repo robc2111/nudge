@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from '../api/axios';
-import { setSEO } from '../lib/seo';
+import { setSEO, seoPresets } from '../lib/seo';
 
 const Login = () => {
   const [form, setForm] = useState({ email: '', password: '' });
@@ -17,8 +17,11 @@ const Login = () => {
 
   useEffect(() => {
     setSEO({
-      title: 'Log in to GoalCrumbs',
-      description: 'Sign in to GoalCrumbs to continue working on your goals.',
+      title: 'Log in – GoalCrumbs',
+      description: 'Access your GoalCrumbs account.',
+      url: `${seoPresets.baseUrl}/login`,
+      image: seoPresets.brandImage,
+      noindex: true,
     });
   }, []);
 
@@ -65,9 +68,13 @@ const Login = () => {
     try {
       setResetLoading(true);
       await axios.post('/password/forgot-password', { email: resetEmail });
-      setResetMsg('If an account exists for that email, a reset link has been sent.');
+      setResetMsg(
+        'If an account exists for that email, a reset link has been sent.'
+      );
     } catch {
-      setResetMsg('If an account exists for that email, a reset link has been sent.');
+      setResetMsg(
+        'If an account exists for that email, a reset link has been sent.'
+      );
     } finally {
       setResetLoading(false);
     }
@@ -80,7 +87,9 @@ const Login = () => {
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-row">
-            <label htmlFor="email" className="form-label">Email</label>
+            <label htmlFor="email" className="form-label">
+              Email
+            </label>
             <input
               id="email"
               name="email"
@@ -94,7 +103,9 @@ const Login = () => {
           </div>
 
           <div className="form-row">
-            <label htmlFor="password" className="form-label">Password</label>
+            <label htmlFor="password" className="form-label">
+              Password
+            </label>
             <input
               id="password"
               name="password"
@@ -107,9 +118,19 @@ const Login = () => {
             />
           </div>
 
-          <div className="form-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-            <button type="submit" className="btn">Log In</button>
-            <button type="button" className="btn" onClick={openReset} aria-expanded={resetOpen}>
+          <div
+            className="form-actions"
+            style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}
+          >
+            <button type="submit" className="btn">
+              Log In
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={openReset}
+              aria-expanded={resetOpen}
+            >
               Forgot password?
             </button>
           </div>
@@ -118,9 +139,15 @@ const Login = () => {
         {error && <p className="auth-error">{error}</p>}
 
         {resetOpen && (
-          <form onSubmit={handleReset} className="auth-form" style={{ marginTop: '1rem' }}>
+          <form
+            onSubmit={handleReset}
+            className="auth-form"
+            style={{ marginTop: '1rem' }}
+          >
             <div className="form-row">
-              <label htmlFor="reset-email" className="form-label">Reset email</label>
+              <label htmlFor="reset-email" className="form-label">
+                Reset email
+              </label>
               <input
                 id="reset-email"
                 type="email"
@@ -132,26 +159,47 @@ const Login = () => {
                 autoComplete="email"
               />
             </div>
-            <div className="form-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <div
+              className="form-actions"
+              style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}
+            >
               <button type="submit" className="btn" disabled={resetLoading}>
                 {resetLoading ? 'Sending…' : 'Send reset link'}
               </button>
-              <button type="button" className="btn btn-ghost" onClick={() => setResetOpen(false)} disabled={resetLoading}>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setResetOpen(false)}
+                disabled={resetLoading}
+              >
                 Cancel
               </button>
             </div>
-            {resetMsg && <p className="auth-success" style={{ marginTop: '0.5rem' }}>{resetMsg}</p>}
+            {resetMsg && (
+              <p className="auth-success" style={{ marginTop: '0.5rem' }}>
+                {resetMsg}
+              </p>
+            )}
           </form>
         )}
 
         <p className="auth-terms">
           By logging in, you agree to our{' '}
-          <Link to="/terms" className="brand-link">Terms of Service</Link> and{' '}
-          <Link to="/privacy" className="brand-link">Privacy Policy</Link>.
+          <Link to="/terms" className="brand-link">
+            Terms of Service
+          </Link>{' '}
+          and{' '}
+          <Link to="/privacy" className="brand-link">
+            Privacy Policy
+          </Link>
+          .
         </p>
 
         <p style={{ textAlign: 'center', marginTop: '1rem' }}>
-          Don’t have an account? <Link to="/signup" className="brand-link">Sign up</Link>
+          Don’t have an account?{' '}
+          <Link to="/signup" className="brand-link">
+            Sign up
+          </Link>
         </p>
       </div>
     </div>

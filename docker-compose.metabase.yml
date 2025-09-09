@@ -1,0 +1,23 @@
+
+services:
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase
+    restart: unless-stopped
+    ports:
+      - "3001:3000"                  # browse at http://localhost:3001
+    env_file:
+      - .env.metabase
+    environment:
+      # If you prefer keeping env inline, you can put them here instead
+      MB_DB_FILE: /metabase-data/metabase.db
+      MB_SITE_NAME: "GoalCrumbs Analytics"
+      MB_SITE_LOCALE: "en_GB"
+      JAVA_OPTS: "-Xmx512m"          # ~512MB heap, tweak if needed
+    volumes:
+      - ./metabase-data:/metabase-data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/api/health"]
+      interval: 20s
+      timeout: 3s
+      retries: 10

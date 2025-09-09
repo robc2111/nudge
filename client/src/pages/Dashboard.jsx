@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import GoalCard from '../components/GoalCard';
 import SubgoalCard from '../components/SubgoalCard';
 import TaskCard from '../components/TaskCard';
-import { setSEO } from '../lib/seo';
+import { setSEO, seoPresets } from '../lib/seo';
 
 const REQ_TIMEOUT_MS = 12000;
 
@@ -25,20 +25,25 @@ const Dashboard = () => {
 
   useEffect(() => {
     setSEO({
-      title: 'Dashboard - GoalCrumbs',
-      description: 'Track progress across goals, subgoals, tasks, and microtasks.',
+      title: 'Dashboard – GoalCrumbs',
+      description:
+        'See your goals, subgoals, tasks, and microtasks at a glance.',
+      url: `${seoPresets.baseUrl}/dashboard`,
+      image: '/og/dashboard.png',
+      noindex: true,
+      type: 'website',
     });
   }, []);
 
   const getStatusIcon = (status) =>
-    ({ todo: '🕒', in_progress: '⚙️', done: '✅' }[status] ?? '❓');
+    ({ todo: '🕒', in_progress: '⚙️', done: '✅' })[status] ?? '❓';
 
   const getStatusClass = (status) =>
     status === 'done'
       ? 'bg-green-700 text-white'
       : status === 'in_progress'
-      ? 'bg-green-100 text-green-900'
-      : '';
+        ? 'bg-green-100 text-green-900'
+        : '';
 
   const getProgress = (items = []) => {
     const total = items.length;
@@ -86,10 +91,9 @@ const Dashboard = () => {
       setSelectedGoalId(defaultGoal?.id ?? null);
     } catch (err) {
       if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return;
-      const msg =
-        !navigator.onLine
-          ? 'You appear to be offline.'
-          : err.code === 'ECONNABORTED'
+      const msg = !navigator.onLine
+        ? 'You appear to be offline.'
+        : err.code === 'ECONNABORTED'
           ? 'Request timed out. Please try again.'
           : err.response?.data?.error ||
             err.response?.statusText ||
@@ -113,7 +117,10 @@ const Dashboard = () => {
     [goalsList, selectedGoalId]
   );
 
-  const allSubgoals = useMemo(() => selectedGoal?.subgoals ?? [], [selectedGoal]);
+  const allSubgoals = useMemo(
+    () => selectedGoal?.subgoals ?? [],
+    [selectedGoal]
+  );
   const effectiveSubgoal =
     allSubgoals.find((sg) => sg.id === selectedSubgoalId) ||
     firstInProgressOrFirst(allSubgoals);
@@ -124,23 +131,32 @@ const Dashboard = () => {
       setSelectedSubgoalId(effectiveSubgoal.id);
   }, [effectiveSubgoal, selectedSubgoalId]);
 
-  const allTasks = useMemo(() => effectiveSubgoal?.tasks ?? [], [effectiveSubgoal]);
+  const allTasks = useMemo(
+    () => effectiveSubgoal?.tasks ?? [],
+    [effectiveSubgoal]
+  );
   const effectiveTask =
-    allTasks.find((t) => t.id === selectedTaskId) || firstInProgressOrFirst(allTasks);
+    allTasks.find((t) => t.id === selectedTaskId) ||
+    firstInProgressOrFirst(allTasks);
 
   useEffect(() => {
     if (!effectiveTask) setSelectedTaskId(null);
-    else if (effectiveTask.id !== selectedTaskId) setSelectedTaskId(effectiveTask.id);
+    else if (effectiveTask.id !== selectedTaskId)
+      setSelectedTaskId(effectiveTask.id);
   }, [effectiveTask, selectedTaskId]);
 
-  const allMicrotasks = useMemo(() => effectiveTask?.microtasks ?? [], [effectiveTask]);
+  const allMicrotasks = useMemo(
+    () => effectiveTask?.microtasks ?? [],
+    [effectiveTask]
+  );
   const selectedMicrotask =
     allMicrotasks.find((mt) => mt.id === selectedMicrotaskId) || null;
 
   useEffect(() => {
     if (!selectedMicrotask && allMicrotasks.length > 0) {
       const firstPick =
-        allMicrotasks.find((m) => m.status === 'in_progress') || allMicrotasks[0];
+        allMicrotasks.find((m) => m.status === 'in_progress') ||
+        allMicrotasks[0];
       setSelectedMicrotaskId(firstPick.id);
     }
     if (allMicrotasks.length === 0) setSelectedMicrotaskId(null);
@@ -157,7 +173,9 @@ const Dashboard = () => {
       );
 
       if (!resp || !resp.microtasks || !resp.impact) {
-        throw new Error('Unexpected response shape from /microtasks/:id/status');
+        throw new Error(
+          'Unexpected response shape from /microtasks/:id/status'
+        );
       }
 
       const { microtasks: freshMicros, impact } = resp;
@@ -195,10 +213,12 @@ const Dashboard = () => {
         return patchedGoal;
       });
 
-      const firstInProg = (arr) => (arr || []).find((x) => x.status === 'in_progress') || null;
+      const firstInProg = (arr) =>
+        (arr || []).find((x) => x.status === 'in_progress') || null;
       const firstNonDoneMicroId = (mts = []) => {
         const mt =
-          mts.find((m) => m.status === 'in_progress') || mts.find((m) => m.status !== 'done');
+          mts.find((m) => m.status === 'in_progress') ||
+          mts.find((m) => m.status !== 'done');
         return mt?.id || null;
       };
 
@@ -216,7 +236,9 @@ const Dashboard = () => {
       }
 
       if (patchedSubgoal && patchedSubgoal.status === 'done') {
-        const goalNow = newData.goals.find((g) => g.id === (patchedGoal?.id || selectedGoalId));
+        const goalNow = newData.goals.find(
+          (g) => g.id === (patchedGoal?.id || selectedGoalId)
+        );
         const sgInProg = firstInProg(goalNow?.subgoals || []);
         if (sgInProg) {
           nextSubgoalId = sgInProg.id;
@@ -230,7 +252,9 @@ const Dashboard = () => {
       }
 
       if (patchedTask && patchedTask.status === 'done') {
-        const goalNow = newData.goals.find((g) => g.id === (patchedGoal?.id || selectedGoalId));
+        const goalNow = newData.goals.find(
+          (g) => g.id === (patchedGoal?.id || selectedGoalId)
+        );
         const subNow = goalNow?.subgoals.find(
           (sg) => sg.id === (patchedSubgoal?.id || selectedSubgoalId)
         );
@@ -238,18 +262,24 @@ const Dashboard = () => {
         nextTaskId = tInProg?.id || null;
         nextMicroId = firstNonDoneMicroId(tInProg?.microtasks || []);
       } else if (patchedTask) {
-        nextMicroId = resp.impact?.activeMicroId || firstNonDoneMicroId(patchedTask.microtasks);
+        nextMicroId =
+          resp.impact?.activeMicroId ||
+          firstNonDoneMicroId(patchedTask.microtasks);
       }
 
       setData(newData);
       if (nextGoalId !== selectedGoalId) setSelectedGoalId(nextGoalId);
-      if (nextSubgoalId !== selectedSubgoalId) setSelectedSubgoalId(nextSubgoalId);
+      if (nextSubgoalId !== selectedSubgoalId)
+        setSelectedSubgoalId(nextSubgoalId);
       if (nextTaskId !== selectedTaskId) setSelectedTaskId(nextTaskId);
       setSelectedMicrotaskId(nextMicroId);
 
       refreshData();
     } catch (err) {
-      console.error('❌ Error updating microtask:', err.response?.data?.error || err.message);
+      console.error(
+        '❌ Error updating microtask:',
+        err.response?.data?.error || err.message
+      );
       refreshData();
     }
   };
@@ -266,7 +296,10 @@ const Dashboard = () => {
         return { ...prev, goals: updatedGoals };
       });
     } catch (err) {
-      console.error('❌ Failed to delete goal:', err.response?.data?.error || err.message);
+      console.error(
+        '❌ Failed to delete goal:',
+        err.response?.data?.error || err.message
+      );
     }
   };
 
@@ -278,7 +311,9 @@ const Dashboard = () => {
   if (error) {
     return (
       <div className="p-8 text-center">
-        <p className="text-red-700 font-semibold mb-2">Unable to load your dashboard.</p>
+        <p className="text-red-700 font-semibold mb-2">
+          Unable to load your dashboard.
+        </p>
         <p className="text-sm text-gray-700 mb-4">{error}</p>
         <button className="btn" onClick={refreshData}>
           🔄 Try again
@@ -294,7 +329,7 @@ const Dashboard = () => {
   if (!goalsList.length) {
     return (
       <div className="dashboard">
-        <p>You don't have any goals yet.</p>
+        <p>You don&apos;t have any goals yet.</p>
         <button
           className="btn"
           disabled={atFreeLimit}
@@ -306,7 +341,10 @@ const Dashboard = () => {
         {atFreeLimit && (
           <p className="auth-error" style={{ marginTop: 8 }}>
             You’re on the Free plan (1 active goal).{' '}
-            <Link to="/profile#billing" className="brand-link">Upgrade</Link> to add more.
+            <Link to="/profile#billing" className="brand-link-dark">
+              Upgrade
+            </Link>{' '}
+            to add more.
           </p>
         )}
       </div>
@@ -347,8 +385,13 @@ const Dashboard = () => {
       {/* Free-plan banner */}
       {atFreeLimit && (
         <div className="plan-banner">
-          <span style={{ fontWeight: 700 }}>Free plan</span> allows 1 active goal.{' '}
-          <Link to="/profile#billing" className="brand-link" style={{ fontWeight: 700, textDecoration: 'underline' }}>
+          <span style={{ fontWeight: 700 }}>Free plan</span> allows 1 active
+          goal.{' '}
+          <Link
+            to="/profile#billing"
+            className="brand-link-dark"
+            style={{ fontWeight: 700, textDecoration: 'underline' }}
+          >
             Upgrade →
           </Link>{' '}
           to add more.

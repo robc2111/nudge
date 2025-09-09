@@ -1,16 +1,20 @@
 Week 1
 
-Day 3 (Wed) - Register for self employed tax (sole trader) - transfer render, supabase and netlfiy accounts to goalcrumbs email if needed
+Day 3 (Wed) - Register for self employed tax (sole trader) - transfer render, supabase and netlfiy accounts to goalcrumbs email if needed \*\*\*
 
 Day 5 (Fri)
-• Quick: Fix CTA/banner contrast (WCAG AA)
-• Medium: Social OG images aligned with brand
-• Large: Performance dashboard (Metabase/Grafana basic setup) - change telegram bot instruction so /done allows users to select a number for the appropriate microtask
+
+- change telegram bot instruction so /done allows users to select a number for the appropriate microtask
 
 Day 6 (Sat)
 • Quick: Add SEO meta descriptions to missing pages (Reflections, Profile)
 • Medium: Account deletion integration with Stripe (cancel subscription on delete)
-• Large: Test matrix (Free vs Pro, Telegram enabled/disabled, timezones) - ensure weekly checkin acts as an accoutability partner by monitoring progress and giving a message that reflects this - Trademark GoalCrumbs
+• Large: Test matrix (Free vs Pro, Telegram enabled/disabled, timezones)
+
+- ensure weekly checkin acts as an accoutability partner by monitoring progress and giving a message that reflects this
+- Trademark GoalCrumbs
+- Correct typo in stripe setup (see email)
+- change pricing to 8.99 with limited offer of 5.00 in 1st month
 
 ⸻
 
@@ -34,7 +38,8 @@ Day 9 (Wed)
 Day 10 (Thu)
 • Quick: Add “Upgrade” links to empty states (Dashboard, Reflections)
 • Medium: Ensure Pro vs Free features exactly match Stripe product
-• Large: Deployment smoke test checklist (payments, cron, AI, Telegram)
+
+- • Large: Deployment smoke test checklist (payments, cron, AI, Telegram)
 
 Day 11 (Fri)
 • Quick: Add cookie notice (banner if tracking/cookies used)
@@ -46,6 +51,11 @@ Day 12 (Sat)
 • Medium: Analytics (privacy-respecting, basic server-side events)
 • Large: OpenAI org setup: dedicated key, usage caps, prod/dev split
 Day 13 - soft launch - business plan with marketing and sales strategy - update portfolio
+
+- investigate buisness insurance
+- check if i need an accountant or can this be automated
+- upgrade Supabase, Netlify and Render if needed
+- upgrade render plan
 
 ⸻
 

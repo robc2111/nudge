@@ -2,22 +2,33 @@ import React, { useEffect, useRef, useState } from 'react';
 import axios from '../api/axios';
 import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { setSEO } from '../lib/seo';
 import DeleteAccountSection from '../components/DeleteAccountSection';
+import { setSEO, seoPresets } from '../lib/seo';
 
 const REQ_TIMEOUT_MS = 15000;
 
-const supportedTZ = typeof Intl.supportedValuesOf === 'function'
-  ? Intl.supportedValuesOf('timeZone')
-  : [
-      'Etc/UTC','Europe/London','Europe/Paris','America/New_York','America/Chicago',
-      'America/Denver','America/Los_Angeles','Asia/Tokyo','Asia/Singapore','Australia/Sydney'
-    ];
+const supportedTZ =
+  typeof Intl.supportedValuesOf === 'function'
+    ? Intl.supportedValuesOf('timeZone')
+    : [
+        'Etc/UTC',
+        'Europe/London',
+        'Europe/Paris',
+        'America/New_York',
+        'America/Chicago',
+        'America/Denver',
+        'America/Los_Angeles',
+        'Asia/Tokyo',
+        'Asia/Singapore',
+        'Australia/Sydney',
+      ];
 
 function guessBrowserTZ() {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Etc/UTC';
-  } catch { return 'Etc/UTC'; }
+  } catch {
+    return 'Etc/UTC';
+  }
 }
 
 function UpgradeButton() {
@@ -31,7 +42,11 @@ function UpgradeButton() {
       toast.error('Checkout failed');
     }
   };
-  return <button className="btn" onClick={onUpgrade}>🚀 Upgrade to Pro</button>;
+  return (
+    <button className="btn" onClick={onUpgrade}>
+      🚀 Upgrade to Pro
+    </button>
+  );
 }
 
 function ManageSubscriptionButton() {
@@ -45,7 +60,11 @@ function ManageSubscriptionButton() {
       toast.error('Could not open billing portal');
     }
   };
-  return <button className="btn" onClick={onManage}>🧾 Manage Subscription</button>;
+  return (
+    <button className="btn" onClick={onManage}>
+      🧾 Manage Subscription
+    </button>
+  );
 }
 
 export default function Profile() {
@@ -63,8 +82,11 @@ export default function Profile() {
 
   useEffect(() => {
     setSEO({
-      title: 'Your Profile - GoalCrumbs',
-      description: 'Manage your account, billing and preferences for GoalCrumbs.',
+      title: 'Profile – GoalCrumbs',
+      description: 'Manage account, timezone, and Telegram settings.',
+      url: `${seoPresets.baseUrl}/profile`,
+      image: '/og/mouseog.png',
+      noindex: true,
     });
   }, []);
 
@@ -86,13 +108,17 @@ export default function Profile() {
   async function saveTelegramEnabled(next) {
     setSavingTel(true);
     try {
-      const { data } = await axios.patch('/users/me', { telegram_enabled: next });
+      const { data } = await axios.patch('/users/me', {
+        telegram_enabled: next,
+      });
       setUser(data);
-      toast.success(next ? 'Telegram reminders enabled' : 'Telegram reminders disabled');
+      toast.success(
+        next ? 'Telegram reminders enabled' : 'Telegram reminders disabled'
+      );
     } catch (e) {
       console.error(e);
       toast.error('Failed to update Telegram preference');
-      setTelegramEnabled((prev) => !prev); // revert UI if failed
+      setTelegramEnabled((prev) => !prev);
     } finally {
       setSavingTel(false);
     }
@@ -108,9 +134,7 @@ export default function Profile() {
       setError('');
 
       try {
-        // keep plan fresh if returning from Stripe
         await axios.post('/payments/sync-plan').catch(() => {});
-
         const res = await axios.get('/users/me', {
           signal: controller.signal,
           timeout: REQ_TIMEOUT_MS,
@@ -120,7 +144,8 @@ export default function Profile() {
         setTz(res.data.timezone || guessBrowserTZ());
         setTelegramEnabled(res.data.telegram_enabled !== false);
       } catch (err) {
-        if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return;
+        if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED')
+          return;
         console.error('❌ Error loading your profile:', err);
         setError('Failed to load your profile. Please try again.');
       } finally {
@@ -144,36 +169,38 @@ export default function Profile() {
       <div className="auth-card">
         <h1 className="auth-title">⚠️ Error</h1>
         <p style={{ marginBottom: '1rem' }}>{error}</p>
-        <Link to="/login" className="btn">🔐 Log In</Link>
+        <Link to="/login" className="btn">
+          🔐 Log In
+        </Link>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: "700px", margin: "2rem auto" }}>
+    <div style={{ maxWidth: '700px', margin: '2rem auto' }}>
       <div className="auth-card">
         <h1 className="auth-title">👤 Your Profile</h1>
         {error && <p className="auth-error">{error}</p>}
 
-        {/* Username */}
         <div className="form-row">
           <label className="form-label">Username</label>
           <input className="form-input" value={user?.name || '—'} readOnly />
         </div>
 
-        {/* Email */}
         <div className="form-row">
           <label className="form-label">Email</label>
           <input className="form-input" value={user?.email || '—'} readOnly />
         </div>
 
-        {/* Telegram */}
         <div className="form-row">
           <label className="form-label">Telegram ID</label>
-          <input className="form-input" value={user?.telegram_id || 'Not connected'} readOnly />
+          <input
+            className="form-input"
+            value={user?.telegram_id || 'Not connected'}
+            readOnly
+          />
         </div>
 
-        {/* Plan */}
         <div className="form-row">
           <label className="form-label">Plan</label>
           <input
@@ -183,10 +210,11 @@ export default function Profile() {
           />
         </div>
 
-        {/* Timezone */}
         <div className="form-row">
           <label className="form-label">Timezone</label>
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <div
+            style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}
+          >
             <select
               className="form-input"
               style={{ maxWidth: 360 }}
@@ -195,7 +223,9 @@ export default function Profile() {
             >
               {!supportedTZ.includes(tz) && <option value={tz}>{tz}</option>}
               {supportedTZ.map((z) => (
-                <option key={z} value={z}>{z}</option>
+                <option key={z} value={z}>
+                  {z}
+                </option>
               ))}
             </select>
             <button
@@ -207,16 +237,20 @@ export default function Profile() {
             </button>
           </div>
           {!user?.timezone && (
-            <div style={{ marginTop: '0.5rem', color: '#666', fontSize: '0.9rem' }}>
-              Defaulting to your browser timezone: <code>{guessBrowserTZ()}</code>
+            <div
+              style={{ marginTop: '0.5rem', color: '#666', fontSize: '0.9rem' }}
+            >
+              Defaulting to your browser timezone:{' '}
+              <code>{guessBrowserTZ()}</code>
             </div>
           )}
         </div>
 
-        {/* Telegram reminders toggle */}
         <div className="form-row">
           <label className="form-label">Telegram reminders</label>
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <div
+            style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}
+          >
             <input
               id="tg-enabled"
               type="checkbox"
@@ -238,12 +272,24 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Buttons row below the card */}
-      <div className="profile-buttons" style={{ gap: '2.5rem', marginTop: '2rem' }}>
-        <Link to="/dashboard" className="btn">📋 My Dashboard</Link>
-        <Link to="/reflections" className="btn">📝 Reflections</Link>
-        <Link to="/goal-setup" className="btn">➕ Add New Goal</Link>
-        {user?.plan === 'pro' ? <ManageSubscriptionButton /> : <UpgradeButton />}
+      <div
+        className="profile-buttons"
+        style={{ gap: '2.5rem', marginTop: '2rem' }}
+      >
+        <Link to="/dashboard" className="btn">
+          📋 My Dashboard
+        </Link>
+        <Link to="/reflections" className="btn">
+          📝 Reflections
+        </Link>
+        <Link to="/goal-setup" className="btn">
+          ➕ Add New Goal
+        </Link>
+        {user?.plan === 'pro' ? (
+          <ManageSubscriptionButton />
+        ) : (
+          <UpgradeButton />
+        )}
         {user && <DeleteAccountSection />}
       </div>
     </div>

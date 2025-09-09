@@ -1,96 +1,125 @@
-// Tiny helper to set SEO tags without Helmet.
-// Safe in React 18/19 and SSR-agnostic (no-ops if document missing).
-
+/**
+ * Imperative helper for Vite/SPA pages. Call once in a useEffect per page.
+ * Example: setSEO({ title: 'Dashboard – GoalCrumbs', description: '...' })
+ */
 export function setSEO({
   title,
   description,
-  ogImage,
-  url,
+  url = window.location.href,
+  image = '/og/birdog.png', // sensible default
+  siteName = 'GoalCrumbs',
   type = 'website',
-  twitterCard = 'summary_large_image',
-} = {}) {
-  if (typeof document === 'undefined') return;
+  noindex = false,
+  canonical,
+  jsonLd,
+}) {
+  const d = document;
 
-  const ensure = (sel, create) => {
-    let el = document.querySelector(sel);
+  const set = (selector, attrs) => {
+    let el = d.querySelector(selector);
     if (!el) {
-      el = create();
-      document.head.appendChild(el);
+      el = d.createElement(attrs.tag || 'meta');
+      if (attrs.name) el.setAttribute('name', attrs.name);
+      if (attrs.property) el.setAttribute('property', attrs.property);
+      d.head.appendChild(el);
     }
-    return el;
+    Object.entries(attrs).forEach(([k, v]) => {
+      if (['tag', 'name', 'property'].includes(k)) return;
+      el.setAttribute(k, v);
+    });
   };
 
-  if (title) document.title = title;
+  if (title) d.title = title;
+
+  if (canonical || url) {
+    let link = d.querySelector('link[rel="canonical"]');
+    if (!link) {
+      link = d.createElement('link');
+      link.rel = 'canonical';
+      d.head.appendChild(link);
+    }
+    link.href = canonical || url;
+  }
 
   if (description) {
-    ensure('meta[name="description"]', () => {
-      const m = document.createElement('meta');
-      m.setAttribute('name', 'description');
-      return m;
-    }).setAttribute('content', description);
+    set('meta[name="description"]', {
+      tag: 'meta',
+      name: 'description',
+      content: description,
+    });
+    set('meta[property="og:description"]', {
+      tag: 'meta',
+      property: 'og:description',
+      content: description,
+    });
+    set('meta[name="twitter:description"]', {
+      tag: 'meta',
+      name: 'twitter:description',
+      content: description,
+    });
   }
 
-  if (url) {
-    ensure('meta[property="og:url"]', () => {
-      const m = document.createElement('meta');
-      m.setAttribute('property', 'og:url');
-      return m;
-    }).setAttribute('content', url);
-  }
+  set('meta[property="og:title"]', {
+    tag: 'meta',
+    property: 'og:title',
+    content: title || 'GoalCrumbs',
+  });
+  set('meta[property="og:type"]', {
+    tag: 'meta',
+    property: 'og:type',
+    content: type,
+  });
+  set('meta[property="og:url"]', {
+    tag: 'meta',
+    property: 'og:url',
+    content: url,
+  });
+  set('meta[property="og:site_name"]', {
+    tag: 'meta',
+    property: 'og:site_name',
+    content: siteName,
+  });
+  set('meta[property="og:image"]', {
+    tag: 'meta',
+    property: 'og:image',
+    content: image,
+  });
 
-  ensure('meta[property="og:type"]', () => {
-    const m = document.createElement('meta');
-    m.setAttribute('property', 'og:type');
-    return m;
-  }).setAttribute('content', type);
+  set('meta[name="twitter:card"]', {
+    tag: 'meta',
+    name: 'twitter:card',
+    content: 'summary_large_image',
+  });
+  set('meta[name="twitter:title"]', {
+    tag: 'meta',
+    name: 'twitter:title',
+    content: title || 'GoalCrumbs',
+  });
+  set('meta[name="twitter:image"]', {
+    tag: 'meta',
+    name: 'twitter:image',
+    content: image,
+  });
 
-  if (title) {
-    ensure('meta[property="og:title"]', () => {
-      const m = document.createElement('meta');
-      m.setAttribute('property', 'og:title');
-      return m;
-    }).setAttribute('content', title);
-  }
-  if (description) {
-    ensure('meta[property="og:description"]', () => {
-      const m = document.createElement('meta');
-      m.setAttribute('property', 'og:description');
-      return m;
-    }).setAttribute('content', description);
-  }
-  if (ogImage) {
-    ensure('meta[property="og:image"]', () => {
-      const m = document.createElement('meta');
-      m.setAttribute('property', 'og:image');
-      return m;
-    }).setAttribute('content', ogImage);
-  }
+  set('meta[name="robots"]', {
+    tag: 'meta',
+    name: 'robots',
+    content: noindex ? 'noindex,nofollow' : 'index,follow',
+  });
 
-  ensure('meta[name="twitter:card"]', () => {
-    const m = document.createElement('meta');
-    m.setAttribute('name', 'twitter:card');
-    return m;
-  }).setAttribute('content', twitterCard);
-
-  if (title) {
-    ensure('meta[name="twitter:title"]', () => {
-      const m = document.createElement('meta');
-      m.setAttribute('name', 'twitter:title');
-      return m;
-    }).setAttribute('content', title);
-  }
-  if (description) {
-    ensure('meta[name="twitter:description"]', () => {
-      const m = document.createElement('meta');
-      m.setAttribute('name', 'twitter:description');
-      return m;
-    }).setAttribute('content', description);
-  }
-  if (ogImage) {
-    ensure('meta[name="twitter:image"]', () => {
-      const m = document.createElement('meta');
-      m.setAttribute('name', 'twitter:image');
-      return m;
-    }).setAttribute('content', ogImage);
+  const existing = d.getElementById('seo-jsonld');
+  if (existing) existing.remove();
+  if (jsonLd) {
+    const script = d.createElement('script');
+    script.id = 'seo-jsonld';
+    script.type = 'application/ld+json';
+    script.text = JSON.stringify(jsonLd);
+    d.head.appendChild(script);
   }
 }
+
+export const seoPresets = {
+  brandImage: '/og/birdog.png',
+  siteName: 'GoalCrumbs',
+  baseUrl: 'https://goalcrumbs.com',
+};
