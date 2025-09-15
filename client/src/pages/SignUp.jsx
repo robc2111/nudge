@@ -49,7 +49,9 @@ export default function Signup() {
       return setError(`Password must be at least ${MIN_PASSWORD} characters.`);
     }
     if (!form.agree) {
-      return setError('You must agree to the Terms of Service and Privacy Policy.');
+      return setError(
+        'You must agree to the Terms of Service and Privacy Policy.'
+      );
     }
 
     setSubmitting(true);
@@ -62,7 +64,8 @@ export default function Signup() {
       });
 
       if (res.data?.token) localStorage.setItem('token', res.data.token);
-      if (res.data?.user) localStorage.setItem('user', JSON.stringify(res.data.user));
+      if (res.data?.user)
+        localStorage.setItem('user', JSON.stringify(res.data.user));
 
       setSuccess(true);
       setTimeout(() => navigate('/dashboard'), 700);
@@ -182,8 +185,14 @@ export default function Signup() {
               required
             />{' '}
             I agree to the{' '}
-            <Link to="/terms" className="brand-link">Terms of Service</Link> and{' '}
-            <Link to="/privacy" className="brand-link">Privacy Policy</Link>.
+            <Link to="/terms" className="brand-link">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link to="/privacy" className="brand-link">
+              Privacy Policy
+            </Link>
+            .
           </label>
         </div>
 
@@ -200,7 +209,9 @@ export default function Signup() {
 
       <p className="auth-footer">
         Already have an account?{' '}
-        <Link to="/login" className="brand-link">Log in</Link>
+        <Link to="/login" className="brand-link">
+          Log in
+        </Link>
       </p>
     </div>
   );
