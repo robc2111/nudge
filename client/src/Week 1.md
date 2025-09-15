@@ -51,6 +51,7 @@ Day 13 - soft launch - business plan with marketing and sales strategy - update 
 - check if i need an accountant or can this be automated
 - upgrade Supabase, Netlify and Render if needed
 - upgrade render plan
+- add option to delete reflections
 
 ⸻
 
