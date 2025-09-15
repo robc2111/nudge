@@ -11,7 +11,6 @@ Day 6 (Sat)
 • Large: Test matrix (Free vs Pro, Telegram enabled/disabled, timezones)
 
 - ensure weekly checkin acts as an accoutability partner by monitoring progress and giving a message that reflects this
-- change pricing to 8.99 with limited offer of 5.00 a month if subscribed by 31st oct
 
 ⸻
 

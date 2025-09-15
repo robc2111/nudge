@@ -503,6 +503,7 @@ Here’s what I can do:
 🎯 */goals* — View your active goals  
 🎙️ */tone* — Change your coach's tone  
 🎙️ */tone status* — Check your current tone  
+💡 *Pro users* get tone-aware weekly coaching messages
 
 ✅ *done* — Show a numbered list of your next microtasks  
 ✅ *done 2* — Mark option #2 from the last list  
