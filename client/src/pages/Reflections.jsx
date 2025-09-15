@@ -1,6 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from 'react';
 import axios from '../api/axios';
-import { setSEO } from '../lib/seo';
+import { setSEO, seoPresets } from '../lib/seo';
 
 const MAX_LEN = 500;
 const REQ_TIMEOUT_MS = 15000;
@@ -17,7 +23,10 @@ export default function Reflections() {
   });
   const [userId, setUserId] = useState(null);
 
-  const [newReflection, setNewReflection] = useState({ goal_id: '', content: '' });
+  const [newReflection, setNewReflection] = useState({
+    goal_id: '',
+    content: '',
+  });
   const [adding, setAdding] = useState(false);
 
   const [loading, setLoading] = useState(true);
@@ -31,11 +40,16 @@ export default function Reflections() {
   const addCtrl = useRef(null);
   const debounceRef = useRef(null);
 
+  // ✅ SEO
   useEffect(() => {
     setSEO({
-      title: 'Your Reflections - GoalCrumbs',
+      title: 'Reflections – GoalCrumbs',
       description:
-        'Review and add weekly reflections tied to your goals to stay accountable.',
+        'Review your weekly reflections to spot trends, celebrate wins, and adjust next steps.',
+      url: `${seoPresets.baseUrl}/reflections`,
+      image: '/og/reflections.png',
+      type: 'website',
+      noindex: false,
     });
   }, []);
 
@@ -102,7 +116,11 @@ export default function Reflections() {
         end_date: filters.end_date?.trim() || undefined,
         sort: filters.sort || 'desc',
       };
-      const res = await axios.get('/reflections', { params, signal, timeout: REQ_TIMEOUT_MS });
+      const res = await axios.get('/reflections', {
+        params,
+        signal,
+        timeout: REQ_TIMEOUT_MS,
+      });
       setReflections(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       if (err?.name !== 'CanceledError' && err?.code !== 'ERR_CANCELED') {
@@ -127,7 +145,13 @@ export default function Reflections() {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, filters.goal_id, filters.start_date, filters.end_date, filters.sort]);
+  }, [
+    userId,
+    filters.goal_id,
+    filters.start_date,
+    filters.end_date,
+    filters.sort,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -175,37 +199,53 @@ export default function Reflections() {
     }
   };
 
-  const goalOptions = useMemo(() => goals.map((g) => ({ id: g.id, title: g.title })), [goals]);
+  const goalOptions = useMemo(
+    () => goals.map((g) => ({ id: g.id, title: g.title })),
+    [goals]
+  );
 
   if (!userId) return <p className="text-center mt-10">Loading reflections…</p>;
 
   return (
     <div className="reflections-container">
-      <h1 className="auth-title" style={{ marginBottom: '1rem' }}>🪞 Your Reflections</h1>
+      <h1 className="auth-title" style={{ marginBottom: '1rem' }}>
+        🪞 Your Reflections
+      </h1>
 
       {/* Add Reflection */}
       <form onSubmit={handleAddReflection} className="add-reflection-form mb-6">
-        <label htmlFor="ref-goal" className="form-label">Goal</label>
+        <label htmlFor="ref-goal" className="form-label">
+          Goal
+        </label>
         <select
           id="ref-goal"
           value={newReflection.goal_id}
-          onChange={(e) => setNewReflection((prev) => ({ ...prev, goal_id: e.target.value }))}
+          onChange={(e) =>
+            setNewReflection((prev) => ({ ...prev, goal_id: e.target.value }))
+          }
           disabled={adding || loadingGoals}
           className="form-input"
         >
           <option value="">No specific goal</option>
           {goalOptions.map((g) => (
-            <option key={g.id} value={g.id}>{g.title}</option>
+            <option key={g.id} value={g.id}>
+              {g.title}
+            </option>
           ))}
         </select>
 
-        <label htmlFor="ref-content" className="form-label">Reflection</label>
+        <label htmlFor="ref-content" className="form-label">
+          Reflection
+        </label>
         <textarea
           id="ref-content"
           placeholder="Write your reflection…"
           value={newReflection.content}
           onChange={(e) =>
-            setNewReflection((prev) => ({ ...prev, content: e.target.value.slice(0, MAX_LEN) }))
+            setNewReflection((prev) => ({
+              ...prev,
+              content: e.target.value.slice(0, MAX_LEN),
+            }))
           }
           maxLength={MAX_LEN}
           className="form-input"
@@ -229,13 +269,17 @@ export default function Reflections() {
           id="flt-goal"
           name="goal_id"
           value={filters.goal_id}
-          onChange={(e) => setFilters((prev) => ({ ...prev, goal_id: e.target.value }))}
+          onChange={(e) =>
+            setFilters((prev) => ({ ...prev, goal_id: e.target.value }))
+          }
           disabled={loadingGoals}
           className="form-input"
         >
           <option value="">All Goals</option>
           {goalOptions.map((g) => (
-            <option key={g.id} value={g.id}>{g.title}</option>
+            <option key={g.id} value={g.id}>
+              {g.title}
+            </option>
           ))}
         </select>
 
@@ -244,7 +288,9 @@ export default function Reflections() {
           type="date"
           name="start_date"
           value={filters.start_date}
-          onChange={(e) => setFilters((prev) => ({ ...prev, start_date: e.target.value }))}
+          onChange={(e) =>
+            setFilters((prev) => ({ ...prev, start_date: e.target.value }))
+          }
           className="form-input"
         />
 
@@ -253,7 +299,9 @@ export default function Reflections() {
           type="date"
           name="end_date"
           value={filters.end_date}
-          onChange={(e) => setFilters((prev) => ({ ...prev, end_date: e.target.value }))}
+          onChange={(e) =>
+            setFilters((prev) => ({ ...prev, end_date: e.target.value }))
+          }
           className="form-input"
         />
 
@@ -261,7 +309,9 @@ export default function Reflections() {
           id="flt-sort"
           name="sort"
           value={filters.sort}
-          onChange={(e) => setFilters((prev) => ({ ...prev, sort: e.target.value }))}
+          onChange={(e) =>
+            setFilters((prev) => ({ ...prev, sort: e.target.value }))
+          }
           className="form-input"
         >
           <option value="desc">Newest First</option>
@@ -286,7 +336,9 @@ export default function Reflections() {
               aria-label="Open reflection"
             >
               <div className="reflection-date">
-                {ref.created_at ? new Date(ref.created_at).toLocaleString() : '—'}
+                {ref.created_at
+                  ? new Date(ref.created_at).toLocaleString()
+                  : '—'}
               </div>
 
               <div className="reflection-goal">
@@ -306,14 +358,38 @@ export default function Reflections() {
 
       {/* Modal */}
       {openRef && (
-        <div className="modal-overlay" onClick={closeModal} role="dialog" aria-modal="true">
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} role="document">
+        <div
+          className="modal-overlay"
+          onClick={closeModal}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="modal-card"
+            onClick={(e) => e.stopPropagation()}
+            role="document"
+          >
             <div className="modal-header">
-              <h3>{openRef.type === 'completed_goal' ? 'Achievement' : 'Reflection'}</h3>
-              <button className="modal-close" onClick={closeModal} aria-label="Close">✕</button>
+              <h3>
+                {openRef.type === 'completed_goal'
+                  ? 'Achievement'
+                  : 'Reflection'}
+              </h3>
+              <button
+                className="modal-close"
+                onClick={closeModal}
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
             <div className="modal-meta">
-              <div><strong>Date:</strong> {openRef.created_at ? new Date(openRef.created_at).toLocaleString() : '—'}</div>
+              <div>
+                <strong>Date:</strong>{' '}
+                {openRef.created_at
+                  ? new Date(openRef.created_at).toLocaleString()
+                  : '—'}
+              </div>
               <div>
                 <strong>Goal:</strong>{' '}
                 <span title={openRef.goal_name || 'N/A'}>
@@ -321,9 +397,7 @@ export default function Reflections() {
                 </span>
               </div>
             </div>
-            <div className="modal-body">
-              {openRef.content || 'No content'}
-            </div>
+            <div className="modal-body">{openRef.content || 'No content'}</div>
           </div>
         </div>
       )}

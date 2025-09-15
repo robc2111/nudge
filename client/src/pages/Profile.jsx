@@ -83,7 +83,8 @@ export default function Profile() {
   useEffect(() => {
     setSEO({
       title: 'Profile – GoalCrumbs',
-      description: 'Manage account, timezone, and Telegram settings.',
+      description:
+        'Manage your GoalCrumbs account: timezone, Telegram reminders, and subscription settings.',
       url: `${seoPresets.baseUrl}/profile`,
       image: '/og/mouseog.png',
       noindex: true,

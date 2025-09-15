@@ -7,12 +7,10 @@ Day 5 (Fri)
 - change telegram bot instruction so /done allows users to select a number for the appropriate microtask
 
 Day 6 (Sat)
-• Quick: Add SEO meta descriptions to missing pages (Reflections, Profile)
-• Medium: Account deletion integration with Stripe (cancel subscription on delete)
+
 • Large: Test matrix (Free vs Pro, Telegram enabled/disabled, timezones)
 
 - ensure weekly checkin acts as an accoutability partner by monitoring progress and giving a message that reflects this
-- Trademark GoalCrumbs
 - Correct typo in stripe setup (see email)
 - change pricing to 8.99 with limited offer of 5.00 in 1st month
 
