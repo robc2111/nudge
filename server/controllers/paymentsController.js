@@ -7,7 +7,6 @@ const pool = require('../db');
 const { limitsFor } = require('../utils/plan');
 
 const APP_BASE = process.env.APP_BASE_URL || 'http://localhost:5173';
-const PRICE_ID = process.env.STRIPE_PRICE_MONTHLY;
 
 /**
  * Ensure there is a valid Stripe customer for the *current* Stripe mode (test/live).
@@ -28,7 +27,10 @@ async function ensureStripeCustomer(user) {
 
   let custId = null;
   if (user.email) {
-    const { data } = await stripe.customers.list({ email: user.email, limit: 1 });
+    const { data } = await stripe.customers.list({
+      email: user.email,
+      limit: 1,
+    });
     if (data[0]) custId = data[0].id;
   }
 
@@ -41,10 +43,10 @@ async function ensureStripeCustomer(user) {
     custId = created.id;
   }
 
-  await pool.query(
-    `UPDATE users SET stripe_customer_id = $1 WHERE id = $2`,
-    [custId, user.id]
-  );
+  await pool.query(`UPDATE users SET stripe_customer_id = $1 WHERE id = $2`, [
+    custId,
+    user.id,
+  ]);
 
   return custId;
 }
@@ -74,9 +76,9 @@ async function enforceGoalLimitForPlan(userId, plan) {
   if (!activeRows.length) return;
 
   // Reorder so the preferred goal (if any) is first
-  let ordered = activeRows.map(r => r.id);
+  let ordered = activeRows.map((r) => r.id);
   if (preferredId && ordered.includes(preferredId)) {
-    ordered = [preferredId, ...ordered.filter(id => id !== preferredId)];
+    ordered = [preferredId, ...ordered.filter((id) => id !== preferredId)];
   }
 
   const keep = ordered.slice(0, Math.max(0, limit));
@@ -104,9 +106,25 @@ async function enforceGoalLimitForPlan(userId, plan) {
 }
 
 /** POST /api/payments/checkout -> { url } */
+/** Decide if promo is still active (UTC) */
+function withinPromoWindow() {
+  const cutoff = new Date(
+    process.env.PROMO_CUTOFF_UTC || '2025-10-31T23:59:59Z'
+  ).getTime();
+  return Number.isFinite(cutoff) && Date.now() <= cutoff;
+}
+
+/** POST /api/payments/checkout -> { url } */
 async function checkout(req, res) {
   try {
-    if (!PRICE_ID) return res.status(500).json({ error: 'Missing STRIPE_PRICE_MONTHLY' });
+    const priceStandard =
+      process.env.STRIPE_PRICE_PRO_GBP || process.env.STRIPE_PRICE_MONTHLY; // fallback to your old var
+    const pricePromo = process.env.STRIPE_PRICE_PROMO_OCT2025_GBP;
+
+    const priceId =
+      withinPromoWindow() && pricePromo ? pricePromo : priceStandard;
+    if (!priceId)
+      return res.status(500).json({ error: 'Stripe price not configured' });
 
     const { rows } = await pool.query(
       `SELECT id, email, name, stripe_customer_id FROM users WHERE id = $1 LIMIT 1`,
@@ -120,8 +138,9 @@ async function checkout(req, res) {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
-      line_items: [{ price: PRICE_ID, quantity: 1 }],
-      allow_promotion_codes: true,
+      line_items: [{ price: priceId, quantity: 1 }],
+      // we steer pricing by price IDs, so promotion codes stay off
+      allow_promotion_codes: false,
       billing_address_collection: 'auto',
       success_url: `${APP_BASE}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${APP_BASE}/billing/cancel`,
@@ -233,10 +252,13 @@ async function handleWebhook(req, res) {
             [uid, sub.id, sub.status, sub.current_period_end]
           );
 
-          const status =
-            ['active', 'trialing'].includes(sub.status) ? 'active' :
-            sub.status === 'past_due' ? 'past_due' :
-            sub.status === 'canceled' ? 'canceled' : 'inactive';
+          const status = ['active', 'trialing'].includes(sub.status)
+            ? 'active'
+            : sub.status === 'past_due'
+              ? 'past_due'
+              : sub.status === 'canceled'
+                ? 'canceled'
+                : 'inactive';
 
           await pool.query(
             `UPDATE users SET plan = $1, plan_status = $2 WHERE id = $3`,

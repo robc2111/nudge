@@ -5,6 +5,9 @@ import { toast } from 'react-toastify';
 import DeleteAccountSection from '../components/DeleteAccountSection';
 import { setSEO, seoPresets } from '../lib/seo';
 
+const PROMO_DEADLINE_MS = new Date('2025-10-31T23:59:59Z').getTime();
+const promoActive = Date.now() <= PROMO_DEADLINE_MS;
+
 const REQ_TIMEOUT_MS = 15000;
 
 const supportedTZ =
@@ -32,19 +35,29 @@ function guessBrowserTZ() {
 }
 
 function UpgradeButton() {
+  const [busy, setBusy] = useState(false);
+
   const onUpgrade = async () => {
     try {
+      setBusy(true);
       const { data } = await axios.post('/payments/checkout', {});
       if (data?.url) window.location.href = data.url;
       else toast.error('Could not start checkout');
     } catch (err) {
       console.error(err);
       toast.error('Checkout failed');
+    } finally {
+      setBusy(false);
     }
   };
+
   return (
-    <button className="btn" onClick={onUpgrade}>
-      🚀 Upgrade to Pro
+    <button className="btn" onClick={onUpgrade} disabled={busy}>
+      {busy
+        ? 'Redirecting…'
+        : promoActive
+          ? '🚀 Upgrade to Pro – £5/mo (until 31 Oct)'
+          : '🚀 Upgrade to Pro – £8.99/mo'}
     </button>
   );
 }

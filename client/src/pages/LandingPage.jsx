@@ -1,5 +1,9 @@
 import { Link } from 'react-router-dom';
 import SEO from '../seo/SEO';
+import UpgradeButton from '../components/UpgradeButton';
+
+const PROMO_DEADLINE_MS = new Date('2025-10-31T23:59:59Z').getTime();
+const promoActive = Date.now() <= PROMO_DEADLINE_MS;
 
 export default function LandingPage() {
   return (
@@ -124,6 +128,34 @@ export default function LandingPage() {
           <div className="pricing-card">
             <h3>Pro</h3>
             <p className="tagline">Unlimited goals + quality-of-life boosts.</p>
+
+            <p style={{ fontSize: '1.25rem', margin: '0.5rem 0' }}>
+              {promoActive ? (
+                <>
+                  <span
+                    style={{ textDecoration: 'line-through', opacity: 0.6 }}
+                  >
+                    £8.99
+                  </span>{' '}
+                  <strong>£5.00</strong> <span>/ month</span>
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: '0.95rem',
+                      marginTop: 6,
+                    }}
+                  >
+                    Limited offer — subscribe by <strong>31 Oct</strong> to lock
+                    this price.
+                  </span>
+                </>
+              ) : (
+                <>
+                  <strong>£8.99</strong> <span>/ month</span>
+                </>
+              )}
+            </p>
+
             <ul className="benefits-list">
               <li>
                 ✅ <strong>Unlimited goals</strong>
@@ -141,14 +173,19 @@ export default function LandingPage() {
                 ✅ <strong>Themes</strong>
               </li>
             </ul>
+
             <div style={{ marginTop: '1rem' }}>
-              <Link to="/signup" className="cta-button">
-                Go Pro
-              </Link>{' '}
-              <Link to="/login" className="cta-button secondary">
+              {/* use the Upgrade button so the server decides which price to use */}
+              <UpgradeButton promoActive={promoActive} />
+              <Link
+                to="/login"
+                className="cta-button secondary"
+                style={{ marginLeft: 8 }}
+              >
                 I already have an account
               </Link>
             </div>
+
             <p className="tagline">
               Start free. Upgrade anytime — your data stays.
             </p>
