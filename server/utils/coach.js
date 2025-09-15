@@ -9,6 +9,21 @@ function short(s, n = 180) {
   return t.length <= n ? t : t.slice(0, n - 1) + '…';
 }
 
+/** Get the tone from the most recent in-progress goal; default 'friendly'. */
+async function getToneForUser(userId) {
+  const { rows } = await pool.query(
+    `
+      select tone
+      from goals
+      where user_id = $1 and status = 'in_progress'
+      order by created_at desc
+      limit 1
+    `,
+    [userId]
+  );
+  return rows[0]?.tone || 'friendly';
+}
+
 /**
  * Pull weekly progress snapshot for a user across *all* goals.
  * tz is used to bucket "active days".
@@ -137,6 +152,9 @@ async function buildWeeklyCheckin({ user, tz = 'Etc/UTC' }) {
     };
   }
 
+  // pull per-goal tone (fallback friendly)
+  const tone = await getToneForUser(user.id);
+
   const { done, activeDays, openMicro, lastReflection } =
     await getWeeklySnapshot(user.id, tz || 'Etc/UTC');
 
@@ -144,7 +162,7 @@ async function buildWeeklyCheckin({ user, tz = 'Etc/UTC' }) {
   if (done >= 8 || activeDays >= 5) band = 'yay';
   else if (done >= 2 || activeDays >= 2) band = 'meh';
 
-  const pack = tonePack(user.tone || 'friendly');
+  const pack = tonePack(tone);
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const header = '🗓️ Weekly check-in';
   const line = pick(pack[band]);

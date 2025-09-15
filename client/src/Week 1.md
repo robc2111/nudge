@@ -15,7 +15,6 @@ Day 6 (Sat)
 Week 2
 
 Day 7 (Mon)
-• Quick: Accessibility labels/focus pass (forms + buttons)
 • Medium: Account deletion integration with Telegram (final goodbye + forget ID)
 • Large: Cron/unit tests with mocked Date (time windows) - allow users to switch tone through dashboard or telegram (pro only)
 

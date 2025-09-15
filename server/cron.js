@@ -101,7 +101,7 @@ ${renderChecklist(p.microtasks, p.nextIdx)}`
    ────────────────────────────── */
 async function sendWeeklyCheckins() {
   const { rows: users } = await pool.query(
-    `select id, name, email, telegram_id, timezone, plan, plan_status, tone
+    `select id, name, email, telegram_id, timezone, plan, plan_status
        from users
       where telegram_id is not null
         and telegram_enabled = true`
@@ -186,7 +186,7 @@ if (require.main === module) {
     console.log('🚨 Manual test run…');
     try {
       const { rows: users } = await pool.query(
-        `SELECT id, name, telegram_id, timezone, plan, plan_status, tone
+        `SELECT id, name, telegram_id, timezone, plan, plan_status
            FROM users
           WHERE telegram_id IS NOT NULL AND telegram_enabled = true
           LIMIT 1`
