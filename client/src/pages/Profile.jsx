@@ -92,6 +92,7 @@ export default function Profile() {
 
   const [telegramEnabled, setTelegramEnabled] = useState(true);
   const [savingTel, setSavingTel] = useState(false);
+  const [statusMsg, setStatusMsg] = useState('');
 
   useEffect(() => {
     setSEO({
@@ -107,6 +108,7 @@ export default function Profile() {
   async function saveTimezone() {
     if (!tz) return;
     setSavingTz(true);
+    setStatusMsg('Saving timezone…');
     try {
       const { data } = await axios.patch('/users/me', { timezone: tz });
       setUser(data);
@@ -116,11 +118,13 @@ export default function Profile() {
       toast.error('Failed to update timezone');
     } finally {
       setSavingTz(false);
+      setStatusMsg('');
     }
   }
 
   async function saveTelegramEnabled(next) {
     setSavingTel(true);
+    setStatusMsg(next ? 'Enabling Telegram…' : 'Disabling Telegram…');
     try {
       const { data } = await axios.patch('/users/me', {
         telegram_enabled: next,
@@ -135,6 +139,7 @@ export default function Profile() {
       setTelegramEnabled((prev) => !prev);
     } finally {
       setSavingTel(false);
+      setStatusMsg('');
     }
   }
 
@@ -246,6 +251,8 @@ export default function Profile() {
               className={`btn ${savingTz ? 'btn-disabled' : ''}`}
               onClick={saveTimezone}
               disabled={savingTz}
+              aria-busy={savingTz || undefined}
+              type="button"
             >
               {savingTz ? 'Saving…' : 'Save'}
             </button>
@@ -283,6 +290,9 @@ export default function Profile() {
           <div style={{ marginTop: 6, color: '#666', fontSize: '0.9rem' }}>
             Turn off to stop GoalCrumbs from sending you reminders on Telegram.
           </div>
+          <p className="visually-hidden" aria-live="polite">
+            {statusMsg}
+          </p>
         </div>
       </div>
 

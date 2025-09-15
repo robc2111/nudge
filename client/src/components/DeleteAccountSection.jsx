@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import axios from '../api/axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,6 +8,15 @@ export default function DeleteAccountSection() {
   const [ack, setAck] = useState(false);
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
+
+  // for accessibility focus management
+  const triggerRef = useRef(null);
+  const closeRef = useRef(null);
+
+  useEffect(() => {
+    if (open && closeRef.current) closeRef.current.focus();
+    if (!open && triggerRef.current) triggerRef.current.focus();
+  }, [open]);
 
   const reallyDelete = async () => {
     if (typed !== 'DELETE' || !ack) return;
@@ -51,10 +60,15 @@ export default function DeleteAccountSection() {
       <p style={{ marginTop: 0 }}>
         Delete your account and all data. This action cannot be undone.
       </p>
+
       <button
         className="btn-delete"
         style={{ background: '#b91c1c' }}
-        onClick={() => setOpen(true)}
+        onClick={(e) => {
+          triggerRef.current = e.currentTarget;
+          setOpen(true);
+        }}
+        type="button"
       >
         Delete account
       </button>
@@ -64,14 +78,15 @@ export default function DeleteAccountSection() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="del-h"
+          aria-describedby="del-desc"
           className="modal-overlay"
           onClick={(e) => e.target === e.currentTarget && setOpen(false)}
         >
-          <div className="modal-card">
+          <div className="modal-card" role="document">
             <h4 id="del-h" style={{ marginTop: 0 }}>
               Confirm deletion
             </h4>
-            <p>
+            <p id="del-desc">
               Type <strong>DELETE</strong> to confirm, and tick the box.
             </p>
 
@@ -96,9 +111,11 @@ export default function DeleteAccountSection() {
 
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button
+                ref={closeRef}
                 className="btn"
                 onClick={() => setOpen(false)}
                 disabled={busy}
+                type="button"
               >
                 Cancel
               </button>
@@ -106,7 +123,8 @@ export default function DeleteAccountSection() {
                 className="btn"
                 style={{ background: '#b91c1c' }}
                 onClick={reallyDelete}
-                disabled={busy || typed !== 'DELETE' || !ack}
+                aria-busy={busy || undefined}
+                type="button"
               >
                 {busy ? 'Deleting…' : 'Yes, delete my account'}
               </button>

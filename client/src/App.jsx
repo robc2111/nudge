@@ -10,18 +10,18 @@ import 'react-toastify/dist/ReactToastify.css';
 import ResetPassword from './pages/ResetPassword';
 import PlanGuard from './components/PlanGuard';
 
-const LandingPage   = lazy(() => import('./pages/LandingPage'));
-const Login = lazy(() => import('./pages/Login'));   // ✅ correct casing
-const SignUp        = lazy(() => import('./pages/SignUp'));
-const Dashboard     = lazy(() => import('./pages/Dashboard'));
-const Profile       = lazy(() => import('./pages/Profile'));
-const GoalSetup     = lazy(() => import('./pages/GoalSetup'));
-const EditGoal      = lazy(() => import('./pages/EditGoal'));
-const Reflections   = lazy(() => import('./pages/Reflections'));
-const BillingSuccess= lazy(() => import('./pages/BillingSuccess'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const Login = lazy(() => import('./pages/Login'));
+const SignUp = lazy(() => import('./pages/SignUp'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Profile = lazy(() => import('./pages/Profile'));
+const GoalSetup = lazy(() => import('./pages/GoalSetup'));
+const EditGoal = lazy(() => import('./pages/EditGoal'));
+const Reflections = lazy(() => import('./pages/Reflections'));
+const BillingSuccess = lazy(() => import('./pages/BillingSuccess'));
 const BillingCancel = lazy(() => import('./pages/BillingCancel'));
-const Privacy       = lazy(() => import('./pages/Privacy'));
-const Terms         = lazy(() => import('./pages/Terms'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const Terms = lazy(() => import('./pages/Terms'));
 const FAQ = lazy(() => import('./pages/FAQ'));
 
 const Loader = () => <div style={{ padding: '2rem' }}>Loading…</div>;
@@ -36,6 +36,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
+        {/* Skip link for keyboard users */}
+        <a href="#main" className="skip-link">
+          Skip to main content
+        </a>
+
         <Header />
 
         <ToastContainer
@@ -49,7 +54,8 @@ export default function App() {
           limit={3}
         />
 
-        <main role="main">
+        {/* Main content wrapper – give it the #main target */}
+        <main id="main" role="main" tabIndex={-1}>
           <Suspense fallback={<Loader />}>
             <Routes>
               {/* Public */}
@@ -66,13 +72,13 @@ export default function App() {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/reflections" element={<Reflections />} />
                 <Route
-    path="/goal-setup"
-    element={
-      <PlanGuard>
-        <GoalSetup />
-      </PlanGuard>
-    }
-  />
+                  path="/goal-setup"
+                  element={
+                    <PlanGuard>
+                      <GoalSetup />
+                    </PlanGuard>
+                  }
+                />
                 <Route path="/edit-goal/:id" element={<EditGoal />} />
                 <Route path="/billing/success" element={<BillingSuccess />} />
                 <Route path="/billing/cancel" element={<BillingCancel />} />

@@ -10,8 +10,6 @@ Day 6 (Sat)
 
 • Large: Test matrix (Free vs Pro, Telegram enabled/disabled, timezones)
 
-- ensure weekly checkin acts as an accoutability partner by monitoring progress and giving a message that reflects this
-
 ⸻
 
 Week 2
@@ -24,7 +22,9 @@ Day 7 (Mon)
 Day 8 (Tue)
 • Quick: Disable/hide Delete Goal button for free plan (UI polish)
 • Medium: Manual test: stripe checkout/cancel/portal
-• Large: Security: rate limiting for login/auth/AI endpoints - review faqs
+• Large: Security: rate limiting for login/auth/AI endpoints
+
+- review faqs
 
 Day 9 (Wed)
 • Quick: Polish error states (e.g. profile load, dashboard load)

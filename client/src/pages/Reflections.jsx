@@ -32,6 +32,8 @@ export default function Reflections() {
   const [loading, setLoading] = useState(true);
   const [loadingGoals, setLoadingGoals] = useState(false);
   const [error, setError] = useState('');
+  const [statusMsg, setStatusMsg] = useState('');
+  const closeBtnRef = useRef(null);
 
   const [openRef, setOpenRef] = useState(null);
 
@@ -54,6 +56,11 @@ export default function Reflections() {
   }, []);
 
   const closeModal = useCallback(() => setOpenRef(null), []);
+  useEffect(() => {
+    if (openRef && closeBtnRef.current) {
+      closeBtnRef.current.focus();
+    }
+  }, [openRef]);
   useEffect(() => {
     const onEsc = (e) => {
       if (e.key === 'Escape') closeModal();
@@ -165,6 +172,7 @@ export default function Reflections() {
   const handleAddReflection = async (e) => {
     e.preventDefault();
     setError('');
+    setStatusMsg('');
 
     const content = newReflection.content.trim();
     if (!content) {
@@ -178,6 +186,7 @@ export default function Reflections() {
 
     try {
       setAdding(true);
+      setStatusMsg('Saving…');
       await axios.post(
         '/reflections',
         { user_id: userId, goal_id: newReflection.goal_id || null, content },
@@ -196,6 +205,7 @@ export default function Reflections() {
       }
     } finally {
       setAdding(false);
+      setStatusMsg('');
     }
   };
 
@@ -213,7 +223,11 @@ export default function Reflections() {
       </h1>
 
       {/* Add Reflection */}
-      <form onSubmit={handleAddReflection} className="add-reflection-form mb-6">
+      <form
+        onSubmit={handleAddReflection}
+        className="add-reflection-form mb-6"
+        aria-describedby="form-status"
+      >
         <label htmlFor="ref-goal" className="form-label">
           Goal
         </label>
@@ -250,15 +264,28 @@ export default function Reflections() {
           maxLength={MAX_LEN}
           className="form-input"
           style={{ minHeight: 140 }}
+          aria-describedby="ref-content-help"
         />
 
-        <div className="char-counter">
+        <div id="ref-content-help" className="char-counter">
           {newReflection.content.length} / {MAX_LEN} characters
         </div>
 
-        {error && <p className="error mt-2">{error}</p>}
+        <p id="form-status" className="visually-hidden" aria-live="polite">
+          {statusMsg || (error ? `Error: ${error}` : '')}
+        </p>
+        {error && (
+          <p className="error mt-2" role="alert">
+            {error}
+          </p>
+        )}
 
-        <button type="submit" disabled={adding} className="btn btn-block">
+        <button
+          type="submit"
+          disabled={adding}
+          className="btn btn-block"
+          aria-busy={adding || undefined}
+        >
           {adding ? 'Saving…' : 'Add Reflection'}
         </button>
       </form>
@@ -363,6 +390,7 @@ export default function Reflections() {
           onClick={closeModal}
           role="dialog"
           aria-modal="true"
+          aria-labelledby="ref-modal-title"
         >
           <div
             className="modal-card"
@@ -370,12 +398,13 @@ export default function Reflections() {
             role="document"
           >
             <div className="modal-header">
-              <h3>
+              <h3 id="ref-modal-title">
                 {openRef.type === 'completed_goal'
                   ? 'Achievement'
                   : 'Reflection'}
               </h3>
               <button
+                ref={closeBtnRef}
                 className="modal-close"
                 onClick={closeModal}
                 aria-label="Close"
