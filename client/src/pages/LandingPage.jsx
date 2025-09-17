@@ -82,12 +82,12 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <p style={{ marginTop: '1rem' }}>
-            Want more details? Check out our{' '}
-            <Link to="/faq" className="cta-button secondary">
-              Frequently Asked Questions
+          <div className="faq-cta">
+            <span>Want more details?</span>
+            <Link to="/faq" className="cta-button">
+              Read the FAQ
             </Link>
-          </p>
+          </div>
         </div>
 
         <div className="mx-auto max-w-screen-xl px-6 md:px-10 py-12 md:py-16 text-center">

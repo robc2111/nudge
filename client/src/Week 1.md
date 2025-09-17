@@ -41,6 +41,8 @@ Day 11 (Fri)
 • Medium: Data export/delete policy doc (backend stub + button text)
 • Large: Backups (DB automated daily + one restore drill) - check timezone is working
 
+- remove test accounts and make telggram id unique
+
 Day 12 (Sat)
 • Quick: Ensure helmet headers cover XSS/Clickjacking basics
 • Medium: Analytics (privacy-respecting, basic server-side events)
