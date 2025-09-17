@@ -1,11 +1,14 @@
 // src/api/axios.js
 import axios from 'axios';
+import { logoutBus } from '../auth/logoutBus';
 
 const rawBase = import.meta.env.VITE_API_URL || '';
 const base = rawBase ? rawBase.replace(/\/$/, '') : '';
 
 if (!base && import.meta.env.DEV) {
-  console.warn('⚠️ VITE_API_URL is not set. API requests will be relative to the current origin.');
+  console.warn(
+    '⚠️ VITE_API_URL is not set. API requests will be relative to the current origin.'
+  );
 }
 
 const instance = axios.create({
@@ -26,6 +29,7 @@ instance.interceptors.response.use(
     // If unauthorized, clear session and bounce to login
     if (err?.response?.status === 401 && !redirecting) {
       redirecting = true;
+      logoutBus.emit();
       localStorage.removeItem('token');
       localStorage.removeItem('user');
 

@@ -1537,3 +1537,21 @@ a.btn:focus {
     text-align: center;
   }
 }
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.help-link {
+  background: transparent;
+  border: none;
+  color: #bd661d;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0;
+}
+.help-link:hover {
+  color: #a55217;
+}

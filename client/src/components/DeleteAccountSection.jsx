@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from '../api/axios';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/auth-context';
 
 export default function DeleteAccountSection() {
+  const { logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState('');
   const [ack, setAck] = useState(false);
@@ -35,16 +37,11 @@ export default function DeleteAccountSection() {
         data: { confirm: 'DELETE', acknowledge: true },
       });
 
-      // clear local session artifacts
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      sessionStorage.clear?.();
-      if (axios.defaults.headers) {
-        delete axios.defaults.headers.common?.Authorization;
-      }
+      logout();
+      +sessionStorage.clear?.();
 
       alert('Your account was deleted.');
-      navigate('/signup');
+      navigate('/', { replace: true });
     } catch (e) {
       alert(e?.response?.data?.error || 'Failed to delete account.');
     } finally {

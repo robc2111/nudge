@@ -19,6 +19,7 @@ export default function Signup() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const [showTgHelp, setShowTgHelp] = useState(false); // NEW
 
   useEffect(() => {
     setSEO({
@@ -54,12 +55,26 @@ export default function Signup() {
       );
     }
 
+    // Sanitize telegram input to digits (numeric chat id only)
+    let telegramId = form.telegram_id.trim();
+    if (telegramId) {
+      const digitsOnly = telegramId.replace(/\D/g, '');
+      if (!digitsOnly) {
+        return setError(
+          'Telegram ID should be the numeric chat ID (see “What’s this?”).'
+        );
+      }
+      telegramId = digitsOnly;
+    } else {
+      telegramId = null;
+    }
+
     setSubmitting(true);
     try {
       const res = await axios.post('/auth/register', {
         name: form.name.trim(),
         email: form.email.trim(),
-        telegram_id: form.telegram_id.trim() || null,
+        telegram_id: telegramId,
         password: form.password,
       });
 
@@ -127,14 +142,26 @@ export default function Signup() {
 
         {/* Telegram */}
         <div>
-          <label htmlFor="telegram_id" className="block font-medium mb-1">
-            Telegram ID
-          </label>
+          <div className="flex-between">
+            <label htmlFor="telegram_id" className="block font-medium mb-1">
+              Telegram ID (numeric)
+            </label>
+            <button
+              type="button"
+              className="help-link"
+              onClick={() => setShowTgHelp(true)}
+              aria-haspopup="dialog"
+            >
+              What’s this?
+            </button>
+          </div>
           <input
             id="telegram_id"
             name="telegram_id"
             type="text"
-            placeholder="@yourhandle or numeric id"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder="e.g. 5123456789"
             value={form.telegram_id}
             onChange={handleChange}
             className="form-input"
@@ -213,6 +240,58 @@ export default function Signup() {
           Log in
         </Link>
       </p>
+
+      {/* Telegram help modal */}
+      {showTgHelp && (
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tg-help-title"
+          onClick={() => setShowTgHelp(false)}
+        >
+          <div className="modal-card">
+            <div className="modal-header">
+              <h3 id="tg-help-title">Find your Telegram numeric ID</h3>
+              <button
+                className="modal-close"
+                onClick={() => setShowTgHelp(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">
+              <ol>
+                <li>
+                  Open Telegram and start this helper bot:{' '}
+                  <a
+                    className="brand-link"
+                    href="https://t.me/userinfobot"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    @userinfobot
+                  </a>
+                  .
+                </li>
+                <li>
+                  Tap <strong>Start</strong>. It will reply with your{' '}
+                  <em>numeric ID</em>.
+                </li>
+                <li>
+                  Copy the number (e.g. <code>5123456789</code>) and paste it
+                  into “Telegram ID”.
+                </li>
+              </ol>
+              <p style={{ marginTop: 8 }}>
+                Tip: your <code>@username</code> is <em>not</em> the ID — we
+                need the number so our bot can message you.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
