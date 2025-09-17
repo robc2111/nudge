@@ -1,7 +1,8 @@
+// src/auth/AuthProvider.jsx
 import { useEffect, useState } from 'react';
+import api from '../api/axios';
 import { logoutBus } from './logoutBus';
 import { AuthCtx } from './auth-context';
-import api from '../api/axios';
 
 export default function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -37,19 +38,18 @@ export default function AuthProvider({ children }) {
     };
   }, []);
 
-  // hydrate from API when we have a token but no user
+  // hydrate on refresh: if we have a token but no user, fetch me
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token || user) return;
     api
       .get('/users/me')
       .then((res) => {
-        setUser(res.data);
+        setUser(res.data); // adjust if your API returns {user: {...}}
         localStorage.setItem('user', JSON.stringify(res.data));
       })
-      .catch((err) => {
-        // 401s will trigger axios interceptor => logoutBus.emit()
-        console.warn('hydrate /users/me failed', err?.response?.status);
+      .catch(() => {
+        /* 401 handled by interceptor */
       });
   }, [user]);
 

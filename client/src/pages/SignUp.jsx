@@ -1,12 +1,15 @@
+// src/pages/signup.jsx
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
+import { useAuth } from '../auth/auth-context';
 import { setSEO } from '../lib/seo';
 
 const MIN_PASSWORD = 8;
 
 export default function Signup() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [form, setForm] = useState({
     name: '',
@@ -78,9 +81,7 @@ export default function Signup() {
         password: form.password,
       });
 
-      if (res.data?.token) localStorage.setItem('token', res.data.token);
-      if (res.data?.user)
-        localStorage.setItem('user', JSON.stringify(res.data.user));
+      login(res.data.user, res.data.token);
 
       setSuccess(true);
       setTimeout(() => navigate('/dashboard'), 700);

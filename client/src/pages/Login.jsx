@@ -2,9 +2,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from '../api/axios';
+import { useAuth } from '../auth/auth-context';
 import { setSEO, seoPresets } from '../lib/seo';
 
 const Login = () => {
+  const { login } = useAuth();
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [resetOpen, setResetOpen] = useState(false);
@@ -35,8 +37,7 @@ const Login = () => {
     setError('');
     try {
       const res = await axios.post('/auth/login', form);
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
+      login(res.data.user, res.data.token);
 
       const params = new URLSearchParams(location.search);
       const fromQuery = params.get('from');

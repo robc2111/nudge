@@ -1,3 +1,4 @@
+// src/components/header.jsx
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 
@@ -23,7 +24,7 @@ const Header = () => {
         <nav className="header-nav">
           <Link to="/">Home</Link>
           <Link to="/faq">FAQs</Link>
-          {user ? (
+          {user || localStorage.getItem('token') ? (
             <>
               <Link to="/dashboard">Dashboard</Link>
               <Link to="/profile">Profile</Link>
