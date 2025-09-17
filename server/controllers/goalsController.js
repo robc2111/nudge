@@ -4,6 +4,24 @@ const { limitsFor } = require('../utils/plan');
 const { normalizeProgressByGoal } = require('../utils/progressUtils');
 const { materializeGoal } = require('../utils/materializeGoal');
 
+/* ────────────────────────────────────────────────────────────
+   Helpers
+   ──────────────────────────────────────────────────────────── */
+
+const ALLOWED_TONES = new Set(['friendly', 'strict', 'motivational']);
+
+function normalizeTone(t) {
+  if (typeof t !== 'string') return null;
+  const v = t.trim().toLowerCase();
+  return ALLOWED_TONES.has(v) ? v : null;
+}
+
+function normalizeDate(input) {
+  if (!input) return null;
+  const d = input instanceof Date ? input : new Date(input);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 async function getUserPlan(userId) {
   const { rows } = await pool.query(
     `SELECT plan FROM users WHERE id = $1 LIMIT 1`,
@@ -23,7 +41,10 @@ async function countActiveGoals(userId) {
   return rows[0]?.c ?? 0;
 }
 
-// Create goal + materialize hierarchy (AI breakdown or user-provided subgoals)
+/* ────────────────────────────────────────────────────────────
+   Create goal + materialize hierarchy
+   ──────────────────────────────────────────────────────────── */
+
 exports.createGoal = async (req, res) => {
   const client = await pool.connect();
   console.log('🛬 POST /api/goals hit');
@@ -37,8 +58,8 @@ exports.createGoal = async (req, res) => {
       tone = null,
 
       // Either can be provided by the client:
-      breakdown = [], // [{ title, tasks:[{ title, microtasks:[string] }] }]
-      subgoals = [], // same shape as above (legacy)
+      breakdown = [],
+      subgoals = [],
     } = req.body || {};
 
     if (!authUserId || !title?.trim()) {
@@ -58,6 +79,10 @@ exports.createGoal = async (req, res) => {
       });
     }
 
+    // Normalize inputs
+    const normalizedTone = plan === 'pro' ? normalizeTone(tone) : null;
+    const normalizedDue = normalizeDate(due_date);
+
     await client.query('BEGIN');
 
     // Create the goal row
@@ -67,7 +92,7 @@ exports.createGoal = async (req, res) => {
       `INSERT INTO goals (user_id, title, description, due_date, tone, status, created_at)
        VALUES ($1,$2,$3,$4,$5,'in_progress', NOW())
        RETURNING id`,
-      [authUserId, title.trim(), description, due_date, tone]
+      [authUserId, title.trim(), description, normalizedDue, normalizedTone]
     );
     const goalId = goal.id;
 
@@ -96,7 +121,10 @@ exports.createGoal = async (req, res) => {
   }
 };
 
-// Get a single goal
+/* ────────────────────────────────────────────────────────────
+   Reads
+   ──────────────────────────────────────────────────────────── */
+
 exports.getGoalById = async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM goals WHERE id = $1', [
@@ -142,51 +170,97 @@ exports.getMyGoals = async (req, res) => {
   }
 };
 
-// Update a goal (metadata only)
+/* ────────────────────────────────────────────────────────────
+   Update (metadata: title, description, due_date, tone)
+   - Tone is Pro-only
+   - Ownership enforced
+   - No dependence on a non-existent updated_at column
+   ──────────────────────────────────────────────────────────── */
+
 exports.updateGoal = async (req, res) => {
-  const { title, description, due_date } = req.body;
-  if (!title && !description && !due_date) {
+  const userId = req.user?.id || req.user?.sub;
+  const goalId = req.params.id;
+
+  const {
+    title,
+    description,
+    due_date,
+    tone, // ← Pro-only
+  } = req.body || {};
+
+  const sets = [];
+  const vals = [];
+  let i = 1;
+
+  if (typeof title !== 'undefined') {
+    sets.push(`title = $${i++}`);
+    vals.push(title);
+  }
+  if (typeof description !== 'undefined') {
+    sets.push(`description = $${i++}`);
+    vals.push(description);
+  }
+  if (typeof due_date !== 'undefined') {
+    sets.push(`due_date = $${i++}`);
+    vals.push(normalizeDate(due_date));
+  }
+
+  if (typeof tone !== 'undefined') {
+    const plan = await getUserPlan(userId);
+    if (plan !== 'pro') {
+      return res
+        .status(403)
+        .json({ error: 'Changing coach tone is available on Pro.' });
+    }
+    const normalized = normalizeTone(tone);
+    if (!normalized) {
+      return res.status(400).json({ error: 'Invalid tone value' });
+    }
+    sets.push(`tone = $${i++}`);
+    vals.push(normalized);
+  }
+
+  if (!sets.length) {
     return res.status(400).json({ error: 'No update fields provided' });
   }
+
+  vals.push(userId);
+  vals.push(goalId);
+
   try {
-    const result = await pool.query(
-      `UPDATE goals
-         SET title = $1,
-             description = $2,
-             due_date = $3
-       WHERE id = $4
-     RETURNING *`,
-      [title, description, due_date, req.params.id]
+    const { rows } = await pool.query(
+      `
+      UPDATE goals
+         SET ${sets.join(', ')}
+       WHERE user_id = $${i++}
+         AND id = $${i++}
+      RETURNING *
+      `,
+      vals
     );
-    if (result.rows.length === 0)
-      return res.status(404).json({ error: 'Goal not found' });
-    res.json(result.rows[0]);
+
+    const updated = rows[0];
+    if (!updated) {
+      return res
+        .status(404)
+        .json({ error: 'Goal not found or not owned by user' });
+    }
+
+    return res.json(updated);
   } catch (err) {
     console.error('❌ Error updating goal:', err.message);
-    res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-// Delete a goal
-exports.deleteGoal = async (req, res) => {
-  try {
-    const result = await pool.query(
-      'DELETE FROM goals WHERE id = $1 RETURNING *',
-      [req.params.id]
-    );
-    if (result.rowCount === 0)
-      return res.status(404).json({ error: 'Goal not found' });
-    res.json({ message: 'Goal deleted', deleted: result.rows[0] });
-  } catch (err) {
-    console.error('❌ Error deleting goal:', err.message);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-};
+/* ────────────────────────────────────────────────────────────
+   Update status only (ownership enforced)
+   ──────────────────────────────────────────────────────────── */
 
-// Update goal status only
 exports.updateGoalStatus = async (req, res) => {
+  const userId = req.user?.id || req.user?.sub;
   const { status } = req.body;
-  const { id } = req.params;
+  const { id: goalId } = req.params;
 
   try {
     const validStatuses = ['not_started', 'in_progress', 'done'];
@@ -194,20 +268,56 @@ exports.updateGoalStatus = async (req, res) => {
       return res.status(400).json({ error: 'Invalid status value' });
     }
 
-    const result = await pool.query(
-      'UPDATE goals SET status = $1::status_enum WHERE id = $2 RETURNING *',
-      [status, id]
+    const { rows } = await pool.query(
+      `UPDATE goals
+          SET status = $1
+        WHERE id = $2 AND user_id = $3
+        RETURNING *`,
+      [status, goalId, userId]
     );
-    if (result.rows.length === 0)
-      return res.status(404).json({ error: 'Goal not found' });
-    res.json(result.rows[0]);
+
+    const goal = rows[0];
+    if (!goal) {
+      return res
+        .status(404)
+        .json({ error: 'Goal not found or not owned by user' });
+    }
+    return res.json(goal);
   } catch (err) {
     console.error('❌ Error updating goal status:', err.message);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/* ────────────────────────────────────────────────────────────
+   Delete (ownership enforced)
+   ──────────────────────────────────────────────────────────── */
+
+exports.deleteGoal = async (req, res) => {
+  const userId = req.user?.id || req.user?.sub;
+  const goalId = req.params.id;
+
+  try {
+    const { rowCount, rows } = await pool.query(
+      'DELETE FROM goals WHERE id = $1 AND user_id = $2 RETURNING *',
+      [goalId, userId]
+    );
+    if (!rowCount) {
+      return res
+        .status(404)
+        .json({ error: 'Goal not found or not owned by user' });
+    }
+    return res.json({ message: 'Goal deleted', deleted: rows[0] });
+  } catch (err) {
+    console.error('❌ Error deleting goal:', err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-// All goals (public/dev)
+/* ────────────────────────────────────────────────────────────
+   All goals (public/dev)
+   ──────────────────────────────────────────────────────────── */
+
 exports.getAllGoals = async (_req, res) => {
   try {
     const result = await pool.query(

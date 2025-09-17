@@ -6,20 +6,9 @@ Day 5 (Fri)
 
 - change telegram bot instruction so /done allows users to select a number for the appropriate microtask
 
-Day 6 (Sat)
-
-• Large: Test matrix (Free vs Pro, Telegram enabled/disabled, timezones)
-
-⸻
-
-Week 2
-
-Day 7 (Mon)
-• Large: Cron/unit tests with mocked Date (time windows) - allow users to switch tone through dashboard or telegram (pro only)
+- allow users to switch tone through dashboard or telegram (pro only)
 
 Day 8 (Tue)
-• Quick: Disable/hide Delete Goal button for free plan (UI polish)
-• Medium: Manual test: stripe checkout/cancel/portal
 • Large: Security: rate limiting for login/auth/AI endpoints
 
 - review faqs

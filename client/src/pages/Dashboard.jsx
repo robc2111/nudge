@@ -1,13 +1,19 @@
-// src/pages/Dashboard.jsx
 import { useEffect, useMemo, useCallback, useState, useRef } from 'react';
 import axios from '../api/axios';
 import { Link, useNavigate } from 'react-router-dom';
 import GoalCard from '../components/GoalCard';
 import SubgoalCard from '../components/SubgoalCard';
 import TaskCard from '../components/TaskCard';
+import { toast } from 'react-toastify';
 import { setSEO, seoPresets } from '../lib/seo';
 
 const REQ_TIMEOUT_MS = 12000;
+
+const TONE_OPTIONS = [
+  { value: 'friendly', label: 'Friendly' },
+  { value: 'strict', label: 'Strict' },
+  { value: 'motivational', label: 'Motivational' },
+];
 
 const Dashboard = () => {
   const [data, setData] = useState(null);
@@ -19,6 +25,8 @@ const Dashboard = () => {
   const [selectedSubgoalId, setSelectedSubgoalId] = useState(null);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [selectedMicrotaskId, setSelectedMicrotaskId] = useState(null);
+
+  const [savingTone, setSavingTone] = useState(false);
 
   const abortRef = useRef(null);
   const navigate = useNavigate();
@@ -63,6 +71,7 @@ const Dashboard = () => {
     abortRef.current = controller;
 
     try {
+      await axios.post('/payments/sync-plan').catch(() => {});
       const meRes = await axios.get('/users/me', {
         signal: controller.signal,
         timeout: REQ_TIMEOUT_MS,
@@ -294,9 +303,40 @@ const Dashboard = () => {
   };
 
   const plan = me?.plan?.toLowerCase?.() || 'free';
+  const isPro = plan === 'pro';
   const activeGoalCount = me?.activeGoalCount ?? 0;
   const atFreeLimit = plan === 'free' && activeGoalCount >= 1;
   const canDeleteGoals = plan !== 'free';
+
+  async function saveTone(goalId, tone) {
+    if (!goalId || !tone) return;
+    setSavingTone(true);
+    try {
+      await axios.put(
+        `/goals/${goalId}`,
+        { tone },
+        { timeout: REQ_TIMEOUT_MS }
+      );
+      toast.success('Tone updated');
+      // optimistic local patch
+      setData((prev) => {
+        if (!prev) return prev;
+        const copy = structuredClone(prev);
+        copy.goals = (copy.goals || []).map((g) =>
+          g.id === goalId ? { ...g, tone } : g
+        );
+        return copy;
+      });
+    } catch (e) {
+      const msg =
+        e?.response?.status === 403
+          ? 'Tone customization is a Pro feature.'
+          : e?.response?.data?.error || 'Failed to update tone';
+      toast.error(msg);
+    } finally {
+      setSavingTone(false);
+    }
+  }
 
   if (error) {
     return (
@@ -341,9 +381,11 @@ const Dashboard = () => {
     );
   }
 
+  const selectedGoalTone = selectedGoal?.tone || 'friendly';
+
   return (
     <div className="dashboard">
-      <div className="dashboard-controls">
+      <div className="dashboard-controls" style={{ gap: '1rem' }}>
         <div className="controls-group">
           <label htmlFor="goalSelect">
             <strong>Goal:</strong>
@@ -361,6 +403,40 @@ const Dashboard = () => {
             ))}
           </select>
         </div>
+
+        {/* Tone selector (Pro only) */}
+        {!!selectedGoal && (
+          <div
+            className="controls-group"
+            style={{ display: 'flex', gap: 8, alignItems: 'center' }}
+          >
+            <label htmlFor="toneSelect">
+              <strong>Coach tone:</strong>
+            </label>
+            <select
+              id="toneSelect"
+              className="form-input"
+              value={selectedGoalTone}
+              onChange={(e) =>
+                isPro ? saveTone(selectedGoal.id, e.target.value) : null
+              }
+              disabled={!isPro || savingTone}
+              title={!isPro ? 'Upgrade to Pro to customize tone' : ''}
+              style={{ minWidth: 200 }}
+            >
+              {TONE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            {!isPro && (
+              <Link to="/profile#billing" className="brand-link-dark">
+                Upgrade
+              </Link>
+            )}
+          </div>
+        )}
 
         <button
           className={`btn ${atFreeLimit ? 'btn-disabled' : ''}`}

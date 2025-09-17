@@ -1,4 +1,3 @@
-// server/routes/telegram.js
 const express = require('express');
 const { DateTime } = require('luxon');
 
@@ -14,6 +13,7 @@ const {
   renderChecklist,
 } = require('../utils/goalHelpers');
 const { sendTelegram } = require('../utils/telegram');
+const { assertPro } = require('../utils/plan');
 
 /* --------------------------------------------------------------------------------
  * In-memory session state
@@ -135,7 +135,6 @@ async function markMicrotaskDoneById(microtaskId, chatId) {
 
 /** Original search-based 'done <words>' handler, now also aware of pick-number */
 async function handleMarkDone({ text, user, chatId }) {
-  // If the user typed a number (e.g. "done 2") and there's an active session, consume it.
   const pick = parsePickNumber(text);
   if (pick && donePickSessions[chatId]?.items) {
     const { items, createdAt } = donePickSessions[chatId];
@@ -160,14 +159,12 @@ async function handleMarkDone({ text, user, chatId }) {
     return;
   }
 
-  // If no query text provided → start the picker flow instead of demanding words.
   const q = text.replace(/^\/?done/i, '').trim();
   if (!q) {
     await startDonePicker({ user, chatId });
     return;
   }
 
-  // Search by words in the microtask title
   const { rows } = await pool.query(
     `SELECT mt.id, mt.title
        FROM microtasks mt
@@ -246,14 +243,12 @@ router.post('/webhook', async (req, res) => {
 
     /* ---------- DONE picker: cancel / numeric replies ---------- */
 
-    // Cancel active /done selection
     if (donePickSessions[chatId] && /^cancel$/i.test(textLower)) {
       clearDoneSession(chatId);
       await sendMessage(chatId, 'Cancelled. Nothing was marked done.');
       return res.sendStatus(200);
     }
 
-    // Numeric reply while a selection is active
     if (donePickSessions[chatId]) {
       const pick = parsePickNumber(textLower);
       if (pick) {
@@ -280,7 +275,7 @@ router.post('/webhook', async (req, res) => {
       }
     }
 
-    // Mark-as-done high priority ("/done", "done", "done <words>", etc.)
+    // Mark-as-done priority
     if (/^(?:\/)?(?:done|complete|✔)\b/i.test(textLower)) {
       await handleMarkDone({ text, user, chatId });
       return res.sendStatus(200);
@@ -316,7 +311,7 @@ router.post('/webhook', async (req, res) => {
       }
     }
 
-    /* ---------- /reflect (start capture) ---------- */
+    /* ---------- /reflect ---------- */
     if (textLower === '/reflect') {
       reflectionSessions[chatId] = true;
       await sendMessage(
@@ -326,7 +321,7 @@ router.post('/webhook', async (req, res) => {
       return res.sendStatus(200);
     }
 
-    /* ---------- reflection reply (freeform) ---------- */
+    /* ---------- reflection reply ---------- */
     if (reflectionSessions[chatId]) {
       reflectionSessions[chatId] = false;
 
@@ -433,26 +428,33 @@ ${renderChecklist(p.microtasks, p.nextIdx)}`
       return res.sendStatus(200);
     }
 
-    /* ---------- Tones ---------- */
-    async function updateUserTone(userId, tone, chatId) {
-      const updateRes = await pool.query(
-        `UPDATE goals SET tone = $1
-         WHERE user_id = $2 AND status = 'in_progress'
-         RETURNING title`,
-        [tone, userId]
+    /* ---------- Tones (Pro-only) ---------- */
+    async function setActiveGoalTone(userId, tone) {
+      const { rows: g } = await pool.query(
+        `SELECT id, title FROM goals
+         WHERE user_id = $1 AND status = 'in_progress'
+         ORDER BY created_at DESC NULLS LAST
+         LIMIT 1`,
+        [userId]
       );
-
-      if (updateRes.rowCount === 0) {
-        await sendMessage(
-          chatId,
-          '⚠️ You don’t have an active goal to apply this tone to.'
-        );
-      } else {
-        await sendMessage(
-          chatId,
-          `✅ Coach tone set to *${tone}* for your goal: *${updateRes.rows[0].title}*`
-        );
+      const goal = g[0];
+      if (!goal) {
+        return {
+          updated: false,
+          msg: '⚠️ You don’t have an active goal to apply this tone to.',
+        };
       }
+
+      const { rowCount } = await pool.query(
+        `UPDATE goals SET tone = $1, updated_at = NOW() WHERE id = $2`,
+        ['' + tone, goal.id]
+      );
+      if (!rowCount)
+        return { updated: false, msg: '⚠️ Could not update tone.' };
+      return {
+        updated: true,
+        msg: `✅ Coach tone set to *${tone}* for *${goal.title}*`,
+      };
     }
 
     if (textLower === '/tone status') {
@@ -475,20 +477,30 @@ ${renderChecklist(p.microtasks, p.nextIdx)}`
     if (textLower === '/tone') {
       await sendMessage(
         chatId,
-        `🎙️ Choose your coach tone:
+        `🎙️ *Coach tone* (Pro)
 
-🐭 *friendly* – Kind and encouraging  
-🐜 *strict* – No-nonsense and focused  
-🐦 *motivational* – Upbeat and energizing
+*friendly* – Kind and encouraging  
+*strict* – No-nonsense and focused  
+*motivational* – Upbeat and energizing
 
-Just reply with one of the keywords.`
+Reply with one of: *friendly*, *strict*, *motivational*`
       );
       return res.sendStatus(200);
     }
 
     const toneMatch = textLower.match(/\b(friendly|strict|motivational)\b/);
     if (toneMatch) {
-      await updateUserTone(user.id, toneMatch[1], chatId);
+      try {
+        await assertPro(user.id);
+      } catch {
+        await sendMessage(
+          chatId,
+          '🔒 Tone customization is a *Pro* feature. Open Profile → Billing to upgrade.'
+        );
+        return res.sendStatus(200);
+      }
+      const r = await setActiveGoalTone(user.id, toneMatch[1]);
+      await sendMessage(chatId, r.msg);
       return res.sendStatus(200);
     }
 
@@ -501,7 +513,7 @@ Here’s what I can do:
 
 🪞 */reflect* — Log a weekly reflection  
 🎯 */goals* — View your active goals  
-🎙️ */tone* — Change your coach's tone  
+🎙️ */tone* — Change your coach's tone (Pro)  
 🎙️ */tone status* — Check your current tone  
 💡 *Pro users* get tone-aware weekly coaching messages
 
@@ -525,6 +537,7 @@ Try:
 - *done plan meals* (search)
 - /reflect
 - /goals
+- /tone
 - /help`
     );
     res.sendStatus(200);
