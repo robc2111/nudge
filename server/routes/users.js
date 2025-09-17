@@ -9,6 +9,7 @@ const {
   createUser,
   getUserById,
   getCurrentUser,
+  getMyDashboard,
   patchMe,
   updateUser,
   deleteUser,
@@ -57,7 +58,7 @@ router.post('/', createUser);
 // Authenticated
 router.get('/me', verifyToken, getCurrentUser);
 router.patch('/me', verifyToken, validate(UserPatchSchema, 'body'), patchMe);
-
+router.get('/me/dashboard', verifyToken, getMyDashboard);
 // New: delete own account (cancel Stripe, soft-delete user)
 router.delete('/me', verifyToken, async (req, res) => {
   const userId = req.user.id;

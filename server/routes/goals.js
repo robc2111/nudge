@@ -12,8 +12,13 @@ const {
   UserDashboardParams,
 } = require('../validation/schemas');
 
-// 🔒 Authenticated write routes
-router.post('/', verifyToken, validate(GoalCreateSchema, 'body'), goalsController.createGoal);
+// Authenticated writes
+router.post(
+  '/',
+  verifyToken,
+  validate(GoalCreateSchema, 'body'),
+  goalsController.createGoal
+);
 
 router.put(
   '/:id',
@@ -23,23 +28,31 @@ router.put(
   goalsController.updateGoal
 );
 
-router.delete('/:id', verifyToken, validate(IdParam, 'params'), goalsController.deleteGoal);
+router.delete(
+  '/:id',
+  verifyToken,
+  validate(IdParam, 'params'),
+  goalsController.deleteGoal
+);
 
 router.put(
   '/:id/status',
   verifyToken,
   validate(IdParam, 'params'),
-  // status is in body: { status }
   validate(GoalUpdateSchema.pick({ status: true }), 'body'),
   goalsController.updateGoalStatus
 );
 
-// 🔒 Authenticated “mine”
+// Authenticated: mine
 router.get('/mine', verifyToken, goalsController.getMyGoals);
 
-// Public / dev (keep if you need them)
+// Public/dev
 router.get('/', goalsController.getAllGoals);
-router.get('/user/:userId', validate(UserDashboardParams, 'params'), goalsController.getGoalsByUser);
+router.get(
+  '/user/:userId',
+  validate(UserDashboardParams, 'params'),
+  goalsController.getGoalsByUser
+);
 router.get('/:id', validate(IdParam, 'params'), goalsController.getGoalById);
 
 module.exports = router;

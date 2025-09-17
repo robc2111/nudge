@@ -8,9 +8,6 @@ const cors = require('cors');
 // Sentry (request + tracing first, error handler later)
 const { initSentry, sentryErrorHandler } = require('./monitoring/sentry');
 
-// Kick off cron/schedules (if any)
-require('./cron');
-
 const app = express();
 app.set('trust proxy', 1);
 
@@ -19,11 +16,10 @@ const isProd = process.env.NODE_ENV === 'production';
 // ---- Sentry (must be before any other middleware/routers) ----
 initSentry(app);
 
-// ---- tiny request logger (keep very early so it logs all routes) ----
+// ---- tiny request logger ----
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
-    // keep health noise low
     const isHealth = req.path === '/api/healthz' || req.path === '/api/readyz';
     const ms = Date.now() - start;
     if (!isHealth || res.statusCode >= 400) {
@@ -56,8 +52,6 @@ app.use(
             'style-src': ["'self'", "'unsafe-inline'"],
             'script-src': ["'self'"],
             'connect-src': ["'self'", ...allowedOrigins],
-            // add sentry ingest if you want to send traces from the browser too
-            // e.g., "https://o123456.ingest.sentry.io"
           },
         }
       : false, // keep CSP off in dev so Vite/WS aren't blocked
@@ -65,10 +59,10 @@ app.use(
   })
 );
 
-// ---- CORS (single source of truth) ----
+// ---- CORS ----
 const corsOptions = {
   origin(origin, cb) {
-    if (!origin) return cb(null, true); // same-origin / curl / server-to-server
+    if (!origin) return cb(null, true);
     if (allowedOrigins.includes(origin)) return cb(null, true);
     return cb(new Error('Not allowed by CORS'));
   },
@@ -78,8 +72,6 @@ const corsOptions = {
   maxAge: 600,
 };
 app.use(cors(corsOptions));
-
-// Explicit preflight handler (avoid path-to-regexp '*' issue)
 app.options(/.*/, cors(corsOptions));
 
 // ---- Stripe webhook (raw body) MUST be before json() ----
@@ -90,13 +82,13 @@ app.post(
   paymentsController.handleWebhook
 );
 
-// ---- JSON bodies for everything else ----
-app.use(express.json({ limit: '1mb' })); // small limit reduces abuse
+// ---- JSON for everything else ----
+app.use(express.json({ limit: '1mb' }));
 
-// Sentry test route (use next so no-unused-vars isn't triggered)
-app.get('/api/debug-sentry', (req, res, next) => {
-  next(new Error('Sentry test error'));
-});
+// Sentry test
+app.get('/api/debug-sentry', (req, res, next) =>
+  next(new Error('Sentry test error'))
+);
 
 // ---- Routes ----
 app.use('/api/telegram', require('./routes/telegram'));
@@ -119,12 +111,12 @@ try {
   console.warn('[og] disabled:', e.message);
 }
 
-// 🔒 plan management (choose active on Free)
+// 🔒 plan management
 app.use('/api/plan', require('./routes/plan'));
 
 // ---- Health/root ----
 app.get('/', (_req, res) => res.send('🚀 GoalCrumbs API is running'));
-const healthRoutes = require('./routes/health'); // exposes /healthz and /readyz
+const healthRoutes = require('./routes/health');
 app.use('/api', healthRoutes);
 
 // ---- 404 ----
@@ -134,22 +126,31 @@ app.use((req, res) => {
     .json({ error: `Route not found: ${req.method} ${req.originalUrl}` });
 });
 
-// ---- Sentry error handler (must be before any custom error handler) ----
+// ---- Sentry error handler ----
 sentryErrorHandler(app);
 
-// ---- Final error handler (last) ----
+// ---- Final error handler ----
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  // Don’t leak internals
   res.status(500).json({ error: 'Internal server error' });
 });
+
+// ---- Cron (gate with env so dev can disable) ----
+if (process.env.CRON_ENABLED !== 'false') {
+  try {
+    require('./cron');
+  } catch (e) {
+    console.error('[cron] failed to start:', e.message);
+  }
+} else {
+  console.log('[cron] disabled (CRON_ENABLED=false)');
+}
 
 const PORT = process.env.PORT || 5050;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
-// (Optional) process-level safety nets — Sentry already hooks most of these,
-// but logging here can help in local/dev.
+// Process-level safety nets
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled Rejection:', reason);
 });

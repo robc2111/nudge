@@ -7,10 +7,16 @@ const UUID = z.string().uuid('Invalid id');
 const nonEmpty = (min, max) => z.string().trim().min(min).max(max);
 const title120 = nonEmpty(3, 120);
 
+// Keep microtask status in sync with your app
 const microStatus = z.enum(['todo', 'in_progress', 'done', 'blocked']);
-const goalStatus = z.enum(['in_progress', 'paused', 'completed', 'archived']);
 
-const emailLower = z.string().email('Invalid email').transform((e) => e.toLowerCase());
+// Match the values you actually accept in updateGoalStatus()
+const goalStatus = z.enum(['not_started', 'in_progress', 'done']);
+
+const emailLower = z
+  .string()
+  .email('Invalid email')
+  .transform((e) => e.toLowerCase());
 
 /* ------------------------------- Auth -------------------------------- */
 const auth = {
@@ -26,6 +32,20 @@ const auth = {
     password: z.string().min(1, 'Password is required'),
   }),
 };
+
+/* ---------------------------- Goal shapes ----------------------------- */
+// Input shapes used by AI breakdown and manual subgoal entry
+const MicrotaskList = z.array(nonEmpty(2, 160)).default([]);
+
+const TaskInput = z.object({
+  title: title120,
+  microtasks: MicrotaskList.optional().default([]),
+});
+
+const SubgoalInput = z.object({
+  title: title120,
+  tasks: z.array(TaskInput).optional().default([]),
+});
 
 /* ------------------------------- Users ------------------------------- */
 const UserPatchSchema = z.object({
@@ -46,12 +66,18 @@ const GoalCreateSchema = z.object({
   title: title120,
   description: z.string().trim().max(1000).optional(),
   tone: z.enum(['friendly', 'strict', 'motivational']).optional(),
+  due_date: z.union([z.string(), z.date()]).optional(),
+
+  // Support either new "breakdown" or legacy "subgoals"
+  breakdown: z.array(SubgoalInput).optional().default([]),
+  subgoals: z.array(SubgoalInput).optional().default([]),
 });
 
 const GoalUpdateSchema = z.object({
   title: title120.optional(),
   description: z.string().trim().max(1000).optional(),
   tone: z.enum(['friendly', 'strict', 'motivational']).optional(),
+  due_date: z.union([z.string(), z.date()]).optional(),
   status: goalStatus.optional(),
 });
 
@@ -97,8 +123,10 @@ const MicrotaskUpdateSchema = z.object({
 
 const MicrotaskStatusBody = z.object({ status: microStatus });
 
+/* ------------------------------ Exports ------------------------------ */
 module.exports = {
   auth,
+
   // common params
   IdParam,
   UserIdParam,

@@ -1,14 +1,17 @@
 // server/controllers/usersController.js
 const { DateTime } = require('luxon');
 const pool = require('../db');
+const { withClient } = require('../db');
 const { assignStatuses } = require('../utils/statusUtils');
+
+const DASHBOARD_STMT_TIMEOUT_MS = Number(
+  process.env.DASHBOARD_STMT_TIMEOUT_MS || 8000
+);
 
 // ------------------------- helpers -------------------------
 
 /** Count only active, non-deleted goals for a user */
 async function countActiveGoals(userId) {
-  // Be resilient across environments: count all user goals.
-  // Reintroduce a specific status filter once the schema/values are confirmed.
   const { rows } = await pool.query(
     `SELECT COUNT(*)::int AS c
        FROM public.goals
@@ -36,7 +39,7 @@ function normalizeTz(input) {
 
 // ------------------------- CRUD (public/admin) -------------------------
 
-/** GET /api/users  (kept simple; filters out soft-deleted users) */
+/** GET /api/users  */
 const getUsers = async (_req, res) => {
   try {
     const result = await pool.query(
@@ -54,7 +57,7 @@ const getUsers = async (_req, res) => {
   }
 };
 
-/** POST /api/users  (basic helper; keeps your original semantics) */
+/** POST /api/users */
 const createUser = async (req, res) => {
   if (!req.body || !req.body.telegram_id) {
     return res
@@ -79,7 +82,7 @@ const createUser = async (req, res) => {
   }
 };
 
-/** GET /api/users/:id  (self-only; blocks soft-deleted) */
+/** GET /api/users/:id  (self-only) */
 const getUserById = async (req, res) => {
   const requestedId = req.params.id;
   const authenticatedUserId = req.user.id;
@@ -127,20 +130,16 @@ const getCurrentUser = async (req, res) => {
       return res.status(403).json({ error: 'Account deleted' });
 
     const activeGoalCount = await countActiveGoals(req.user.id);
-
-    res.json({
-      ...me,
-      activeGoalCount,
-    });
+    res.json({ ...me, activeGoalCount });
   } catch (err) {
-    console.error('Error loading user:', err); // full object, includes code & detail
+    console.error('Error loading user:', err);
     res.status(500).json({ error: err.message || 'Failed to load user' });
   }
 };
 
 // ------------------------- PATCH / PUT -------------------------
 
-/** PATCH /api/users/me  (update partial profile fields) */
+/** PATCH /api/users/me */
 const patchMe = async (req, res) => {
   const userId = req.user.id;
   const {
@@ -177,7 +176,6 @@ const patchMe = async (req, res) => {
     sets.push(`timezone = $${i++}`);
     vals.push(tz);
   }
-
   if (plan !== undefined) {
     sets.push(`plan = $${i++}`);
     vals.push(plan);
@@ -186,7 +184,6 @@ const patchMe = async (req, res) => {
     sets.push(`plan_status = $${i++}`);
     vals.push(plan_status);
   }
-
   if (typeof telegram_enabled === 'boolean') {
     sets.push(`telegram_enabled = $${i++}`);
     vals.push(telegram_enabled);
@@ -194,7 +191,6 @@ const patchMe = async (req, res) => {
 
   if (!sets.length) return getCurrentUser(req, res);
 
-  // Guard: do not patch deleted accounts
   sets.push(`updated_at = NOW()`);
   vals.push(userId);
   const sql = `
@@ -213,18 +209,14 @@ const patchMe = async (req, res) => {
       return res.status(404).json({ error: 'User not found or deleted' });
 
     const activeGoalCount = await countActiveGoals(userId);
-
-    res.json({
-      ...user,
-      activeGoalCount,
-    });
+    res.json({ ...user, activeGoalCount });
   } catch (err) {
     console.error('❌ Failed to patch user:', err.message);
     res.status(500).json({ error: 'Failed to update profile' });
   }
 };
 
-/** PUT /api/users/:id  (self-only, simple name update; kept for compatibility) */
+/** PUT /api/users/:id (self-only) */
 const updateUser = async (req, res) => {
   const authenticatedUserId = req.user.id;
   const targetUserId = req.params.id;
@@ -255,11 +247,6 @@ const updateUser = async (req, res) => {
 
 // ------------------------- DELETE -------------------------
 
-/**
- * DELETE /api/users/:id (HARD delete, self-only)
- * Kept for backwards compatibility, but consider disabling in production
- * if you want soft delete everywhere. It will error if FKs lack cascade.
- */
 const deleteUser = async (req, res) => {
   const authenticatedUserId = req.user.id;
   const targetUserId = req.params.id;
@@ -271,20 +258,18 @@ const deleteUser = async (req, res) => {
       `DELETE FROM users WHERE id = $1 AND deleted_at IS NULL RETURNING *`,
       [targetUserId]
     );
-    if (result.rowCount === 0)
+    if (result.rowCount === 0) {
       return res
         .status(404)
         .json({ error: 'User not found or already deleted' });
+    }
     res.json({ message: 'User hard-deleted', user: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-/**
- * DELETE /api/users/me  (SOFT delete)
- * Requires: { confirm: "DELETE", acknowledge: true }
- */
+/** DELETE /api/users/me (soft delete) */
 const deleteMe = async (req, res) => {
   const userId = req.user.id;
   const { confirm, acknowledge } = req.body || {};
@@ -317,9 +302,9 @@ const deleteMe = async (req, res) => {
   }
 };
 
-// ------------------------- Dashboard -------------------------
+// ------------------------- Dashboard (batched, fast) -------------------------
 
-/** GET /api/users/:userId/dashboard  (self-only; ignores deleted user) */
+/** GET /api/users/:userId/dashboard (self-only) */
 const getUserDashboard = async (req, res) => {
   const requestedUserId = req.params.userId;
   const authenticatedUserId = req.user.id;
@@ -332,135 +317,150 @@ const getUserDashboard = async (req, res) => {
   }
 
   try {
-    // Confirm user exists and is not soft-deleted
-    const userResult = await pool.query(
-      `SELECT id, name, deleted_at FROM users WHERE id = $1 LIMIT 1`,
-      [authenticatedUserId]
-    );
-    const user = userResult.rows[0];
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (user.deleted_at)
-      return res.status(403).json({ error: 'Account deleted' });
-
-    // Load goals (ignore any future soft-deleted goals if you add that column)
-    const goalResult = await pool.query(
-      `
-      SELECT *
-        FROM goals
-       WHERE user_id = $1
-       ORDER BY created_at DESC NULLS LAST
-      `,
-      [authenticatedUserId]
-    );
-    const goals = goalResult.rows;
-
-    const allGoals = [];
-
-    for (const goal of goals) {
-      const subgoalsResult = await pool.query(
-        `SELECT * FROM subgoals WHERE goal_id = $1 ORDER BY position ASC, id ASC`,
-        [goal.id]
-      );
-      const subgoals = [];
-
-      for (const sg of subgoalsResult.rows) {
-        const tasksResult = await pool.query(
-          `SELECT * FROM tasks WHERE subgoal_id = $1 ORDER BY position ASC, id ASC`,
-          [sg.id]
+    const out = await withClient(
+      async (client) => {
+        // Apply shorter statement timeout for this heavy endpoint
+        await client.query(
+          `SET statement_timeout TO ${DASHBOARD_STMT_TIMEOUT_MS}`
         );
-        const tasks = [];
 
-        for (const task of tasksResult.rows) {
-          const microtasksResult = await pool.query(
-            `SELECT * FROM microtasks WHERE task_id = $1 ORDER BY position ASC, id ASC`,
-            [task.id]
-          );
-          const microtasks = microtasksResult.rows.map((mt) => ({
-            id: mt.id,
-            title: mt.title,
-            status: mt.status,
-            task_id: mt.task_id,
-          }));
-          tasks.push({ ...task, microtasks });
+        // Verify user
+        const { rows: userRows } = await client.query(
+          `SELECT id, name, deleted_at FROM users WHERE id = $1 LIMIT 1`,
+          [authenticatedUserId]
+        );
+        const user = userRows[0];
+        if (!user) return { status: 404, body: { error: 'User not found' } };
+        if (user.deleted_at)
+          return { status: 403, body: { error: 'Account deleted' } };
+
+        // 1) Goals
+        const { rows: goals } = await client.query(
+          `SELECT * FROM goals WHERE user_id = $1 ORDER BY created_at DESC NULLS LAST`,
+          [authenticatedUserId]
+        );
+        if (goals.length === 0) {
+          return {
+            status: 200,
+            body: { user: { id: user.id, name: user.name }, goals: [] },
+          };
         }
 
-        subgoals.push({ ...sg, tasks });
-      }
+        const goalIds = goals.map((g) => g.id);
 
-      // Compute simple progress rollup
-      let total = 0;
-      let done = 0;
-      let current = { subgoalId: null, taskId: null, microtaskId: null };
+        // 2) Subgoals for all goals
+        const { rows: subgoals } = await client.query(
+          `SELECT * FROM subgoals WHERE goal_id = ANY($1::uuid[]) ORDER BY position ASC, id ASC`,
+          [goalIds]
+        );
+        const subgoalIds = subgoals.map((sg) => sg.id);
 
-      for (const sg of subgoals) {
-        for (const task of sg.tasks) {
-          for (const mt of task.microtasks) {
-            total += 1;
-            if (mt.status === 'done') done += 1;
-          }
-          const next = task.microtasks.find((mt) => mt.status !== 'done');
-          if (!current.microtaskId && next) {
-            current = {
-              subgoalId: sg.id,
-              taskId: task.id,
-              microtaskId: next.id,
-            };
-          }
+        // 3) Tasks for all subgoals
+        const { rows: tasks } = subgoalIds.length
+          ? await client.query(
+              `SELECT * FROM tasks WHERE subgoal_id = ANY($1::uuid[]) ORDER BY position ASC, id ASC`,
+              [subgoalIds]
+            )
+          : { rows: [] };
+        const taskIds = tasks.map((t) => t.id);
+
+        // 4) Microtasks for all tasks (only necessary columns)
+        const { rows: microtasks } = taskIds.length
+          ? await client.query(
+              `SELECT id, title, status, task_id
+               FROM microtasks
+              WHERE task_id = ANY($1::uuid[])
+              ORDER BY position ASC, id ASC`,
+              [taskIds]
+            )
+          : { rows: [] };
+
+        // Assemble tree in memory (O(n))
+        const microByTask = new Map();
+        for (const mt of microtasks) {
+          if (!microByTask.has(mt.task_id)) microByTask.set(mt.task_id, []);
+          microByTask.get(mt.task_id).push(mt);
         }
-      }
 
-      const percentage_complete =
-        total === 0 ? 0 : parseFloat(((done / total) * 100).toFixed(1));
+        const tasksBySub = new Map();
+        for (const t of tasks) {
+          if (!tasksBySub.has(t.subgoal_id)) tasksBySub.set(t.subgoal_id, []);
+          tasksBySub
+            .get(t.subgoal_id)
+            .push({ ...t, microtasks: microByTask.get(t.id) || [] });
+        }
 
-      allGoals.push({
-        ...goal,
-        subgoals,
-        percentage_complete,
-        current,
-      });
-    }
+        const subByGoal = new Map();
+        for (const sg of subgoals) {
+          if (!subByGoal.has(sg.goal_id)) subByGoal.set(sg.goal_id, []);
+          subByGoal
+            .get(sg.goal_id)
+            .push({ ...sg, tasks: tasksBySub.get(sg.id) || [] });
+        }
 
-    const statusProcessedGoals = allGoals.map(assignStatuses);
-    return res.json({
-      user: { id: user.id, name: user.name },
-      goals: statusProcessedGoals,
-    });
+        // Build final goals + progress
+        const assembled = goals.map((g) => {
+          const sgList = subByGoal.get(g.id) || [];
+
+          let total = 0,
+            done = 0;
+          let current = { subgoalId: null, taskId: null, microtaskId: null };
+
+          for (const sg of sgList) {
+            for (const t of sg.tasks) {
+              for (const mt of t.microtasks) {
+                total++;
+                if (mt.status === 'done') done++;
+              }
+              const next = t.microtasks.find((mt) => mt.status !== 'done');
+              if (!current.microtaskId && next) {
+                current = {
+                  subgoalId: sg.id,
+                  taskId: t.id,
+                  microtaskId: next.id,
+                };
+              }
+            }
+          }
+
+          const percentage_complete = total
+            ? Number(((done / total) * 100).toFixed(1))
+            : 0;
+
+          return assignStatuses({
+            ...g,
+            subgoals: sgList,
+            percentage_complete,
+            current,
+          });
+        });
+
+        return {
+          status: 200,
+          body: { user: { id: user.id, name: user.name }, goals: assembled },
+        };
+      },
+      { statementTimeoutMs: DASHBOARD_STMT_TIMEOUT_MS }
+    );
+
+    return res.status(out.status).json(out.body);
   } catch (err) {
+    // If the DB exceeded statement_timeout, Postgres throws an error we catch here.
     console.error('❌ Error generating dashboard:', err.message);
+    // Distinguish timeout-ish errors for clearer client message
+    if (/statement timeout|timeout|ETIMEDOUT/i.test(err.message)) {
+      return res
+        .status(504)
+        .json({ error: 'Dashboard query timed out. Please try again.' });
+    }
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-// ------------------------- Optional: alias -------------------------
-
-/** Legacy /me alias if referenced elsewhere */
-exports.me = async (req, res) => {
-  try {
-    const { rows } = await pool.query(
-      `
-      SELECT id, email, name, telegram_id,
-             plan, plan_status, stripe_customer_id, telegram_enabled, deleted_at
-        FROM users
-       WHERE id = $1
-       LIMIT 1
-      `,
-      [req.user.id]
-    );
-    const me = rows[0];
-    if (!me) return res.status(404).json({ error: 'User not found' });
-    if (me.deleted_at)
-      return res.status(403).json({ error: 'Account deleted' });
-
-    const activeGoalCount = await countActiveGoals(req.user.id);
-
-    res.json({
-      ...me,
-      activeGoalCount,
-    });
-  } catch (err) {
-    console.error('Failed to load user:', err);
-    res.status(500).json({ error: 'Failed to load user' });
-  }
+/** GET /api/users/me/dashboard */
+const getMyDashboard = async (req, res) => {
+  req.params = { userId: req.user.id };
+  return getUserDashboard(req, res);
 };
 
 // ------------------------- exports -------------------------
@@ -474,10 +474,11 @@ module.exports = {
   getUserById,
   getCurrentUser,
   getUserDashboard,
+  getMyDashboard,
   // update
   patchMe,
   updateUser,
   // delete
-  deleteUser, // hard delete (consider restricting)
-  deleteMe, // soft delete (recommended path)
+  deleteUser,
+  deleteMe,
 };

@@ -69,20 +69,10 @@ const Dashboard = () => {
       });
       setMe(meRes.data);
 
-      let payload;
-      try {
-        const res = await axios.get(`/users/${meRes.data.id}/dashboard`, {
-          signal: controller.signal,
-          timeout: REQ_TIMEOUT_MS,
-        });
-        payload = res.data ?? {};
-      } catch {
-        const res2 = await axios.get('/dashboard', {
-          signal: controller.signal,
-          timeout: REQ_TIMEOUT_MS,
-        });
-        payload = res2.data ?? {};
-      }
+      const { data: payload } = await axios.get('/users/me/dashboard', {
+        signal: controller.signal,
+        timeout: REQ_TIMEOUT_MS,
+      });
 
       setData(payload);
 
