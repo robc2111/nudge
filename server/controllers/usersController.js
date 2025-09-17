@@ -1,7 +1,14 @@
 // server/controllers/usersController.js
 const { DateTime } = require('luxon');
 const pool = require('../db');
-const { withClient } = require('../db');
+const {
+  sendFarewellIfPossible,
+  forgetTelegramForUser,
+} = require('../utils/telegramAccount');
+const Stripe = require('stripe');
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
+  : null;
 const { assignStatuses } = require('../utils/statusUtils');
 
 const DASHBOARD_STMT_TIMEOUT_MS = Number(
@@ -10,7 +17,6 @@ const DASHBOARD_STMT_TIMEOUT_MS = Number(
 
 // ------------------------- helpers -------------------------
 
-/** Count only active, non-deleted goals for a user */
 async function countActiveGoals(userId) {
   const { rows } = await pool.query(
     `SELECT COUNT(*)::int AS c
@@ -21,7 +27,6 @@ async function countActiveGoals(userId) {
   return rows[0]?.c ?? 0;
 }
 
-/** Normalize some time zone aliases to valid IANA zones */
 const TZ_ALIASES = {
   montenegro: 'Europe/Podgorica',
   podgorica: 'Europe/Podgorica',
@@ -39,7 +44,6 @@ function normalizeTz(input) {
 
 // ------------------------- CRUD (public/admin) -------------------------
 
-/** GET /api/users  */
 const getUsers = async (_req, res) => {
   try {
     const result = await pool.query(
@@ -57,7 +61,6 @@ const getUsers = async (_req, res) => {
   }
 };
 
-/** POST /api/users */
 const createUser = async (req, res) => {
   if (!req.body || !req.body.telegram_id) {
     return res
@@ -82,7 +85,6 @@ const createUser = async (req, res) => {
   }
 };
 
-/** GET /api/users/:id  (self-only) */
 const getUserById = async (req, res) => {
   const requestedId = req.params.id;
   const authenticatedUserId = req.user.id;
@@ -111,7 +113,6 @@ const getUserById = async (req, res) => {
   }
 };
 
-/** GET /api/users/me */
 const getCurrentUser = async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -139,7 +140,6 @@ const getCurrentUser = async (req, res) => {
 
 // ------------------------- PATCH / PUT -------------------------
 
-/** PATCH /api/users/me */
 const patchMe = async (req, res) => {
   const userId = req.user.id;
   const {
@@ -176,6 +176,7 @@ const patchMe = async (req, res) => {
     sets.push(`timezone = $${i++}`);
     vals.push(tz);
   }
+
   if (plan !== undefined) {
     sets.push(`plan = $${i++}`);
     vals.push(plan);
@@ -184,6 +185,7 @@ const patchMe = async (req, res) => {
     sets.push(`plan_status = $${i++}`);
     vals.push(plan_status);
   }
+
   if (typeof telegram_enabled === 'boolean') {
     sets.push(`telegram_enabled = $${i++}`);
     vals.push(telegram_enabled);
@@ -216,7 +218,6 @@ const patchMe = async (req, res) => {
   }
 };
 
-/** PUT /api/users/:id (self-only) */
 const updateUser = async (req, res) => {
   const authenticatedUserId = req.user.id;
   const targetUserId = req.params.id;
@@ -269,42 +270,8 @@ const deleteUser = async (req, res) => {
   }
 };
 
-/** DELETE /api/users/me (soft delete) */
-const deleteMe = async (req, res) => {
-  const userId = req.user.id;
-  const { confirm, acknowledge } = req.body || {};
+// ------------------------- Dashboard (batched) -------------------------
 
-  if ((confirm || '').toUpperCase() !== 'DELETE' || acknowledge !== true) {
-    return res
-      .status(403)
-      .json({ error: 'Please type DELETE and tick the box to confirm.' });
-  }
-
-  try {
-    const { rowCount } = await pool.query(
-      `
-      UPDATE users
-         SET deleted_at = NOW()
-       WHERE id = $1
-         AND deleted_at IS NULL
-      `,
-      [userId]
-    );
-
-    if (!rowCount)
-      return res
-        .status(404)
-        .json({ error: 'User not found or already deleted' });
-    return res.json({ ok: true });
-  } catch (err) {
-    console.error('❌ deleteMe error:', err.message);
-    return res.status(500).json({ error: 'Failed to delete account' });
-  }
-};
-
-// ------------------------- Dashboard (batched, fast) -------------------------
-
-/** GET /api/users/:userId/dashboard (self-only) */
 const getUserDashboard = async (req, res) => {
   const requestedUserId = req.params.userId;
   const authenticatedUserId = req.user.id;
@@ -317,137 +284,115 @@ const getUserDashboard = async (req, res) => {
   }
 
   try {
-    const out = await withClient(
-      async (client) => {
-        // Apply shorter statement timeout for this heavy endpoint
-        await client.query(
-          `SET statement_timeout TO ${DASHBOARD_STMT_TIMEOUT_MS}`
-        );
-
-        // Verify user
-        const { rows: userRows } = await client.query(
-          `SELECT id, name, deleted_at FROM users WHERE id = $1 LIMIT 1`,
-          [authenticatedUserId]
-        );
-        const user = userRows[0];
-        if (!user) return { status: 404, body: { error: 'User not found' } };
-        if (user.deleted_at)
-          return { status: 403, body: { error: 'Account deleted' } };
-
-        // 1) Goals
-        const { rows: goals } = await client.query(
-          `SELECT * FROM goals WHERE user_id = $1 ORDER BY created_at DESC NULLS LAST`,
-          [authenticatedUserId]
-        );
-        if (goals.length === 0) {
-          return {
-            status: 200,
-            body: { user: { id: user.id, name: user.name }, goals: [] },
-          };
-        }
-
-        const goalIds = goals.map((g) => g.id);
-
-        // 2) Subgoals for all goals
-        const { rows: subgoals } = await client.query(
-          `SELECT * FROM subgoals WHERE goal_id = ANY($1::uuid[]) ORDER BY position ASC, id ASC`,
-          [goalIds]
-        );
-        const subgoalIds = subgoals.map((sg) => sg.id);
-
-        // 3) Tasks for all subgoals
-        const { rows: tasks } = subgoalIds.length
-          ? await client.query(
-              `SELECT * FROM tasks WHERE subgoal_id = ANY($1::uuid[]) ORDER BY position ASC, id ASC`,
-              [subgoalIds]
-            )
-          : { rows: [] };
-        const taskIds = tasks.map((t) => t.id);
-
-        // 4) Microtasks for all tasks (only necessary columns)
-        const { rows: microtasks } = taskIds.length
-          ? await client.query(
-              `SELECT id, title, status, task_id
-               FROM microtasks
-              WHERE task_id = ANY($1::uuid[])
-              ORDER BY position ASC, id ASC`,
-              [taskIds]
-            )
-          : { rows: [] };
-
-        // Assemble tree in memory (O(n))
-        const microByTask = new Map();
-        for (const mt of microtasks) {
-          if (!microByTask.has(mt.task_id)) microByTask.set(mt.task_id, []);
-          microByTask.get(mt.task_id).push(mt);
-        }
-
-        const tasksBySub = new Map();
-        for (const t of tasks) {
-          if (!tasksBySub.has(t.subgoal_id)) tasksBySub.set(t.subgoal_id, []);
-          tasksBySub
-            .get(t.subgoal_id)
-            .push({ ...t, microtasks: microByTask.get(t.id) || [] });
-        }
-
-        const subByGoal = new Map();
-        for (const sg of subgoals) {
-          if (!subByGoal.has(sg.goal_id)) subByGoal.set(sg.goal_id, []);
-          subByGoal
-            .get(sg.goal_id)
-            .push({ ...sg, tasks: tasksBySub.get(sg.id) || [] });
-        }
-
-        // Build final goals + progress
-        const assembled = goals.map((g) => {
-          const sgList = subByGoal.get(g.id) || [];
-
-          let total = 0,
-            done = 0;
-          let current = { subgoalId: null, taskId: null, microtaskId: null };
-
-          for (const sg of sgList) {
-            for (const t of sg.tasks) {
-              for (const mt of t.microtasks) {
-                total++;
-                if (mt.status === 'done') done++;
-              }
-              const next = t.microtasks.find((mt) => mt.status !== 'done');
-              if (!current.microtaskId && next) {
-                current = {
-                  subgoalId: sg.id,
-                  taskId: t.id,
-                  microtaskId: next.id,
-                };
-              }
-            }
-          }
-
-          const percentage_complete = total
-            ? Number(((done / total) * 100).toFixed(1))
-            : 0;
-
-          return assignStatuses({
-            ...g,
-            subgoals: sgList,
-            percentage_complete,
-            current,
-          });
-        });
-
-        return {
-          status: 200,
-          body: { user: { id: user.id, name: user.name }, goals: assembled },
-        };
-      },
-      { statementTimeoutMs: DASHBOARD_STMT_TIMEOUT_MS }
+    // Short statement timeout per request
+    await pool.query(
+      `SET LOCAL statement_timeout TO ${DASHBOARD_STMT_TIMEOUT_MS}`
     );
 
-    return res.status(out.status).json(out.body);
+    const { rows: userRows } = await pool.query(
+      `SELECT id, name, deleted_at FROM users WHERE id = $1 LIMIT 1`,
+      [authenticatedUserId]
+    );
+    const user = userRows[0];
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.deleted_at)
+      return res.status(403).json({ error: 'Account deleted' });
+
+    const { rows: goals } = await pool.query(
+      `SELECT * FROM goals WHERE user_id = $1 ORDER BY created_at DESC NULLS LAST`,
+      [authenticatedUserId]
+    );
+    if (goals.length === 0) {
+      return res.json({ user: { id: user.id, name: user.name }, goals: [] });
+    }
+
+    const goalIds = goals.map((g) => g.id);
+
+    const { rows: subgoals } = await pool.query(
+      `SELECT * FROM subgoals WHERE goal_id = ANY($1::uuid[]) ORDER BY position ASC, id ASC`,
+      [goalIds]
+    );
+    const subgoalIds = subgoals.map((sg) => sg.id);
+
+    const { rows: tasks } = subgoalIds.length
+      ? await pool.query(
+          `SELECT * FROM tasks WHERE subgoal_id = ANY($1::uuid[]) ORDER BY position ASC, id ASC`,
+          [subgoalIds]
+        )
+      : [];
+
+    const taskIds = tasks.map((t) => t.id);
+
+    const { rows: microtasks } = taskIds.length
+      ? await pool.query(
+          `SELECT id, title, status, task_id
+             FROM microtasks
+            WHERE task_id = ANY($1::uuid[])
+            ORDER BY position ASC, id ASC`,
+          [taskIds]
+        )
+      : [];
+
+    const microByTask = new Map();
+    for (const mt of microtasks) {
+      if (!microByTask.has(mt.task_id)) microByTask.set(mt.task_id, []);
+      microByTask.get(mt.task_id).push(mt);
+    }
+
+    const tasksBySub = new Map();
+    for (const t of tasks) {
+      if (!tasksBySub.has(t.subgoal_id)) tasksBySub.set(t.subgoal_id, []);
+      tasksBySub
+        .get(t.subgoal_id)
+        .push({ ...t, microtasks: microByTask.get(t.id) || [] });
+    }
+
+    const subByGoal = new Map();
+    for (const sg of subgoals) {
+      if (!subByGoal.has(sg.goal_id)) subByGoal.set(sg.goal_id, []);
+      subByGoal
+        .get(sg.goal_id)
+        .push({ ...sg, tasks: tasksBySub.get(sg.id) || [] });
+    }
+
+    const assembled = goals.map((g) => {
+      const sgList = subByGoal.get(g.id) || [];
+
+      let total = 0,
+        done = 0;
+      let current = { subgoalId: null, taskId: null, microtaskId: null };
+
+      for (const sg of sgList) {
+        for (const t of sg.tasks) {
+          for (const mt of t.microtasks) {
+            total++;
+            if (mt.status === 'done') done++;
+          }
+          const next = t.microtasks.find((mt) => mt.status !== 'done');
+          if (!current.microtaskId && next) {
+            current = { subgoalId: sg.id, taskId: t.id, microtaskId: next.id };
+          }
+        }
+      }
+
+      const percentage_complete = total
+        ? Number(((done / total) * 100).toFixed(1))
+        : 0;
+
+      return assignStatuses({
+        ...g,
+        subgoals: sgList,
+        percentage_complete,
+        current,
+      });
+    });
+
+    return res.json({
+      user: { id: user.id, name: user.name },
+      goals: assembled,
+    });
   } catch (err) {
-    // If the DB exceeded statement_timeout, Postgres throws an error we catch here.
     console.error('❌ Error generating dashboard:', err.message);
-    // Distinguish timeout-ish errors for clearer client message
     if (/statement timeout|timeout|ETIMEDOUT/i.test(err.message)) {
       return res
         .status(504)
@@ -457,28 +402,104 @@ const getUserDashboard = async (req, res) => {
   }
 };
 
-/** GET /api/users/me/dashboard */
 const getMyDashboard = async (req, res) => {
   req.params = { userId: req.user.id };
   return getUserDashboard(req, res);
 };
 
+// Delete me with Telegram farewell + unlink
+const deleteMe = async (req, res) => {
+  const userId = req.user.id;
+  const { confirm, acknowledge } = req.body || {};
+
+  if ((confirm || '').toUpperCase() !== 'DELETE' || acknowledge !== true) {
+    return res
+      .status(403)
+      .json({ error: 'Please type DELETE and tick the box to confirm.' });
+  }
+
+  const { rows } = await pool.query(
+    `SELECT id, name, telegram_id, stripe_customer_id, deleted_at
+       FROM public.users
+      WHERE id = $1
+      LIMIT 1`,
+    [userId]
+  );
+  const user = rows[0];
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  if (user.deleted_at) {
+    try {
+      await forgetTelegramForUser(userId);
+    } catch (e) {
+      console.warn('[deleteMe] ignore unlink error:', e.message);
+    }
+    return res.json({ ok: true, message: 'Account already deleted' });
+  }
+
+  try {
+    if (stripe && user.stripe_customer_id) {
+      const subs = await stripe.subscriptions.list({
+        customer: user.stripe_customer_id,
+        status: 'active',
+        limit: 100,
+      });
+      for (const s of subs.data) {
+        await stripe.subscriptions.update(s.id, { cancel_at_period_end: true });
+      }
+    }
+  } catch (e) {
+    console.error('[deleteMe] Stripe cancel failed:', e.message);
+  }
+
+  await sendFarewellIfPossible(user);
+
+  try {
+    await pool.query('BEGIN');
+
+    await pool.query(
+      `UPDATE public.users
+          SET deleted_at = NOW(),
+              plan = 'free',
+              plan_status = 'canceled'
+        WHERE id = $1`,
+      [userId]
+    );
+
+    await pool.query(
+      `UPDATE public.goals
+          SET status = CASE WHEN status='done' THEN status ELSE 'done' END
+        WHERE user_id = $1`,
+      [userId]
+    );
+
+    await forgetTelegramForUser(userId);
+
+    await pool.query('COMMIT');
+  } catch (err) {
+    await pool.query('ROLLBACK');
+    console.error('❌ deleteMe error:', err.message);
+    return res.status(500).json({ error: 'Failed to delete account' });
+  }
+
+  return res.json({
+    ok: true,
+    message:
+      'Account deleted. Your subscription (if any) will end at period end, and Telegram has been unlinked.',
+  });
+};
+
 // ------------------------- exports -------------------------
 
 module.exports = {
-  // list
   getUsers,
-  // create
   createUser,
-  // read
   getUserById,
   getCurrentUser,
   getUserDashboard,
   getMyDashboard,
-  // update
   patchMe,
   updateUser,
-  // delete
   deleteUser,
   deleteMe,
 };
