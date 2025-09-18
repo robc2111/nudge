@@ -2,12 +2,6 @@ Week 1
 
 Day 3 (Wed) - Register for self employed tax (sole trader) - transfer render, supabase and netlfiy accounts to goalcrumbs email if needed \*\*\*
 
-Day 5 (Fri)
-
-- change telegram bot instruction so /done allows users to select a number for the appropriate microtask
-
-- allow users to switch tone through dashboard or telegram (pro only)
-
 Day 8 (Tue)
 • Large: Security: rate limiting for login/auth/AI endpoints
 
