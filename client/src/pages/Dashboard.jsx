@@ -7,6 +7,7 @@ import SubgoalCard from '../components/SubgoalCard';
 import TaskCard from '../components/TaskCard';
 import { toast } from 'react-toastify';
 import { setSEO, seoPresets } from '../lib/seo';
+import { atActiveGoalLimit, isPro as isProPlan } from '../utils/planGuard';
 
 const REQ_TIMEOUT_MS = 12000;
 
@@ -374,16 +375,18 @@ const Dashboard = () => {
     }
   };
 
-  const plan = me?.plan?.toLowerCase?.() || 'free';
-  const isPro = plan === 'pro';
+  // ---------- Plan/limits (single source) ----------
+  const plan = me?.plan || 'free';
+  const planStatus = me?.plan_status || 'inactive';
   const derivedActiveCount =
     data?.goals?.filter((g) => g.status !== 'done').length ?? 0;
   const activeGoalCount =
     typeof me?.activeGoalCount === 'number'
       ? me.activeGoalCount
       : derivedActiveCount;
-  const atFreeLimit = plan === 'free' && activeGoalCount >= 1;
-  const canDeleteGoals = plan !== 'free';
+
+  const pro = isProPlan(plan, planStatus);
+  const atLimit = atActiveGoalLimit(activeGoalCount, plan, planStatus, 1);
 
   async function saveTone(goalId, tone) {
     if (!goalId || !tone) return;
@@ -450,13 +453,13 @@ const Dashboard = () => {
         <p>You don&apos;t have any goals yet.</p>
         <button
           className="btn"
-          disabled={atFreeLimit}
-          onClick={() => !atFreeLimit && navigate('/goal-setup')}
-          title={atFreeLimit ? 'Upgrade to create more goals' : ''}
+          disabled={atLimit}
+          onClick={() => !atLimit && navigate('/goal-setup')}
+          title={atLimit ? 'Upgrade to create more goals' : ''}
         >
           ➕ Create Your First Goal
         </button>
-        {atFreeLimit && (
+        {atLimit && (
           <p className="auth-error" style={{ marginTop: 8 }}>
             You’re on the Free plan (1 active goal).{' '}
             <Link to="/profile#billing" className="brand-link-dark">
@@ -508,6 +511,7 @@ const Dashboard = () => {
           </select>
         </div>
 
+        {/* Tone selector (Pro only) */}
         {!!selectedGoal && (
           <div
             className="controls-group"
@@ -521,10 +525,10 @@ const Dashboard = () => {
               className="form-input"
               value={selectedGoalTone}
               onChange={(e) =>
-                isPro ? saveTone(selectedGoal.id, e.target.value) : null
+                pro ? saveTone(selectedGoal.id, e.target.value) : null
               }
-              disabled={!isPro || savingTone}
-              title={!isPro ? 'Upgrade to Pro to customize tone' : ''}
+              disabled={!pro || savingTone}
+              title={!pro ? 'Upgrade to Pro to customize tone' : ''}
               style={{ minWidth: 200 }}
             >
               {TONE_OPTIONS.map((o) => (
@@ -533,7 +537,7 @@ const Dashboard = () => {
                 </option>
               ))}
             </select>
-            {!isPro && (
+            {!pro && (
               <Link to="/profile#billing" className="brand-link-dark">
                 Upgrade
               </Link>
@@ -542,14 +546,30 @@ const Dashboard = () => {
         )}
 
         <button
-          className={`btn ${atFreeLimit ? 'btn-disabled' : ''}`}
-          disabled={atFreeLimit}
-          onClick={() => !atFreeLimit && navigate('/goal-setup')}
-          title={atFreeLimit ? 'Upgrade to create more goals' : ''}
+          className={`btn ${atLimit ? 'btn-disabled' : ''}`}
+          disabled={atLimit}
+          onClick={() => !atLimit && navigate('/goal-setup')}
+          title={atLimit ? 'Upgrade to create more goals' : ''}
         >
           ➕ Add New Goal
         </button>
       </div>
+
+      {/* Free-plan banner */}
+      {atLimit && (
+        <div className="plan-banner">
+          <span style={{ fontWeight: 700 }}>Free plan</span> allows 1 active
+          goal.{' '}
+          <Link
+            to="/profile#billing"
+            className="brand-link-dark"
+            style={{ fontWeight: 700, textDecoration: 'underline' }}
+          >
+            Upgrade →
+          </Link>{' '}
+          to add more.
+        </div>
+      )}
 
       <div className="dashboard-cards">
         <GoalCard
@@ -560,7 +580,7 @@ const Dashboard = () => {
           getProgress={getProgress}
           getStatusIcon={getStatusIcon}
           getStatusClass={getStatusClass}
-          canDelete={canDeleteGoals}
+          canDelete={plan !== 'free'}
         />
 
         <SubgoalCard

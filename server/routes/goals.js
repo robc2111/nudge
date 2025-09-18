@@ -1,9 +1,10 @@
+// server/routes/goals.js
 const express = require('express');
 const router = express.Router();
 
+const pool = require('../db');
 const goalsController = require('../controllers/goalsController');
 const verifyToken = require('../middleware/verifyToken');
-const { assertPro } = require('../utils/plan');
 
 const { validate } = require('../validation/middleware');
 const {
@@ -13,35 +14,64 @@ const {
   UserDashboardParams,
 } = require('../validation/schemas');
 
-/**
- * Pro gate used only when the request attempts to set/change `tone`.
- * (Tone is per-goal and Pro-only.)
- */
-async function proGateIfTone(req, res, next) {
+const {
+  assertProSync,
+  assertCanCreateActiveGoal,
+} = require('../utils/planGuard');
+
+/** If request sets `tone`, require Pro. */
+function proGateIfTone(req, res, next) {
   try {
     if (typeof req.body?.tone !== 'undefined') {
-      await assertPro(req.user.id);
+      // req.user should have plan info if your auth populates it.
+      // If not, you can fetch it, but most apps attach plan + status during auth.
+      assertProSync(req.user?.plan, req.user?.plan_status);
     }
     next();
   } catch (e) {
     if (e.code === 'PRO_REQUIRED') {
-      return res
-        .status(403)
-        .json({
-          error: 'Changing coach tone is a Pro feature.',
-          feature: 'tone',
-        });
+      return res.status(403).json({
+        error: 'Changing coach tone is a Pro feature.',
+        feature: 'tone',
+      });
     }
     next(e);
   }
 }
 
-// Authenticated writes
+/** Ensure user is allowed to create another active goal (Free limit). */
+async function limitGateOnCreate(req, res, next) {
+  try {
+    // Ensure we have latest plan/status for this user.
+    let user = req.user;
+    if (!user?.plan || !user?.plan_status) {
+      const { rows } = await pool.query(
+        `SELECT id, plan, plan_status FROM users WHERE id = $1 LIMIT 1`,
+        [req.user.id]
+      );
+      user = rows[0] || {
+        id: req.user.id,
+        plan: 'free',
+        plan_status: 'inactive',
+      };
+    }
+    await assertCanCreateActiveGoal(pool, user);
+    next();
+  } catch (e) {
+    if (e.statusCode === 403 && e.details?.code === 'PLAN_LIMIT_REACHED') {
+      return res.status(403).json(e.details);
+    }
+    next(e);
+  }
+}
+
+// ---------- Authenticated writes ----------
 router.post(
   '/',
   verifyToken,
   validate(GoalCreateSchema, 'body'),
-  proGateIfTone, // <-- Pro-gate tone on create
+  proGateIfTone, // Pro-gate tone on create
+  limitGateOnCreate, // Enforce Free plan active-goal limit
   goalsController.createGoal
 );
 
@@ -50,7 +80,7 @@ router.put(
   verifyToken,
   validate(IdParam, 'params'),
   validate(GoalUpdateSchema, 'body'),
-  proGateIfTone, // <-- Pro-gate tone on update
+  proGateIfTone, // Pro-gate tone on update
   goalsController.updateGoal
 );
 
@@ -69,10 +99,10 @@ router.put(
   goalsController.updateGoalStatus
 );
 
-// Authenticated: mine
+// ---------- Authenticated: mine ----------
 router.get('/mine', verifyToken, goalsController.getMyGoals);
 
-// Public/dev
+// ---------- Public/dev ----------
 router.get('/', goalsController.getAllGoals);
 router.get(
   '/user/:userId',

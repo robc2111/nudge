@@ -1,11 +1,6 @@
 Week 1
 
-Day 3 (Wed) - Register for self employed tax (sole trader) - transfer render, supabase and netlfiy accounts to goalcrumbs email if needed \*\*\*
-
-Day 8 (Tue)
-
-Day 9 (Wed)
-• Large: Extract plan limit logic into utils/planGuard.js and wire UI + server - recycle api keys
+Day 3 (Wed) - Register for self employed tax (sole trader) - transfer render, supabase and netlfiy accounts to goalcrumbs email if needed \*\*\* -
 
 Day 10 (Thu)
 • Quick: Add “Upgrade” links to empty states (Dashboard, Reflections)
