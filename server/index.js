@@ -1,3 +1,4 @@
+// server/index.js
 require('dotenv').config();
 
 const express = require('express');
@@ -16,7 +17,13 @@ const {
 } = require('./middleware/rateLimiters');
 
 const app = express();
-app.set('trust proxy', 1);
+
+/**
+ * IMPORTANT for rate limiting behind proxies (Render/Heroku/Nginx/Cloudflare):
+ * This lets express-rate-limit read the real client IP from X-Forwarded-For.
+ * If you’re behind multiple proxies, you can bump this number or use true.
+ */
+app.set('trust proxy', process.env.TRUST_PROXY ?? 1);
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -81,8 +88,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
-// ---- Stripe webhook (raw body) MUST be before json() ----
-// (Deliberately not rate-limited)
+// ---- Stripe webhook (raw body) MUST be before json() & NOT rate-limited ----
 const paymentsController = require('./controllers/paymentsController');
 app.post(
   '/api/payments/webhook',
@@ -98,11 +104,18 @@ app.get('/api/debug-sentry', (req, res, next) =>
   next(new Error('Sentry test error'))
 );
 
-// ---------- 🔒 Rate limiters (mount BEFORE routes) ----------
-// Soft guard for all API traffic except the Stripe webhook above
+/**
+ * Mount health endpoints BEFORE global API limiter so they’re never rate-limited
+ * (useful for uptime checks and platform health probes).
+ */
+const healthRoutes = require('./routes/health');
+app.use('/api', healthRoutes);
+
+// ---------- 🔒 Rate limiters (mount BEFORE other routes) ----------
+// Global soft guard for API traffic (excludes the Stripe webhook and health above)
 app.use('/api', apiLimiter);
 
-// Auth namespace guard (per-IP). The /login route has extra limiters in its router.
+// Name-spaced guard for auth; /login has its own limiter inside its router if you added one
 app.use('/api/auth', authLimiter);
 
 // ---- Routes ----
@@ -133,10 +146,8 @@ try {
 // 🔒 plan management
 app.use('/api/plan', require('./routes/plan'));
 
-// ---- Health/root ----
+// ---- Health/root (root is not rate-limited anyway) ----
 app.get('/', (_req, res) => res.send('🚀 GoalCrumbs API is running'));
-const healthRoutes = require('./routes/health');
-app.use('/api', healthRoutes);
 
 // ---- 404 ----
 app.use((req, res) => {
