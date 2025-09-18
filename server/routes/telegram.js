@@ -1,5 +1,11 @@
 const express = require('express');
 const { DateTime } = require('luxon');
+const {
+  sendTelegram,
+  editTelegramMessage,
+  answerCallbackQuery,
+  toneKeyboard,
+} = require('../utils/telegram');
 
 const router = express.Router();
 
@@ -12,8 +18,8 @@ const {
   fetchNextAcrossGoals,
   renderChecklist,
 } = require('../utils/goalHelpers');
-const { sendTelegram } = require('../utils/telegram');
 const { assertPro } = require('../utils/plan');
+router.get('/health', (req, res) => res.json({ ok: true }));
 
 /* --------------------------------------------------------------------------------
  * In-memory session state
@@ -89,6 +95,45 @@ function parsePickNumber(text) {
   const n = Number(m[1]);
   if (!Number.isInteger(n) || n < 1) return null;
   return n;
+}
+
+/* --------------------------------------------------------------------------------
+ * Tone helpers
+ * ------------------------------------------------------------------------------*/
+async function getActiveGoal(userId) {
+  const { rows } = await pool.query(
+    `SELECT id, title, tone
+       FROM goals
+      WHERE user_id = $1
+        AND status = 'in_progress'
+      ORDER BY created_at DESC NULLS LAST
+      LIMIT 1`,
+    [userId]
+  );
+  return rows[0] || null;
+}
+
+async function setActiveGoalTone(userId, tone) {
+  const goal = await getActiveGoal(userId);
+  if (!goal) {
+    return {
+      updated: false,
+      msg: '⚠️ You don’t have an active goal to apply this tone to.',
+      goal: null,
+    };
+  }
+  const { rowCount } = await pool.query(
+    `UPDATE goals SET tone = $1, updated_at = NOW() WHERE id = $2`,
+    [String(tone), goal.id]
+  );
+  if (!rowCount) {
+    return { updated: false, msg: '⚠️ Could not update tone.', goal };
+  }
+  return {
+    updated: true,
+    msg: `✅ Coach tone set to *${tone}* for *${goal.title}*`,
+    goal: { ...goal, tone },
+  };
 }
 
 /* --------------------------------------------------------------------------------
@@ -219,6 +264,86 @@ async function startDonePicker({ user, chatId }) {
  * ------------------------------------------------------------------------------*/
 router.post('/webhook', async (req, res) => {
   try {
+    // 1) Handle inline button taps first
+    const cq = req.body?.callback_query;
+    if (cq) {
+      const chatId = cq.message?.chat?.id;
+      const userChatId = cq.from?.id;
+      const data = String(cq.data || '');
+      // Identify user by telegram_id (same as chat id)
+      const { rows: urows } = await pool.query(
+        'SELECT * FROM users WHERE telegram_id = $1',
+        [userChatId]
+      );
+      const user = urows[0];
+
+      if (!user) {
+        await answerCallbackQuery({
+          callback_query_id: cq.id,
+          text: 'Please sign up in the app first.',
+          show_alert: true,
+        });
+        return res.sendStatus(200);
+      }
+
+      if (data.startsWith('tone:')) {
+        const tone = data.split(':')[1];
+        try {
+          await assertPro(user.id);
+        } catch {
+          await answerCallbackQuery({
+            callback_query_id: cq.id,
+            text: 'Tone customization is Pro only.',
+            show_alert: true,
+          });
+          return res.sendStatus(200);
+        }
+
+        const result = await setActiveGoalTone(user.id, tone);
+
+        // ephemeral toast on the button tap
+        await answerCallbackQuery({
+          callback_query_id: cq.id,
+          text: result.updated ? `Tone set to ${tone}` : 'Could not set tone',
+          show_alert: false,
+        });
+
+        // edit the original tone message to reflect the selection (✅)
+        if (chatId && cq.message?.message_id) {
+          const currentGoal = await getActiveGoal(user.id); // fetch to get latest tone/title
+          const currentTone = currentGoal?.tone || tone;
+
+          const header =
+            '🎙️ *Coach tone* (Pro)\n\n' +
+            'Tap a style below to change how your coach speaks:';
+          await editTelegramMessage({
+            chat_id: chatId,
+            message_id: cq.message.message_id,
+            text: header,
+            parse_mode: 'Markdown',
+            reply_markup: toneKeyboard(currentTone),
+          });
+
+          // Optional extra confirmation line (separate message)
+          if (result.updated && currentGoal?.title) {
+            await sendMessage(
+              chatId,
+              `✅ Coach tone set to *${currentTone}* for *${currentGoal.title}*`
+            );
+          } else if (!result.updated) {
+            await sendMessage(chatId, result.msg);
+          }
+        }
+
+        return res.sendStatus(200);
+      }
+
+      // Unknown callback types: just ACK to avoid spinner
+      await answerCallbackQuery({ callback_query_id: cq.id });
+      return res.sendStatus(200);
+    }
+
+    // 2) Then handle normal text messages
     const message = req.body?.message;
     console.log('📩 Webhook payload:', JSON.stringify(req.body, null, 2));
     if (!message || !message.text) return res.sendStatus(200);
@@ -429,42 +554,9 @@ ${renderChecklist(p.microtasks, p.nextIdx)}`
     }
 
     /* ---------- Tones (Pro-only) ---------- */
-    async function setActiveGoalTone(userId, tone) {
-      const { rows: g } = await pool.query(
-        `SELECT id, title FROM goals
-         WHERE user_id = $1 AND status = 'in_progress'
-         ORDER BY created_at DESC NULLS LAST
-         LIMIT 1`,
-        [userId]
-      );
-      const goal = g[0];
-      if (!goal) {
-        return {
-          updated: false,
-          msg: '⚠️ You don’t have an active goal to apply this tone to.',
-        };
-      }
-
-      const { rowCount } = await pool.query(
-        `UPDATE goals SET tone = $1, updated_at = NOW() WHERE id = $2`,
-        ['' + tone, goal.id]
-      );
-      if (!rowCount)
-        return { updated: false, msg: '⚠️ Could not update tone.' };
-      return {
-        updated: true,
-        msg: `✅ Coach tone set to *${tone}* for *${goal.title}*`,
-      };
-    }
-
     if (textLower === '/tone status') {
-      const { rows } = await pool.query(
-        `SELECT tone FROM goals
-         WHERE user_id = $1 AND status = 'in_progress'
-         LIMIT 1`,
-        [user.id]
-      );
-      const tone = rows[0]?.tone;
+      const goal = await getActiveGoal(user.id);
+      const tone = goal?.tone;
       await sendMessage(
         chatId,
         tone
@@ -475,16 +567,20 @@ ${renderChecklist(p.microtasks, p.nextIdx)}`
     }
 
     if (textLower === '/tone') {
-      await sendMessage(
-        chatId,
-        `🎙️ *Coach tone* (Pro)
-
-*friendly* – Kind and encouraging  
-*strict* – No-nonsense and focused  
-*motivational* – Upbeat and energizing
-
-Reply with one of: *friendly*, *strict*, *motivational*`
-      );
+      const goal = await getActiveGoal(user.id);
+      const currentTone = goal?.tone || null;
+      const header =
+        '🎙️ *Coach tone* (Pro)\n\n' +
+        '*friendly* – Kind and encouraging\n' +
+        '*strict* – No-nonsense and focused\n' +
+        '*motivational* – Upbeat and energizing\n\n' +
+        'Tap a button below:';
+      await sendTelegram({
+        chat_id: chatId,
+        parse_mode: 'Markdown',
+        text: header,
+        reply_markup: toneKeyboard(currentTone),
+      });
       return res.sendStatus(200);
     }
 

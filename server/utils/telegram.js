@@ -13,17 +13,24 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-/**
- * Safe wrapper for Telegram sendMessage with a few retries and 429 handling.
- * Usage: sendTelegram({ chat_id, text, parse_mode, reply_markup })
- */
-async function sendTelegram({ chat_id, text, parse_mode = 'Markdown', reply_markup } = {}) {
+function getToken() {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) throw new Error('TELEGRAM_BOT_TOKEN is missing');
+  return token;
+}
 
-  const url = `https://api.telegram.org/bot${token}/sendMessage`;
-  const payload = { chat_id, text, parse_mode, ...(reply_markup ? { reply_markup } : {}) };
+function apiUrl(method) {
+  return `https://api.telegram.org/bot${getToken()}/${method}`;
+}
 
+/**
+ * Generic resilient Telegram call with:
+ * - network retries
+ * - basic 5xx retries
+ * - 429 retry_after handling
+ */
+async function callTelegram(method, payload) {
+  const url = apiUrl(method);
   const maxAttempts = 4;
   let lastErr;
 
@@ -34,7 +41,6 @@ async function sendTelegram({ chat_id, text, parse_mode = 'Markdown', reply_mark
         validateStatus: (s) => s >= 200 && s < 500, // treat 5xx as errors (retry)
       });
 
-      // Rate-limited
       if (res.status === 429) {
         const retryAfter = res.data?.parameters?.retry_after ?? 2;
         if (attempt < maxAttempts) {
@@ -44,9 +50,10 @@ async function sendTelegram({ chat_id, text, parse_mode = 'Markdown', reply_mark
         throw new Error(`Telegram 429 rate limit; retry_after=${retryAfter}s`);
       }
 
-      // Other client errors
       if (res.status >= 400) {
-        throw new Error(`Telegram error ${res.status}: ${JSON.stringify(res.data)}`);
+        throw new Error(
+          `Telegram error ${res.status}: ${JSON.stringify(res.data)}`
+        );
       }
 
       return res; // success
@@ -67,4 +74,73 @@ async function sendTelegram({ chat_id, text, parse_mode = 'Markdown', reply_mark
   throw lastErr;
 }
 
-module.exports = { sendTelegram };
+/**
+ * Safe wrapper for Telegram sendMessage with a few retries and 429 handling.
+ * Usage: sendTelegram({ chat_id, text, parse_mode, reply_markup })
+ */
+async function sendTelegram({
+  chat_id,
+  text,
+  parse_mode = 'Markdown',
+  reply_markup,
+} = {}) {
+  const payload = { chat_id, text, parse_mode };
+  if (reply_markup) payload.reply_markup = reply_markup;
+  return callTelegram('sendMessage', payload);
+}
+
+/**
+ * Edit an existing message (used to confirm tone selection in-place)
+ * Usage: editTelegramMessage({ chat_id, message_id, text, parse_mode, reply_markup })
+ */
+async function editTelegramMessage({
+  chat_id,
+  message_id,
+  text,
+  parse_mode = 'Markdown',
+  reply_markup,
+} = {}) {
+  const payload = { chat_id, message_id, text, parse_mode };
+  if (reply_markup) payload.reply_markup = reply_markup;
+  return callTelegram('editMessageText', payload);
+}
+
+/**
+ * ACK a button tap so Telegram shows instant feedback (toast/spinner stops).
+ * Usage: answerCallbackQuery({ callback_query_id, text, show_alert })
+ */
+async function answerCallbackQuery({
+  callback_query_id,
+  text,
+  show_alert = false,
+} = {}) {
+  const payload = { callback_query_id };
+  if (text) payload.text = text;
+  if (show_alert) payload.show_alert = true;
+  return callTelegram('answerCallbackQuery', payload);
+}
+
+/**
+ * Inline keyboard for tone picker. `current` can be 'friendly' | 'strict' | 'motivational'
+ */
+function toneKeyboard(current) {
+  const norm = String(current || '').toLowerCase();
+  const row = (tone, label) => {
+    const checked = norm === tone ? '✅ ' : '';
+    return [{ text: `${checked}${label}`, callback_data: `tone:${tone}` }];
+  };
+  return {
+    inline_keyboard: [
+      row('friendly', '😊 Friendly'),
+      row('strict', '💪 Strict'),
+      row('motivational', '🚀 Motivational'),
+    ],
+  };
+}
+
+module.exports = {
+  sendTelegram,
+  editTelegramMessage,
+  answerCallbackQuery,
+  toneKeyboard,
+};
