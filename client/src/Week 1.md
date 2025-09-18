@@ -1,9 +1,5 @@
 Week 1
 
-Day 3 (Wed) - Register for self employed tax (sole trader) - transfer render, supabase and netlfiy accounts to goalcrumbs email if needed \*\*\* -
-
-Day 10 (Thu)
-• Quick: Add “Upgrade” links to empty states (Dashboard, Reflections)
 • Medium: Ensure Pro vs Free features exactly match Stripe product
 
 - • Large: Deployment smoke test checklist (payments, cron, AI, Telegram)
@@ -19,13 +15,16 @@ Day 12 (Sat)
 • Quick: Ensure helmet headers cover XSS/Clickjacking basics
 • Medium: Analytics (privacy-respecting, basic server-side events)
 • Large: OpenAI org setup: dedicated key, usage caps, prod/dev split
-Day 13 - soft launch - business plan with marketing and sales strategy - update portfolio
+Day 13 - soft launch - business plan with marketing and sales strategy
 
 - investigate buisness insurance
 - check if i need an accountant or can this be automated
 - upgrade Supabase, Netlify and Render if needed
 - upgrade render plan
 - add option to delete reflections
+- Register for self employed tax (sole trader)
+- transfer render, supabase and netlfiy accounts to goalcrumbs email if needed
+- update portfolio
 
 ⸻
 

@@ -9,6 +9,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ResetPassword from './pages/ResetPassword';
 import PlanGuard from './components/PlanGuard';
+import CookieBanner from './components/CookieBanner';
 
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const Login = lazy(() => import('./pages/Login'));
@@ -90,6 +91,7 @@ export default function App() {
               {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <CookieBanner />
           </Suspense>
         </main>
 
