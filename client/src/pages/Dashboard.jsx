@@ -1,3 +1,4 @@
+// src/pages/Dashboard.jsx
 import { useEffect, useMemo, useCallback, useState, useRef } from 'react';
 import axios from '../api/axios';
 import { Link, useNavigate } from 'react-router-dom';
@@ -9,26 +10,57 @@ import { setSEO, seoPresets } from '../lib/seo';
 
 const REQ_TIMEOUT_MS = 12000;
 
+// ---------- LocalStorage helpers ----------
+const LS_USER_KEY = 'gc:user';
+const LS_DASHBOARD_KEY = (userId) => `gc:dashboard:${userId}`;
+
+function safeParse(json) {
+  try {
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+function loadUserCache() {
+  try {
+    const raw = localStorage.getItem(LS_USER_KEY);
+    return raw ? safeParse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+function loadDashboardCache(userId) {
+  if (!userId) return null;
+  try {
+    const raw = localStorage.getItem(LS_DASHBOARD_KEY(userId));
+    return raw ? safeParse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+function saveDashboardCache(userId, payload) {
+  if (!userId || !payload) return;
+  try {
+    localStorage.setItem(
+      LS_DASHBOARD_KEY(userId),
+      JSON.stringify({ ...payload, __cachedAt: Date.now() })
+    );
+  } catch {
+    // ignore quota errors
+  }
+}
+
 const TONE_OPTIONS = [
   { value: 'friendly', label: 'Friendly' },
   { value: 'strict', label: 'Strict' },
   { value: 'motivational', label: 'Motivational' },
 ];
 
-function niceDashboardError(codeOrMsg) {
-  const code = String(codeOrMsg || '').toUpperCase();
-  if (code === 'ACCOUNT_DELETED') return 'This account has been deleted.';
-  if (code === 'USER_NOT_FOUND') return 'We could not find your account.';
-  if (code === 'DASHBOARD_TIMEOUT')
-    return 'Dashboard is taking too long to load. Please try again.';
-  if (code === 'DASHBOARD_LOAD_FAILED' || code === 'INTERNAL SERVER ERROR')
-    return 'Something went wrong loading your dashboard.';
-  return codeOrMsg || 'Failed to load dashboard.';
-}
-
 const Dashboard = () => {
   const [data, setData] = useState(null);
   const [me, setMe] = useState(null);
+  const [cachedAt, setCachedAt] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -73,9 +105,27 @@ const Dashboard = () => {
   const firstInProgressOrFirst = (arr = []) =>
     arr.find((x) => x.status === 'in_progress') || arr[0] || null;
 
+  // Prime from cache
+  useEffect(() => {
+    const cachedUser = loadUserCache();
+    if (cachedUser) {
+      setMe(cachedUser);
+      const cachedDash = loadDashboardCache(cachedUser.id);
+      if (cachedDash) {
+        setData(cachedDash);
+        setCachedAt(cachedDash.__cachedAt || null);
+        const goals = cachedDash.goals ?? [];
+        const defaultGoal = firstInProgressOrFirst(goals);
+        setSelectedGoalId(defaultGoal?.id ?? null);
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  // Refresh from network
   const refreshData = useCallback(async () => {
     setError('');
-    setLoading(true);
+    setLoading(data ? false : true);
 
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
@@ -83,6 +133,7 @@ const Dashboard = () => {
 
     try {
       await axios.post('/payments/sync-plan').catch(() => {});
+
       const meRes = await axios.get('/users/me', {
         signal: controller.signal,
         timeout: REQ_TIMEOUT_MS,
@@ -95,29 +146,32 @@ const Dashboard = () => {
       });
 
       setData(payload);
+      saveDashboardCache(meRes.data.id, payload);
+      setCachedAt(Date.now());
 
       const goals = payload.goals ?? [];
-      const defaultGoal = firstInProgressOrFirst(goals);
-      setSelectedGoalId(defaultGoal?.id ?? null);
+      let nextGoalId = selectedGoalId;
+      if (!nextGoalId || !goals.find((g) => g.id === nextGoalId)) {
+        const defaultGoal = firstInProgressOrFirst(goals);
+        nextGoalId = defaultGoal?.id ?? null;
+      }
+      setSelectedGoalId(nextGoalId);
     } catch (err) {
       if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return;
-
-      // Prefer server error code, then statusText, then message
-      const raw =
-        err.response?.data?.error || err.response?.statusText || err.message;
-
       const msg = !navigator.onLine
         ? 'You appear to be offline.'
         : err.code === 'ECONNABORTED'
           ? 'Request timed out. Please try again.'
-          : niceDashboardError(raw);
-
-      setError(msg);
+          : err.response?.data?.error ||
+            err.response?.statusText ||
+            err.message ||
+            'Failed to load dashboard.';
+      setError(data ? `Sync failed — showing cached dashboard. (${msg})` : msg);
       console.error('[Dashboard] load error:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [data, selectedGoalId]);
 
   useEffect(() => {
     refreshData();
@@ -281,6 +335,8 @@ const Dashboard = () => {
       }
 
       setData(newData);
+      if (me?.id) saveDashboardCache(me.id, newData);
+
       if (nextGoalId !== selectedGoalId) setSelectedGoalId(nextGoalId);
       if (nextSubgoalId !== selectedSubgoalId)
         setSelectedSubgoalId(nextSubgoalId);
@@ -306,7 +362,9 @@ const Dashboard = () => {
         const updatedGoals = prev.goals.filter((g) => g.id !== goalId);
         const nextGoal = firstInProgressOrFirst(updatedGoals);
         setSelectedGoalId(nextGoal?.id ?? null);
-        return { ...prev, goals: updatedGoals };
+        const patched = { ...prev, goals: updatedGoals };
+        if (me?.id) saveDashboardCache(me.id, patched);
+        return patched;
       });
     } catch (err) {
       console.error(
@@ -318,7 +376,12 @@ const Dashboard = () => {
 
   const plan = me?.plan?.toLowerCase?.() || 'free';
   const isPro = plan === 'pro';
-  const activeGoalCount = me?.activeGoalCount ?? 0;
+  const derivedActiveCount =
+    data?.goals?.filter((g) => g.status !== 'done').length ?? 0;
+  const activeGoalCount =
+    typeof me?.activeGoalCount === 'number'
+      ? me.activeGoalCount
+      : derivedActiveCount;
   const atFreeLimit = plan === 'free' && activeGoalCount >= 1;
   const canDeleteGoals = plan !== 'free';
 
@@ -332,13 +395,13 @@ const Dashboard = () => {
         { timeout: REQ_TIMEOUT_MS }
       );
       toast.success('Tone updated');
-      // optimistic local patch
       setData((prev) => {
         if (!prev) return prev;
         const copy = structuredClone(prev);
         copy.goals = (copy.goals || []).map((g) =>
           g.id === goalId ? { ...g, tone } : g
         );
+        if (me?.id) saveDashboardCache(me.id, copy);
         return copy;
       });
     } catch (e) {
@@ -352,7 +415,7 @@ const Dashboard = () => {
     }
   }
 
-  if (error) {
+  if (error && !data) {
     return (
       <div className="p-8 text-center">
         <p className="text-red-700 font-semibold mb-2">
@@ -366,13 +429,24 @@ const Dashboard = () => {
     );
   }
 
-  if (loading || !data) {
+  if (loading && !data) {
     return <p style={{ padding: '2rem' }}>Loading…</p>;
   }
 
   if (!goalsList.length) {
     return (
       <div className="dashboard">
+        {cachedAt && (
+          <p className="text-sm" style={{ marginBottom: 10, color: '#666' }}>
+            Last synced:{' '}
+            {new Date(cachedAt).toLocaleString(undefined, {
+              hour: '2-digit',
+              minute: '2-digit',
+              day: '2-digit',
+              month: 'short',
+            })}
+          </p>
+        )}
         <p>You don&apos;t have any goals yet.</p>
         <button
           className="btn"
@@ -400,6 +474,22 @@ const Dashboard = () => {
   return (
     <div className="dashboard">
       <div className="dashboard-controls" style={{ gap: '1rem' }}>
+        {cachedAt && (
+          <div
+            className="text-sm"
+            style={{ color: '#666', alignSelf: 'center' }}
+            aria-live="polite"
+          >
+            Last synced:{' '}
+            {new Date(cachedAt).toLocaleString(undefined, {
+              hour: '2-digit',
+              minute: '2-digit',
+              day: '2-digit',
+              month: 'short',
+            })}
+          </div>
+        )}
+
         <div className="controls-group">
           <label htmlFor="goalSelect">
             <strong>Goal:</strong>
@@ -418,7 +508,6 @@ const Dashboard = () => {
           </select>
         </div>
 
-        {/* Tone selector (Pro only) */}
         {!!selectedGoal && (
           <div
             className="controls-group"
@@ -461,22 +550,6 @@ const Dashboard = () => {
           ➕ Add New Goal
         </button>
       </div>
-
-      {/* Free-plan banner */}
-      {atFreeLimit && (
-        <div className="plan-banner">
-          <span style={{ fontWeight: 700 }}>Free plan</span> allows 1 active
-          goal.{' '}
-          <Link
-            to="/profile#billing"
-            className="brand-link-dark"
-            style={{ fontWeight: 700, textDecoration: 'underline' }}
-          >
-            Upgrade →
-          </Link>{' '}
-          to add more.
-        </div>
-      )}
 
       <div className="dashboard-cards">
         <GoalCard

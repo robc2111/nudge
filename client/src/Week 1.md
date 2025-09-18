@@ -5,7 +5,6 @@ Day 3 (Wed) - Register for self employed tax (sole trader) - transfer render, su
 Day 8 (Tue)
 
 Day 9 (Wed)
-• Medium: Profile page — add cached user to localStorage after sync
 • Large: Extract plan limit logic into utils/planGuard.js and wire UI + server - recycle api keys
 
 Day 10 (Thu)

@@ -1,3 +1,4 @@
+// src/pages/Reflections.jsx
 import React, {
   useEffect,
   useMemo,
@@ -7,10 +8,21 @@ import React, {
 } from 'react';
 import axios from '../api/axios';
 import { setSEO, seoPresets } from '../lib/seo';
+import { logoutBus } from '../auth/logoutBus';
 
 const MAX_LEN = 500;
 const REQ_TIMEOUT_MS = 15000;
 const DEBOUNCE_MS = 400;
+
+const LS_USER_KEY = 'gc:user';
+function loadCachedUser() {
+  try {
+    const raw = localStorage.getItem(LS_USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function Reflections() {
   const [reflections, setReflections] = useState([]);
@@ -21,7 +33,7 @@ export default function Reflections() {
     end_date: '',
     sort: 'desc',
   });
-  const [userId, setUserId] = useState(null);
+  const [userId, setUserId] = useState(() => loadCachedUser()?.id ?? null);
 
   const [newReflection, setNewReflection] = useState({
     goal_id: '',
@@ -69,8 +81,20 @@ export default function Reflections() {
     return () => document.removeEventListener('keydown', onEsc);
   }, [closeModal]);
 
-  // user id
+  // React to global logout instantly
   useEffect(() => {
+    const off = logoutBus.on(() => {
+      setUserId(null);
+      setReflections([]);
+      setGoals([]);
+      setError('');
+    });
+    return off;
+  }, []);
+
+  // Fallback: if no cached userId, fetch it once
+  useEffect(() => {
+    if (userId) return; // already have from cache
     let mounted = true;
     (async () => {
       try {
@@ -84,7 +108,7 @@ export default function Reflections() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [userId]);
 
   // goals
   useEffect(() => {

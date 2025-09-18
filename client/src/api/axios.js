@@ -13,36 +13,62 @@ if (!base && import.meta.env.DEV) {
 
 const instance = axios.create({
   baseURL: `${base}/api`,
-  withCredentials: true,
+  timeout: 15000,
+  withCredentials: false, // JWT in headers
 });
 
 instance.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token && !config.headers.Authorization) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
 let redirecting = false;
+
+function clearAppCaches() {
+  try {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('gc:user');
+    Object.keys(localStorage).forEach((k) => {
+      if (k.startsWith('gc:dashboard:')) localStorage.removeItem(k);
+    });
+  } catch (e) {
+    // non-fatal; some environments block storage
+    console.warn('[axios] clearAppCaches failed:', e);
+  }
+}
+
 instance.interceptors.response.use(
   (res) => res,
   (err) => {
-    // If unauthorized, clear session and bounce to login
-    if (err?.response?.status === 401 && !redirecting) {
-      redirecting = true;
-      logoutBus.emit();
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+    const status = err?.response?.status;
 
-      const here = window.location.pathname + window.location.search;
+    if ((status === 401 || status === 419 || status === 440) && !redirecting) {
+      redirecting = true;
+
+      // Tell the app to log out (AuthProvider listens)
+      logoutBus.emit();
+
+      // Fallback clean-up
+      clearAppCaches();
+
+      const here =
+        window.location.pathname +
+        window.location.search +
+        window.location.hash;
       const onLogin = window.location.pathname === '/login';
       if (!onLogin) {
-        const from = encodeURIComponent(here);
-        window.location.replace(`/login?from=${from}`);
+        window.location.replace(
+          `/login?reason=expired&from=${encodeURIComponent(here)}`
+        );
       } else {
-        // If we're already on login, avoid redirect loop
-        redirecting = false;
+        redirecting = false; // avoid loop if already on /login
       }
     }
+
     return Promise.reject(err);
   }
 );

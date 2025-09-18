@@ -7,7 +7,7 @@ const Header = () => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    logout();
+    logout(); // clears token, caches, and emits logoutBus
     navigate('/login', { replace: true });
   };
 
@@ -24,7 +24,7 @@ const Header = () => {
         <nav className="header-nav">
           <Link to="/">Home</Link>
           <Link to="/faq">FAQs</Link>
-          {user || localStorage.getItem('token') ? (
+          {user ? (
             <>
               <Link to="/dashboard">Dashboard</Link>
               <Link to="/profile">Profile</Link>

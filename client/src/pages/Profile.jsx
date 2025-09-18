@@ -1,3 +1,4 @@
+// src/pages/Profile.jsx
 import React, { useEffect, useRef, useState } from 'react';
 import axios from '../api/axios';
 import { Link, useLocation } from 'react-router-dom';
@@ -80,14 +81,6 @@ function ManageSubscriptionButton() {
   );
 }
 
-function friendlyProfileError(codeOrMsg) {
-  const code = String(codeOrMsg || '').toUpperCase();
-  if (code === 'USER_NOT_FOUND') return 'We could not find your account.';
-  if (code === 'ACCOUNT_DELETED') return 'This account has been deleted.';
-  if (code === 'PROFILE_LOAD_FAILED') return 'Failed to load your profile.';
-  return codeOrMsg || 'Failed to load your profile.';
-}
-
 export default function Profile() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -120,14 +113,11 @@ export default function Profile() {
     try {
       const { data } = await axios.patch('/users/me', { timezone: tz });
       setUser(data);
+      localStorage.setItem('gc:user', JSON.stringify(data));
       toast.success('Timezone updated');
     } catch (e) {
       console.error(e);
-      toast.error(
-        e?.response?.data?.error === 'INVALID_TIMEZONE'
-          ? 'Please choose a valid timezone.'
-          : 'Failed to update timezone'
-      );
+      toast.error('Failed to update timezone');
     } finally {
       setSavingTz(false);
       setStatusMsg('');
@@ -142,13 +132,14 @@ export default function Profile() {
         telegram_enabled: next,
       });
       setUser(data);
+      localStorage.setItem('gc:user', JSON.stringify(data));
       toast.success(
         next ? 'Telegram reminders enabled' : 'Telegram reminders disabled'
       );
     } catch (e) {
       console.error(e);
       toast.error('Failed to update Telegram preference');
-      setTelegramEnabled((prev) => !prev);
+      setTelegramEnabled((old) => !old);
     } finally {
       setSavingTel(false);
       setStatusMsg('');
@@ -172,23 +163,14 @@ export default function Profile() {
         });
 
         setUser(res.data);
+        localStorage.setItem('gc:user', JSON.stringify(res.data));
         setTz(res.data.timezone || guessBrowserTZ());
         setTelegramEnabled(res.data.telegram_enabled !== false);
       } catch (err) {
         if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED')
           return;
-
-        const raw =
-          err.response?.data?.error || err.response?.statusText || err.message;
-
-        const msg = !navigator.onLine
-          ? 'You appear to be offline.'
-          : err.code === 'ECONNABORTED'
-            ? 'Request timed out. Please try again.'
-            : friendlyProfileError(raw);
-
         console.error('❌ Error loading your profile:', err);
-        setError(msg);
+        setError('Failed to load your profile. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -210,14 +192,9 @@ export default function Profile() {
       <div className="auth-card">
         <h1 className="auth-title">⚠️ Error</h1>
         <p style={{ marginBottom: '1rem' }}>{error}</p>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button className="btn" onClick={() => window.location.reload()}>
-            🔄 Try again
-          </button>
-          <Link to="/login" className="btn">
-            🔐 Log In
-          </Link>
-        </div>
+        <Link to="/login" className="btn">
+          🔐 Log In
+        </Link>
       </div>
     );
   }
