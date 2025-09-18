@@ -3,13 +3,8 @@ Week 1
 Day 3 (Wed) - Register for self employed tax (sole trader) - transfer render, supabase and netlfiy accounts to goalcrumbs email if needed \*\*\*
 
 Day 8 (Tue)
-• Large: Security: rate limiting for login/auth/AI endpoints
-
-- remove/hide blocked social media links
-- review faqs
 
 Day 9 (Wed)
-• Quick: Polish error states (e.g. profile load, dashboard load)
 • Medium: Profile page — add cached user to localStorage after sync
 • Large: Extract plan limit logic into utils/planGuard.js and wire UI + server - recycle api keys
 

@@ -1,74 +1,86 @@
 // server/middleware/rateLimiters.js
 const rateLimit = require('express-rate-limit');
 
-let RedisStore;
-let Redis;
+let store; // will be set to RedisStore if available
+
+// Try to wire Redis (Upstash) for a distributed store
 try {
-  RedisStore = require('rate-limit-redis');
-  Redis = require('ioredis');
-} catch {
-  // If modules not installed, fallback gracefully
-  console.warn(
-    '[rateLimiters] Redis packages not found, will use memory store.'
-  );
-}
+  const haveUpstash =
+    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN;
 
-const redisUrl = process.env.REDIS_URL || null;
-let redisClient = null;
-if (redisUrl && Redis) {
-  try {
-    redisClient = new Redis(redisUrl, {
-      maxRetriesPerRequest: 1,
-      enableOfflineQueue: false,
+  if (haveUpstash) {
+    const { Redis } = require('@upstash/redis');
+    const { RedisStore } = require('rate-limit-redis'); // <-- named import
+
+    const redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
     });
-    redisClient.on('error', (err) => {
-      console.error('[rateLimiters] Redis error:', err.message);
+
+    // Adapter expected by rate-limit-redis v4
+    store = new RedisStore({
+      // Upstash client has sendCommand([...])
+      sendCommand: (...args) => redis.sendCommand(args),
+      // optional key prefix to avoid collisions with other app keys
+      prefix: 'rl:',
     });
+
     console.log('[rateLimiters] Connected to Redis for rate limiting.');
-  } catch (err) {
-    console.error('[rateLimiters] Failed to init Redis client:', err.message);
-    redisClient = null;
+  } else {
+    console.warn('[rateLimiters] No Redis env set; using in-memory limiter.');
   }
+} catch (err) {
+  console.warn('[rateLimiters] Redis store unavailable:', err.message);
+  // fall back to in-memory
 }
 
-// Helper to create a limiter (store = Redis if possible)
-function makeLimiter({ windowMs, max, message }) {
+function makeLimiter({
+  windowMs,
+  max,
+  message = 'Too many requests',
+  keyGenerator,
+} = {}) {
   return rateLimit({
     windowMs,
     max,
-    message,
-    standardHeaders: true, // return rate limit info in headers
-    legacyHeaders: false, // disable deprecated headers
-    store:
-      redisClient && RedisStore
-        ? new RedisStore({
-            sendCommand: (...args) => redisClient.call(...args),
-          })
-        : undefined,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: message },
+    keyGenerator, // optional per-route override
+    store, // undefined => memory store
+    skipFailedRequests: false,
   });
 }
 
-// 🔒 Specific limiters
-const loginLimiter = makeLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts
-  message: 'Too many login attempts. Try again later.',
+/* ---------------- Profiles ---------------- */
+
+const apiLimiter = makeLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 900, // whole API namespace soft cap (adjust as needed)
+  message: 'Too many requests from this IP. Please slow down.',
 });
 
 const authLimiter = makeLimiter({
-  windowMs: 60 * 1000, // 1 minute
-  max: 20,
-  message: 'Too many authentication requests. Slow down.',
+  windowMs: 15 * 60 * 1000,
+  max: 50, // /api/auth namespace (register / login)
+  message: 'Too many auth requests from this IP. Please wait a moment.',
 });
 
 const aiLimiter = makeLimiter({
-  windowMs: 60 * 1000, // 1 minute
-  max: 10,
-  message: 'Too many AI requests. Please wait a moment.',
+  windowMs: 60 * 1000,
+  max: 30, // per minute per user token by default
+  message: 'AI endpoint rate limit exceeded. Try again in a moment.',
+  keyGenerator: (req) => {
+    // Prefer user id if authenticated; else IP
+    const uid = req.user?.id || req.user?.sub;
+    return uid || req.ip;
+  },
 });
 
-module.exports = {
-  loginLimiter,
-  authLimiter,
-  aiLimiter,
-};
+const aiIpBurstLimiter = makeLimiter({
+  windowMs: 10 * 1000, // short burst
+  max: 10, // per IP
+  message: 'Please slow down.',
+});
+
+module.exports = { apiLimiter, authLimiter, aiLimiter, aiIpBurstLimiter };

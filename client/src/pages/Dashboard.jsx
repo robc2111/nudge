@@ -15,6 +15,17 @@ const TONE_OPTIONS = [
   { value: 'motivational', label: 'Motivational' },
 ];
 
+function niceDashboardError(codeOrMsg) {
+  const code = String(codeOrMsg || '').toUpperCase();
+  if (code === 'ACCOUNT_DELETED') return 'This account has been deleted.';
+  if (code === 'USER_NOT_FOUND') return 'We could not find your account.';
+  if (code === 'DASHBOARD_TIMEOUT')
+    return 'Dashboard is taking too long to load. Please try again.';
+  if (code === 'DASHBOARD_LOAD_FAILED' || code === 'INTERNAL SERVER ERROR')
+    return 'Something went wrong loading your dashboard.';
+  return codeOrMsg || 'Failed to load dashboard.';
+}
+
 const Dashboard = () => {
   const [data, setData] = useState(null);
   const [me, setMe] = useState(null);
@@ -90,14 +101,17 @@ const Dashboard = () => {
       setSelectedGoalId(defaultGoal?.id ?? null);
     } catch (err) {
       if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return;
+
+      // Prefer server error code, then statusText, then message
+      const raw =
+        err.response?.data?.error || err.response?.statusText || err.message;
+
       const msg = !navigator.onLine
         ? 'You appear to be offline.'
         : err.code === 'ECONNABORTED'
           ? 'Request timed out. Please try again.'
-          : err.response?.data?.error ||
-            err.response?.statusText ||
-            err.message ||
-            'Failed to load dashboard.';
+          : niceDashboardError(raw);
+
       setError(msg);
       console.error('[Dashboard] load error:', err);
     } finally {

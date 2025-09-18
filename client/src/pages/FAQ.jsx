@@ -2,12 +2,12 @@
 import React, { useEffect } from 'react';
 import { setSEO, seoPresets } from '../lib/seo';
 
-const updated = '2025-09-05';
+const updated = '2025-09-18';
 
 const faqs = [
   {
     q: 'What is GoalCrumbs?',
-    a: 'GoalCrumbs is your AI-powered accountability partner. It breaks big goals into small, actionable “crumbs” — subgoals, tasks, and microtasks and keeps you on track with daily reminders and weekly reflections.',
+    a: 'GoalCrumbs is your AI-powered accountability partner. It breaks big goals into small, actionable “crumbs” — subgoals, tasks, and microtasks — and keeps you on track with daily reminders and weekly reflections.',
   },
   {
     q: 'How does it work?',
@@ -22,12 +22,16 @@ const faqs = [
     a: 'Yes — Telegram is currently the primary channel for reminders, tone-based coaching, and quick commands like /reflect or marking microtasks as done.',
   },
   {
+    q: 'How do I find my Telegram ID?',
+    a: `Open Telegram and search for @userinfobot. Tap “Start” and it will reply with your numeric user ID (e.g., 123456789). Copy that number and paste it into GoalCrumbs during signup (or view it later on your Profile page). If you prefer, any similar “user info” bot works too — the key is the numeric ID.`,
+  },
+  {
     q: 'Is GoalCrumbs free?',
-    a: 'The first goal and core features are free. The Pro Plan allows multiple goals and extra features for £5.00 a month.',
+    a: 'The first goal and core features are free. The Pro Plan allows multiple goals and extra features for £8.99 a month.',
   },
   {
     q: 'Can I change the tone of reminders?',
-    a: 'Yep! Choose between friendly, strict, or motivational tones.',
+    a: 'Yep! Choose between friendly, strict, or motivational tones. You can select the tone on the dashboard or via Telegram.',
   },
   {
     q: 'What happens if I stop responding?',
@@ -47,11 +51,11 @@ const faqs = [
   },
   {
     q: 'Where can I get updates on new features?',
-    a: 'Follow us on social media (Twitter/X, LinkedIn, and Instagram) for product updates, tips, and roadmap announcements. Links can be found at the bootom of the page.',
+    a: 'Follow us on social media for product updates, tips, and roadmap announcements. Links can be found at the bottom of the page.',
   },
   {
     q: 'What is included in the Pro plan?',
-    a: 'Pro unlocks unlimited goals, flexible reminders, and more. You can upgrade anytime, your existing data stays intact.',
+    a: 'Pro unlocks unlimited goals, flexible reminders, and more. You can upgrade anytime; your existing data stays intact.',
   },
 ];
 

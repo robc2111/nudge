@@ -80,6 +80,14 @@ function ManageSubscriptionButton() {
   );
 }
 
+function friendlyProfileError(codeOrMsg) {
+  const code = String(codeOrMsg || '').toUpperCase();
+  if (code === 'USER_NOT_FOUND') return 'We could not find your account.';
+  if (code === 'ACCOUNT_DELETED') return 'This account has been deleted.';
+  if (code === 'PROFILE_LOAD_FAILED') return 'Failed to load your profile.';
+  return codeOrMsg || 'Failed to load your profile.';
+}
+
 export default function Profile() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -115,7 +123,11 @@ export default function Profile() {
       toast.success('Timezone updated');
     } catch (e) {
       console.error(e);
-      toast.error('Failed to update timezone');
+      toast.error(
+        e?.response?.data?.error === 'INVALID_TIMEZONE'
+          ? 'Please choose a valid timezone.'
+          : 'Failed to update timezone'
+      );
     } finally {
       setSavingTz(false);
       setStatusMsg('');
@@ -165,8 +177,18 @@ export default function Profile() {
       } catch (err) {
         if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED')
           return;
+
+        const raw =
+          err.response?.data?.error || err.response?.statusText || err.message;
+
+        const msg = !navigator.onLine
+          ? 'You appear to be offline.'
+          : err.code === 'ECONNABORTED'
+            ? 'Request timed out. Please try again.'
+            : friendlyProfileError(raw);
+
         console.error('❌ Error loading your profile:', err);
-        setError('Failed to load your profile. Please try again.');
+        setError(msg);
       } finally {
         setLoading(false);
       }
@@ -188,9 +210,14 @@ export default function Profile() {
       <div className="auth-card">
         <h1 className="auth-title">⚠️ Error</h1>
         <p style={{ marginBottom: '1rem' }}>{error}</p>
-        <Link to="/login" className="btn">
-          🔐 Log In
-        </Link>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button className="btn" onClick={() => window.location.reload()}>
+            🔄 Try again
+          </button>
+          <Link to="/login" className="btn">
+            🔐 Log In
+          </Link>
+        </div>
       </div>
     );
   }

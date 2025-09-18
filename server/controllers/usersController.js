@@ -1,4 +1,3 @@
-// server/controllers/usersController.js
 const { DateTime } = require('luxon');
 const pool = require('../db');
 const {
@@ -57,15 +56,14 @@ const getUsers = async (_req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('❌ getUsers error:', err.message);
+    res.status(500).json({ error: 'USERS_LIST_FAILED' });
   }
 };
 
 const createUser = async (req, res) => {
   if (!req.body || !req.body.telegram_id) {
-    return res
-      .status(400)
-      .json({ error: 'Missing telegram_id in request body' });
+    return res.status(400).json({ error: 'TELEGRAM_ID_REQUIRED' });
   }
   const { telegram_id, name } = req.body;
 
@@ -81,7 +79,8 @@ const createUser = async (req, res) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('❌ createUser error:', err.message);
+    res.status(500).json({ error: 'USER_CREATE_FAILED' });
   }
 };
 
@@ -89,7 +88,7 @@ const getUserById = async (req, res) => {
   const requestedId = req.params.id;
   const authenticatedUserId = req.user.id;
   if (requestedId !== authenticatedUserId) {
-    return res.status(403).json({ error: 'Access denied' });
+    return res.status(403).json({ error: 'ACCESS_DENIED' });
   }
   try {
     const result = await pool.query(
@@ -103,38 +102,37 @@ const getUserById = async (req, res) => {
       [requestedId]
     );
     const user = result.rows[0];
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user) return res.status(404).json({ error: 'USER_NOT_FOUND' });
     if (user.deleted_at)
-      return res.status(403).json({ error: 'Account deleted' });
+      return res.status(403).json({ error: 'ACCOUNT_DELETED' });
 
     res.json(user);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('❌ getUserById error:', err.message);
+    res.status(500).json({ error: 'PROFILE_LOAD_FAILED' });
   }
 };
 
+// in usersController.js
 const getCurrentUser = async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `
-      SELECT id, email, name, telegram_id, timezone,
-             plan, plan_status, stripe_customer_id, telegram_enabled, deleted_at
-        FROM users
+      `SELECT id, email, name, telegram_id, timezone,
+              plan, plan_status, stripe_customer_id, telegram_enabled, deleted_at
+       FROM users
        WHERE id = $1
-       LIMIT 1
-      `,
+       LIMIT 1`,
       [req.user.id]
     );
     const me = rows[0];
-    if (!me) return res.status(404).json({ error: 'User not found' });
+    if (!me) return res.status(404).json({ error: 'USER_NOT_FOUND' });
     if (me.deleted_at)
-      return res.status(403).json({ error: 'Account deleted' });
+      return res.status(403).json({ error: 'ACCOUNT_DELETED' });
 
-    const activeGoalCount = await countActiveGoals(req.user.id);
-    res.json({ ...me, activeGoalCount });
+    res.json(me);
   } catch (err) {
-    console.error('Error loading user:', err);
-    res.status(500).json({ error: err.message || 'Failed to load user' });
+    console.error('❌ Profile load error:', err.message);
+    return res.status(500).json({ error: 'PROFILE_LOAD_FAILED' });
   }
 };
 
@@ -171,8 +169,7 @@ const patchMe = async (req, res) => {
 
   if (timezone !== undefined) {
     const tz = normalizeTz(timezone);
-    if (!tz)
-      return res.status(400).json({ error: 'Please choose a valid timezone.' });
+    if (!tz) return res.status(400).json({ error: 'INVALID_TIMEZONE' });
     sets.push(`timezone = $${i++}`);
     vals.push(tz);
   }
@@ -208,13 +205,13 @@ const patchMe = async (req, res) => {
     const { rows } = await pool.query(sql, vals);
     const user = rows[0];
     if (!user)
-      return res.status(404).json({ error: 'User not found or deleted' });
+      return res.status(404).json({ error: 'USER_NOT_FOUND_OR_DELETED' });
 
     const activeGoalCount = await countActiveGoals(userId);
     res.json({ ...user, activeGoalCount });
   } catch (err) {
     console.error('❌ Failed to patch user:', err.message);
-    res.status(500).json({ error: 'Failed to update profile' });
+    res.status(500).json({ error: 'PROFILE_UPDATE_FAILED' });
   }
 };
 
@@ -222,7 +219,7 @@ const updateUser = async (req, res) => {
   const authenticatedUserId = req.user.id;
   const targetUserId = req.params.id;
   if (authenticatedUserId !== targetUserId) {
-    return res.status(403).json({ error: 'Access denied' });
+    return res.status(403).json({ error: 'ACCESS_DENIED' });
   }
   const { name } = req.body || {};
   try {
@@ -239,10 +236,11 @@ const updateUser = async (req, res) => {
     );
     const user = result.rows[0];
     if (!user)
-      return res.status(404).json({ error: 'User not found or deleted' });
+      return res.status(404).json({ error: 'USER_NOT_FOUND_OR_DELETED' });
     res.json(user);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('❌ updateUser error:', err.message);
+    res.status(500).json({ error: 'PROFILE_UPDATE_FAILED' });
   }
 };
 
@@ -252,7 +250,7 @@ const deleteUser = async (req, res) => {
   const authenticatedUserId = req.user.id;
   const targetUserId = req.params.id;
   if (authenticatedUserId !== targetUserId) {
-    return res.status(403).json({ error: 'Access denied' });
+    return res.status(403).json({ error: 'ACCESS_DENIED' });
   }
   try {
     const result = await pool.query(
@@ -260,13 +258,12 @@ const deleteUser = async (req, res) => {
       [targetUserId]
     );
     if (result.rowCount === 0) {
-      return res
-        .status(404)
-        .json({ error: 'User not found or already deleted' });
+      return res.status(404).json({ error: 'USER_NOT_FOUND_OR_DELETED' });
     }
     res.json({ message: 'User hard-deleted', user: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('❌ deleteUser error:', err.message);
+    res.status(500).json({ error: 'USER_DELETE_FAILED' });
   }
 };
 
@@ -277,10 +274,10 @@ const getUserDashboard = async (req, res) => {
   const authenticatedUserId = req.user.id;
 
   if (!requestedUserId || typeof requestedUserId !== 'string') {
-    return res.status(400).json({ error: 'Invalid user ID' });
+    return res.status(400).json({ error: 'INVALID_USER_ID' });
   }
   if (requestedUserId !== authenticatedUserId) {
-    return res.status(403).json({ error: 'Access denied' });
+    return res.status(403).json({ error: 'ACCESS_DENIED' });
   }
 
   try {
@@ -294,9 +291,9 @@ const getUserDashboard = async (req, res) => {
       [authenticatedUserId]
     );
     const user = userRows[0];
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user) return res.status(404).json({ error: 'USER_NOT_FOUND' });
     if (user.deleted_at)
-      return res.status(403).json({ error: 'Account deleted' });
+      return res.status(403).json({ error: 'ACCOUNT_DELETED' });
 
     const { rows: goals } = await pool.query(
       `SELECT * FROM goals WHERE user_id = $1 ORDER BY created_at DESC NULLS LAST`,
@@ -394,11 +391,9 @@ const getUserDashboard = async (req, res) => {
   } catch (err) {
     console.error('❌ Error generating dashboard:', err.message);
     if (/statement timeout|timeout|ETIMEDOUT/i.test(err.message)) {
-      return res
-        .status(504)
-        .json({ error: 'Dashboard query timed out. Please try again.' });
+      return res.status(504).json({ error: 'DASHBOARD_TIMEOUT' });
     }
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'DASHBOARD_LOAD_FAILED' });
   }
 };
 
@@ -413,9 +408,7 @@ const deleteMe = async (req, res) => {
   const { confirm, acknowledge } = req.body || {};
 
   if ((confirm || '').toUpperCase() !== 'DELETE' || acknowledge !== true) {
-    return res
-      .status(403)
-      .json({ error: 'Please type DELETE and tick the box to confirm.' });
+    return res.status(403).json({ error: 'DELETE_CONFIRM_REQUIRED' });
   }
 
   const { rows } = await pool.query(
@@ -426,7 +419,7 @@ const deleteMe = async (req, res) => {
     [userId]
   );
   const user = rows[0];
-  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (!user) return res.status(404).json({ error: 'USER_NOT_FOUND' });
 
   if (user.deleted_at) {
     try {
@@ -479,7 +472,7 @@ const deleteMe = async (req, res) => {
   } catch (err) {
     await pool.query('ROLLBACK');
     console.error('❌ deleteMe error:', err.message);
-    return res.status(500).json({ error: 'Failed to delete account' });
+    return res.status(500).json({ error: 'ACCOUNT_DELETE_FAILED' });
   }
 
   return res.json({

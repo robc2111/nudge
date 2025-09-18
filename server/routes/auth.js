@@ -1,3 +1,4 @@
+// server/routes/auth.js
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
@@ -8,12 +9,6 @@ const pool = require('../db');
 const { validate } = require('../validation/middleware');
 const { auth: authSchemas } = require('../validation/schemas');
 
-// 🔒 rate limiters specific to login attempts
-const {
-  loginIpLimiter,
-  loginEmailLimiter,
-} = require('../middleware/rateLimiters');
-
 const DEFAULT_TELEGRAM_ID = 'not-linked';
 
 function ensureJwtSecret() {
@@ -23,11 +18,11 @@ function ensureJwtSecret() {
   return process.env.JWT_SECRET;
 }
 
-/* --------------------------- REGISTER --------------------------- */
+/* ------------------------------- REGISTER ------------------------------ */
 // POST /api/auth/register
 router.post(
   '/register',
-  validate({ body: authSchemas.register }),
+  validate(authSchemas.register, 'body'), // <-- FIXED
   async (req, res) => {
     try {
       const name = String(req.body?.name || '').trim();
@@ -43,7 +38,6 @@ router.post(
       const hashedPassword = await bcrypt.hash(password, 12);
       const userId = uuidv4();
 
-      // Always include telegram_id to satisfy NOT NULL constraint
       const insertSQL = `
         INSERT INTO users (id, name, email, password, telegram_id)
         VALUES ($1, $2, $3, $4, $5)
@@ -68,14 +62,11 @@ router.post(
   }
 );
 
-/* ----------------------------- LOGIN ---------------------------- */
+/* -------------------------------- LOGIN -------------------------------- */
 // POST /api/auth/login
-// Apply *both* IP-scoped and email-scoped limiters to resist brute-force.
 router.post(
   '/login',
-  loginIpLimiter,
-  loginEmailLimiter,
-  validate({ body: authSchemas.login }),
+  validate(authSchemas.login, 'body'), // <-- FIXED
   async (req, res) => {
     try {
       const email = String(req.body?.email || '')
@@ -99,8 +90,9 @@ router.post(
       }
 
       const validPassword = await bcrypt.compare(password, user.password);
-      if (!validPassword)
+      if (!validPassword) {
         return res.status(401).json({ error: 'Invalid credentials' });
+      }
 
       const token = jwt.sign({ id: user.id }, ensureJwtSecret(), {
         expiresIn: '7d',
