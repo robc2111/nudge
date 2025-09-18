@@ -460,12 +460,11 @@ const Dashboard = () => {
           ➕ Create Your First Goal
         </button>
         {atLimit && (
-          <p className="auth-error" style={{ marginTop: 8 }}>
-            You’re on the Free plan (1 active goal).{' '}
+          <p style={{ marginTop: 12 }}>
+            Want unlimited goals and custom coach tones?{' '}
             <Link to="/profile#billing" className="brand-link-dark">
-              Upgrade
-            </Link>{' '}
-            to add more.
+              Upgrade →
+            </Link>
           </p>
         )}
       </div>
