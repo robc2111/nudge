@@ -1,4 +1,3 @@
-// server/index.js
 require('dotenv').config();
 
 const express = require('express');
@@ -7,6 +6,14 @@ const cors = require('cors');
 
 // Sentry (request + tracing first, error handler later)
 const { initSentry, sentryErrorHandler } = require('./monitoring/sentry');
+
+// 🔒 Rate limiting
+const {
+  apiLimiter,
+  authLimiter,
+  aiLimiter,
+  aiIpBurstLimiter,
+} = require('./middleware/rateLimiters');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -75,6 +82,7 @@ app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
 // ---- Stripe webhook (raw body) MUST be before json() ----
+// (Deliberately not rate-limited)
 const paymentsController = require('./controllers/paymentsController');
 app.post(
   '/api/payments/webhook',
@@ -90,6 +98,13 @@ app.get('/api/debug-sentry', (req, res, next) =>
   next(new Error('Sentry test error'))
 );
 
+// ---------- 🔒 Rate limiters (mount BEFORE routes) ----------
+// Soft guard for all API traffic except the Stripe webhook above
+app.use('/api', apiLimiter);
+
+// Auth namespace guard (per-IP). The /login route has extra limiters in its router.
+app.use('/api/auth', authLimiter);
+
 // ---- Routes ----
 app.use('/api/telegram', require('./routes/telegram'));
 app.use('/api/users', require('./routes/users'));
@@ -99,7 +114,11 @@ app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/microtasks', require('./routes/microtasks'));
 app.use('/api/check_ins', require('./routes/check_ins'));
 app.use('/api/reflections', require('./routes/reflections'));
-app.use('/api/ai', require('./routes/ai'));
+
+// AI endpoints — per-user limiter + short burst per-IP limiter
+const aiRouter = require('./routes/ai');
+app.use('/api/ai', aiLimiter, aiIpBurstLimiter, aiRouter);
+
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/password', require('./routes/passwordReset'));
 app.use('/api/profile', require('./routes/profile'));

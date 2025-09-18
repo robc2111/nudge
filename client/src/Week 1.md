@@ -5,6 +5,7 @@ Day 3 (Wed) - Register for self employed tax (sole trader) - transfer render, su
 Day 8 (Tue)
 • Large: Security: rate limiting for login/auth/AI endpoints
 
+- remove/hide blocked social media links
 - review faqs
 
 Day 9 (Wed)
