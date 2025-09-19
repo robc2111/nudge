@@ -9,7 +9,7 @@ export default function LandingPage() {
   return (
     <div className="landing-page">
       <SEO
-        title="GoalCrumbs – Your friendly accountability partner"
+        title="GoalCrumbs - Your friendly accountability partner"
         description="Break big goals into small crumbs. Telegram nudges, weekly check-ins, and a clean dashboard."
         image="/og/birdog.png" // page-specific OG/Twitter image
         url="https://goalcrumbs.com/"
@@ -22,8 +22,9 @@ export default function LandingPage() {
         <div className="hero-right">
           <h1>Break Big Goals Into Tiny Crumbs</h1>
           <p>
-            Your AI-powered accountability partner — stay on track, stay
-            motivated.
+            Your AI-powered accountability partner. Stay on track, stay
+            motivated, achieve your goals without being overwhelmed and make
+            your dreams come true.
           </p>
           <p>
             <Link className="cta-button" to="/signup">
@@ -41,7 +42,7 @@ export default function LandingPage() {
         <h2>Why GoalCrumbs Works</h2>
         <ul className="benefits-list">
           <li>✅ Layered structure: goals → subgoals → tasks → microtasks</li>
-          <li>✅ Daily nudges + weekly reviews to build consistency</li>
+          <li>✅ Daily reminders and weekly reviews to build consistency</li>
           <li>
             ✅ Smart defaults and progress tracking that reduce decision fatigue
           </li>
@@ -55,8 +56,7 @@ export default function LandingPage() {
           <div>
             <img src="/cake.png" alt="Goal" />
             <p>
-              <strong>Goal:</strong> Describe your mission. We set smart
-              defaults.
+              <strong>Goal:</strong> Describe your mission.
             </p>
           </div>
           <div>
@@ -69,16 +69,15 @@ export default function LandingPage() {
           <div>
             <img src="/crumbs.png" alt="Tasks" />
             <p>
-              <strong>Tasks → Microtasks:</strong> Tiny steps with daily nudges
-              and weekly check-ins.
+              <strong>Tasks → Microtasks:</strong> Subgoals are broken down to
+              smaller steps with daily reminders.
             </p>
           </div>
           <div>
             <img src="/ant.png" alt="Daily Reminders" />
             <p>
-              <strong>Daily Reminders:</strong> Your next microtask sent over
-              Telegram — like an ant carrying crumbs, tiny consistent actions
-              add up.
+              <strong>Daily Reminders:</strong> The next steps toward your goal
+              are sent to you daily via Telegram.
             </p>
           </div>
 
@@ -105,6 +104,10 @@ export default function LandingPage() {
               e.currentTarget.style.display = 'none';
             }}
           />
+          <p>
+            Visit the dashboard to view your goal in detail and the progress you
+            have made so far.
+          </p>
         </div>
       </section>
 
@@ -117,17 +120,16 @@ export default function LandingPage() {
             <ul className="benefits-list">
               <li>✅ 1 active goal (full breakdown)</li>
               <li>✅ Tasks & microtasks with progress</li>
-              <li>✅ Daily nudges + weekly check-ins (Telegram)</li>
-              <li>✅ Basic dashboard</li>
+              <li>✅ Daily reminders + weekly check-ins (Telegram)</li>
             </ul>
             <Link to="/signup" className="cta-button">
-              Start Free
+              Start Free Plan
             </Link>
           </div>
 
           <div className="pricing-card">
             <h3>Pro</h3>
-            <p className="tagline">Unlimited goals + quality-of-life boosts.</p>
+            <p className="tagline">Unlimited goals + personalised messages</p>
 
             <p style={{ fontSize: '1.25rem', margin: '0.5rem 0' }}>
               {promoActive ? (
@@ -162,15 +164,6 @@ export default function LandingPage() {
               </li>
               <li>
                 ✅ <strong>Flexible reminders</strong>
-              </li>
-              <li>
-                ✅ <strong>Streaks & analytics</strong>
-              </li>
-              <li>
-                ✅ <strong>CSV export</strong>
-              </li>
-              <li>
-                ✅ <strong>Themes</strong>
               </li>
             </ul>
 
