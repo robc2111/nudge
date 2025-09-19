@@ -12,7 +12,7 @@ PGSSLMODE=require pg_dump "$DATABASE_URL" --no-owner --no-privileges | gzip > "$
 
 S3_URI="${S3_BACKUP_BUCKET:?S3_BACKUP_BUCKET missing}/db/backup-${DATE}.sql.gz"
 echo "⬆️  Uploading to S3: $S3_URI"
-aws s3 cp "$FILE" "$S3_URI" --only-show-errors
+aws s3 cp "/tmp/$FILE" "s3://$S3_BACKUP_BUCKET/db/$FILE"
 
 rm -f "$FILE" || true
 echo "✅ Backup complete"
