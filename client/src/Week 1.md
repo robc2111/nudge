@@ -1,14 +1,10 @@
-Week 1
-
-• Medium: Ensure Pro vs Free features exactly match Stripe product
-
-- remove test accounts and make telggram id unique
+- allow user to convert to pdf/csv their goal inc progress and breakdown
   • Quick: Ensure helmet headers cover XSS/Clickjacking basics
   • Medium: Analytics (privacy-respecting, basic server-side events)
   • Large: OpenAI org setup: dedicated key, usage caps, prod/dev split
-  - db rls
-  - convert to pdf/csv
-    Day 13 - soft launch - business plan with marketing and sales strategy
+- db rls
+
+  Day 13 - soft launch - business plan with marketing and sales strategy
 
 - investigate buisness insurance
 - check if i need an accountant or can this be automated

@@ -103,6 +103,27 @@ const Dashboard = () => {
     return total ? Math.round((done / total) * 100) : 0;
   };
 
+  async function downloadGoalPdf(goalId) {
+    try {
+      const resp = await axios.get(`/goals/${goalId}/pdf`, {
+        responseType: 'blob', // important!
+      });
+
+      const blob = new Blob([resp.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `goal-${goalId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('PDF download failed:', err);
+      alert('Could not download PDF. Please try again.');
+    }
+  }
+
   const firstInProgressOrFirst = (arr = []) =>
     arr.find((x) => x.status === 'in_progress') || arr[0] || null;
 
@@ -172,12 +193,12 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [data, selectedGoalId]);
+  }, []);
 
   useEffect(() => {
     refreshData();
     return () => abortRef.current?.abort();
-  }, [refreshData]);
+  }, []);
 
   const goalsList = useMemo(() => data?.goals ?? [], [data]);
   const selectedGoal = useMemo(
@@ -516,6 +537,20 @@ const Dashboard = () => {
             className="controls-group"
             style={{ display: 'flex', gap: 8, alignItems: 'center' }}
           >
+            {/* Download PDF */}
+            <button
+              className="btn"
+              type="button"
+              disabled={!selectedGoal}
+              onClick={() => selectedGoal && downloadGoalPdf(selectedGoal.id)}
+              title={
+                !selectedGoal
+                  ? 'Select a goal first'
+                  : 'Download this goal as PDF'
+              }
+            >
+              Download PDF
+            </button>
             <label htmlFor="toneSelect">
               <strong>Coach tone:</strong>
             </label>

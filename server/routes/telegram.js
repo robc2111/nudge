@@ -1,5 +1,11 @@
+// server/routes/telegram.js
 const express = require('express');
 const { DateTime } = require('luxon');
+const router = express.Router();
+
+const pool = require('../db');
+const requireAuth = require('../middleware/auth');
+
 const {
   sendTelegram,
   editTelegramMessage,
@@ -7,18 +13,18 @@ const {
   toneKeyboard,
 } = require('../utils/telegram');
 
-const router = express.Router();
-
-const pool = require('../db');
 const {
   cascadeAfterMicrotaskDone,
   normalizeProgressByGoal,
 } = require('../utils/progressUtils');
+
 const {
   fetchNextAcrossGoals,
   renderChecklist,
 } = require('../utils/goalHelpers');
+
 const { assertPro } = require('../utils/plan');
+
 router.get('/health', (req, res) => res.json({ ok: true }));
 
 /* --------------------------------------------------------------------------------
@@ -260,6 +266,63 @@ async function startDonePicker({ user, chatId }) {
 }
 
 /* --------------------------------------------------------------------------------
+ * Account ↔ Telegram link management
+ * ------------------------------------------------------------------------------*/
+
+/**
+ * Link the current authenticated user to a Telegram chat id.
+ * Body: { telegram_id: number/string }
+ * Enforces uniqueness (handles Postgres 23505 from partial unique index).
+ */
+router.post('/link', requireAuth, async (req, res) => {
+  const telegramId = String(req.body.telegram_id || '').trim();
+  if (!telegramId) {
+    return res.status(400).json({ error: 'Missing telegram_id' });
+  }
+
+  try {
+    await pool.query(
+      `UPDATE users
+          SET telegram_id = $1,
+              telegram_enabled = true
+        WHERE id = $2`,
+      [telegramId, req.user.id]
+    );
+    return res.json({ ok: true });
+  } catch (e) {
+    if (e.code === '23505') {
+      // Unique violation from partial unique index (WHERE telegram_id IS NOT NULL)
+      return res.status(409).json({
+        error:
+          'That Telegram account is already linked to another user. Unlink it there first or contact support.',
+        code: 'TELEGRAM_ID_TAKEN',
+      });
+    }
+    console.error('[telegram link] failed:', e.message);
+    return res.status(500).json({ error: 'Failed to link Telegram' });
+  }
+});
+
+/**
+ * Unlink the authenticated user’s Telegram id.
+ */
+router.post('/unlink', requireAuth, async (req, res) => {
+  try {
+    await pool.query(
+      `UPDATE users
+          SET telegram_id = NULL,
+              telegram_enabled = false
+        WHERE id = $1`,
+      [req.user.id]
+    );
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('[telegram unlink] failed:', e.message);
+    return res.status(500).json({ error: 'Failed to unlink Telegram' });
+  }
+});
+
+/* --------------------------------------------------------------------------------
  * Webhook
  * ------------------------------------------------------------------------------*/
 router.post('/webhook', async (req, res) => {
@@ -270,6 +333,7 @@ router.post('/webhook', async (req, res) => {
       const chatId = cq.message?.chat?.id;
       const userChatId = cq.from?.id;
       const data = String(cq.data || '');
+
       // Identify user by telegram_id (same as chat id)
       const { rows: urows } = await pool.query(
         'SELECT * FROM users WHERE telegram_id = $1',
@@ -345,7 +409,6 @@ router.post('/webhook', async (req, res) => {
 
     // 2) Then handle normal text messages
     const message = req.body?.message;
-    console.log('📩 Webhook payload:', JSON.stringify(req.body, null, 2));
     if (!message || !message.text) return res.sendStatus(200);
 
     const chatId = message.chat.id;
