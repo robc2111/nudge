@@ -20,4 +20,4 @@
 🔎 Notes
 • Each day balances visible wins (quick tasks), incremental depth (medium), and structural impact (large).
 • You’ll close out a lot of UI polish + compliance early (Week 1), then move to deeper infra/security (Week 2).
-• Sundays are skipped to give you breathing space.
+• Sundays are skipped to give you breathing space. testing
