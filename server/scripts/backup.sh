@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DATE=$(date +%Y-%m-%d_%H-%M-%S)
-FILE="backup-$DATE.sql.gz"
+: "${DATABASE_URL:?DATABASE_URL missing}"
 
-echo "🔄 Dumping database..."
-PGSSLMODE=require pg_dump "$DATABASE_URL" | gzip > "/tmp/$FILE"
+DATE=$(date -u +%Y-%m-%d_%H-%M-%S)
+FILE="/tmp/backup-${DATE}.sql.gz"
 
-echo "⬆️ Uploading to S3..."
-aws s3 cp "/tmp/$FILE" "s3://goalcrumbs-backups-prod/db/$FILE" --only-show-errors
+echo "🔎 Using $(pg_dump --version)"
+echo "🔄 Dumping database (UTC ${DATE})…"
+PGSSLMODE=require pg_dump "$DATABASE_URL" --no-owner --no-privileges | gzip > "$FILE"
 
-echo "✅ Backup complete: $FILE"
+S3_URI="${S3_BACKUP_BUCKET:?S3_BACKUP_BUCKET missing}/db/backup-${DATE}.sql.gz"
+echo "⬆️  Uploading to S3: $S3_URI"
+aws s3 cp "$FILE" "$S3_URI" --only-show-errors
+
+rm -f "$FILE" || true
+echo "✅ Backup complete"
