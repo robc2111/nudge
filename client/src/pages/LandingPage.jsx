@@ -1,3 +1,4 @@
+// LandingPage.jsx
 import { Link } from 'react-router-dom';
 import SEO from '../seo/SEO';
 import UpgradeButton from '../components/UpgradeButton';

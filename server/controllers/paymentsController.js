@@ -8,20 +8,14 @@ const { limitsFor } = require('../utils/plan');
 
 const APP_BASE = process.env.APP_BASE_URL || 'http://localhost:5173';
 
-/**
- * Ensure there is a valid Stripe customer for the *current* Stripe mode (test/live).
- * - If the stored customer id exists & is valid -> use it
- * - Else try to find an existing customer by email in this mode
- * - Else create a new customer
- * Always persists the id back to the users table.
- */
+/** Ensure we have a valid Stripe customer in the current mode. */
 async function ensureStripeCustomer(user) {
   if (user.stripe_customer_id) {
     try {
       await stripe.customers.retrieve(user.stripe_customer_id);
       return user.stripe_customer_id;
     } catch (e) {
-      console.warn('[stripe] Stored customer invalid in this mode:', e.message);
+      console.warn('[stripe] stored customer invalid:', e.message);
     }
   }
 
@@ -33,7 +27,6 @@ async function ensureStripeCustomer(user) {
     });
     if (data[0]) custId = data[0].id;
   }
-
   if (!custId) {
     const created = await stripe.customers.create({
       email: user.email || undefined,
@@ -42,30 +35,24 @@ async function ensureStripeCustomer(user) {
     });
     custId = created.id;
   }
-
   await pool.query(`UPDATE users SET stripe_customer_id = $1 WHERE id = $2`, [
     custId,
     user.id,
   ]);
-
   return custId;
 }
 
-/** Enforce per-plan active goal limit, preferring user's keep_active_goal_id if set. */
+/** Enforce plan’s active-goal cap (prefers keep_active_goal_id). */
 async function enforceGoalLimitForPlan(userId, plan) {
   const { activeGoals: limit } = limitsFor(plan);
-
-  // Unlimited / high cap – nothing to do
   if (limit >= 9999) return;
 
-  // Get preference (may be null)
   const { rows: prefRows } = await pool.query(
     `SELECT keep_active_goal_id FROM users WHERE id = $1`,
     [userId]
   );
   const preferredId = prefRows[0]?.keep_active_goal_id || null;
 
-  // Fetch currently in-progress goals (newest first)
   const { rows: activeRows } = await pool.query(
     `SELECT id
        FROM goals
@@ -75,38 +62,31 @@ async function enforceGoalLimitForPlan(userId, plan) {
   );
   if (!activeRows.length) return;
 
-  // Reorder so the preferred goal (if any) is first
   let ordered = activeRows.map((r) => r.id);
   if (preferredId && ordered.includes(preferredId)) {
     ordered = [preferredId, ...ordered.filter((id) => id !== preferredId)];
   }
 
-  const keep = ordered.slice(0, Math.max(0, limit));
-  const demote = ordered.slice(Math.max(0, limit));
+  const keep = ordered.slice(0, limit);
+  const demote = ordered.slice(limit);
 
   if (demote.length) {
     await pool.query(
-      `UPDATE goals
-          SET status = 'not_started'
-        WHERE user_id = $1
-          AND id = ANY($2::uuid[])`,
+      `UPDATE goals SET status = 'not_started'
+        WHERE user_id = $1 AND id = ANY($2::uuid[])`,
       [userId, demote]
     );
   }
-
   if (keep.length) {
     await pool.query(
-      `UPDATE goals
-          SET status = 'in_progress'
-        WHERE user_id = $1
-          AND id = ANY($2::uuid[])`,
+      `UPDATE goals SET status = 'in_progress'
+        WHERE user_id = $1 AND id = ANY($2::uuid[])`,
       [userId, keep]
     );
   }
 }
 
-/** POST /api/payments/checkout -> { url } */
-/** Decide if promo is still active (UTC) */
+/** Promo window (UTC). */
 function withinPromoWindow() {
   const cutoff = new Date(
     process.env.PROMO_CUTOFF_UTC || '2025-10-31T23:59:59Z'
@@ -118,9 +98,8 @@ function withinPromoWindow() {
 async function checkout(req, res) {
   try {
     const priceStandard =
-      process.env.STRIPE_PRICE_PRO_GBP || process.env.STRIPE_PRICE_MONTHLY; // fallback to your old var
+      process.env.STRIPE_PRICE_PRO_GBP || process.env.STRIPE_PRICE_MONTHLY;
     const pricePromo = process.env.STRIPE_PRICE_PROMO_OCT2025_GBP;
-
     const priceId =
       withinPromoWindow() && pricePromo ? pricePromo : priceStandard;
     if (!priceId)
@@ -134,12 +113,10 @@ async function checkout(req, res) {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const customerId = await ensureStripeCustomer(user);
-
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
-      // we steer pricing by price IDs, so promotion codes stay off
       allow_promotion_codes: false,
       billing_address_collection: 'auto',
       success_url: `${APP_BASE}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -147,10 +124,10 @@ async function checkout(req, res) {
       metadata: { user_id: String(user.id) },
     });
 
-    return res.json({ url: session.url });
+    res.json({ url: session.url });
   } catch (err) {
     console.error('createCheckoutSession error:', err?.message || err);
-    return res.status(500).json({ error: 'Could not create checkout session' });
+    res.status(500).json({ error: 'Could not create checkout session' });
   }
 }
 
@@ -165,20 +142,19 @@ async function portalLink(req, res) {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const customerId = await ensureStripeCustomer(user);
-
     const portal = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: `${APP_BASE}/profile`,
     });
 
-    return res.json({ url: portal.url });
+    res.json({ url: portal.url });
   } catch (err) {
     console.error('portalLink error:', err?.message || err);
-    return res.status(500).json({ error: 'Could not create portal session' });
+    res.status(500).json({ error: 'Could not create portal session' });
   }
 }
 
-/** POST /api/payments/sync-plan -> syncs enforcement after manual changes */
+/** POST /api/payments/sync-plan -> { ok } */
 async function syncPlanForMe(req, res) {
   try {
     const { rows } = await pool.query(
@@ -189,21 +165,17 @@ async function syncPlanForMe(req, res) {
     if (!me) return res.status(404).json({ error: 'User not found' });
 
     await enforceGoalLimitForPlan(me.id, me.plan || 'free');
-    return res.json({ ok: true });
+    res.json({ ok: true });
   } catch (e) {
     console.error('syncPlanForMe error:', e.message);
-    return res.status(500).json({ error: 'Failed to sync plan/goal limits' });
+    res.status(500).json({ error: 'Failed to sync plan/goal limits' });
   }
 }
 
-/**
- * POST /api/payments/webhook
- * IMPORTANT: this route must receive the *raw* body. The router sets express.raw().
- */
+/** POST /api/payments/webhook (raw body) */
 async function handleWebhook(req, res) {
   const sig = req.headers['stripe-signature'];
   let event;
-
   try {
     event = stripe.webhooks.constructEvent(
       req.rawBody,
@@ -233,7 +205,6 @@ async function handleWebhook(req, res) {
       case 'customer.subscription.updated': {
         const sub = event.data.object;
 
-        // Map subscription to user
         let uid = sub.metadata?.user_id || null;
         if (!uid) {
           const { rows } = await pool.query(
@@ -248,7 +219,8 @@ async function handleWebhook(req, res) {
             `INSERT INTO subscriptions (user_id, stripe_subscription_id, status, current_period_end)
              VALUES ($1, $2, $3, to_timestamp($4))
              ON CONFLICT (stripe_subscription_id) DO UPDATE
-               SET status = EXCLUDED.status, current_period_end = EXCLUDED.current_period_end`,
+               SET status = EXCLUDED.status,
+                   current_period_end = EXCLUDED.current_period_end`,
             [uid, sub.id, sub.status, sub.current_period_end]
           );
 
@@ -293,14 +265,13 @@ async function handleWebhook(req, res) {
       }
 
       default:
-        // ignore other events
         break;
     }
 
-    return res.json({ received: true });
+    res.json({ received: true });
   } catch (err) {
     console.error('Webhook handler failed:', err);
-    return res.status(500).send('Server error');
+    res.status(500).send('Server error');
   }
 }
 
@@ -309,5 +280,5 @@ module.exports = {
   portalLink,
   syncPlanForMe,
   handleWebhook,
-  enforceGoalLimitForPlan, // exported for plan routes
+  enforceGoalLimitForPlan, // used by /api/plan etc.
 };

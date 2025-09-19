@@ -1,32 +1,51 @@
-// Central place for plan limits and Pro checks so controllers/routes stay clean.
-const pool = require('../db');
+// server/utils/plan.js
+// Central entitlements + helpers used across the server.
 
-const PLAN_LIMITS = {
-  free: { activeGoals: 1 },
-  pro: { activeGoals: 9999 }, // effectively unlimited
+const PAID_STATUSES = new Set(['active', 'trialing', 'past_due']);
+
+const ENTITLEMENTS = {
+  free: {
+    dailyReminders: true,
+    weeklyCheckin: true,
+    personalizedMessages: false, // generic copy
+    activeGoals: 1, // max active goals
+  },
+  pro: {
+    dailyReminders: true,
+    weeklyCheckin: true,
+    personalizedMessages: true, // tailored copy
+    activeGoals: 9999, // effectively unlimited
+  },
 };
 
-function limitsFor(plan) {
-  const key = String(plan || 'free').toLowerCase();
-  return PLAN_LIMITS[key] || PLAN_LIMITS.free;
-}
-
-/**
- * Throws { code: 'PRO_REQUIRED' } if the user isn't on a Pro plan.
- * Use this in routes that gate Pro-only features (e.g., tone switching).
- */
-async function assertPro(userId) {
-  const { rows } = await pool.query(
-    `SELECT plan FROM users WHERE id = $1 LIMIT 1`,
-    [userId]
-  );
-  const plan = (rows[0]?.plan || 'free').toLowerCase();
-  if (plan !== 'pro') {
-    const err = new Error('Pro required');
-    err.code = 'PRO_REQUIRED';
-    throw err;
+function planKeyFromRow(rowOrString) {
+  if (typeof rowOrString === 'string') {
+    return rowOrString.toLowerCase() === 'pro' ? 'pro' : 'free';
   }
-  return true;
+  const plan = (rowOrString?.plan || 'free').toLowerCase();
+  const status = (rowOrString?.plan_status || 'inactive').toLowerCase();
+  return plan === 'pro' && PAID_STATUSES.has(status) ? 'pro' : 'free';
 }
 
-module.exports = { PLAN_LIMITS, limitsFor, assertPro };
+function limitsFor(rowOrString) {
+  const key = planKeyFromRow(rowOrString);
+  return { activeGoals: ENTITLEMENTS[key].activeGoals };
+}
+
+function can(rowOrString, feature) {
+  const key = planKeyFromRow(rowOrString);
+  return !!ENTITLEMENTS[key]?.[feature];
+}
+
+function isPro(rowOrString) {
+  return planKeyFromRow(rowOrString) === 'pro';
+}
+
+module.exports = {
+  ENTITLEMENTS,
+  PAID_STATUSES,
+  limitsFor,
+  can,
+  isPro,
+  planKeyFromRow,
+};

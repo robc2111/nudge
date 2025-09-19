@@ -1,26 +1,20 @@
+// server/cron.js
 const path = require('path');
-
-// Load envs quietly
 (function tryLoadEnvs() {
   try {
     require('dotenv').config({ path: path.resolve(__dirname, './.env') });
-  } catch (err) {
-    if (process.env.DEBUG_CRON === '1') {
-      console.debug('[cron] ./.env not loaded:', err.message);
-    }
+  } catch {
+    // ignore if not found
   }
   try {
     require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
-  } catch (err) {
-    if (process.env.DEBUG_CRON === '1') {
-      console.debug('[cron] ../.env not loaded:', err.message);
-    }
+  } catch {
+    // ignore if not found
   }
 })();
 
 const cron = require('node-cron');
 const { DateTime } = require('luxon');
-
 const pool = require('./db');
 const { normalizeProgressByGoal } = require('./utils/progressUtils');
 const {
@@ -30,13 +24,12 @@ const {
 const { sendTelegram } = require('./utils/telegram');
 const { isTelegramEnabled } = require('./utils/telegramGuard');
 const { buildWeeklyCheckin } = require('./utils/coach');
+const { can, isPro } = require('./utils/plan');
 
 const CRON_ENABLED = process.env.CRON_ENABLED !== 'false';
 if (!CRON_ENABLED) console.log('[cron] disabled by CRON_ENABLED=false');
 
-/* ──────────────────────────────
-   Helpers
-   ────────────────────────────── */
+/* helpers */
 function validZone(tz) {
   try {
     return Boolean(tz) && DateTime.local().setZone(tz).isValid;
@@ -57,15 +50,13 @@ function isLocalWeeklyNow(tz, { hour, minute }, isoWeekday) {
   );
 }
 
-/* ──────────────────────────────
-   Idempotency: daily sends
-   ────────────────────────────── */
+/* idempotency: daily */
 async function ensureDailyTable() {
   await pool.query(`
-    create table if not exists daily_nudges_sent (
-      user_id uuid not null,
-      sent_on date not null,
-      primary key (user_id, sent_on)
+    CREATE TABLE IF NOT EXISTS daily_nudges_sent (
+      user_id uuid NOT NULL,
+      sent_on date NOT NULL,
+      PRIMARY KEY (user_id, sent_on)
     );
   `);
 }
@@ -74,22 +65,22 @@ async function reserveDailySend(userId, tz) {
   const sentOn = DateTime.now().setZone(zone).toISODate();
   await ensureDailyTable();
   const { rowCount } = await pool.query(
-    `insert into daily_nudges_sent (user_id, sent_on)
-     values ($1, $2)
-     on conflict do nothing`,
+    `INSERT INTO daily_nudges_sent (user_id, sent_on)
+     VALUES ($1, $2)
+     ON CONFLICT DO NOTHING`,
     [userId, sentOn]
   );
   return rowCount === 1;
 }
 
-/* ──────────────────────────────
-   Daily nudge
-   ────────────────────────────── */
-const DAILY_NUDGE_LOCAL_TIME = { hour: 8, minute: 0 }; // 08:00 local
+/* daily nudge */
+const DAILY_NUDGE_LOCAL_TIME = { hour: 8, minute: 0 };
+
 async function sendDailyNudgeForUser(user) {
+  if (!(await isTelegramEnabled(user.id))) return;
   const shouldSend = await reserveDailySend(user.id, user.timezone);
   if (!shouldSend) return;
-  if (!(await isTelegramEnabled(user.id))) return;
+  if (!can(user, 'dailyReminders')) return;
 
   const packs = await fetchNextAcrossGoals(user.id, { onlyInProgress: true });
   if (packs.length === 0) return;
@@ -111,134 +102,89 @@ ${renderChecklist(p.microtasks, p.nextIdx)}`
     )
     .join('\n\n— — —\n\n');
 
-  const text = `🌞 *Good morning! Here’s your focus across all goals:*\n\n${sections}\n\nReply with:\n• \`done [microtask words]\`\n• /reflect`;
+  const header = isPro(user)
+    ? '🌞 *Good morning! Your tailored focus for today:*'
+    : '🌞 *Good morning! Here’s your focus across your goals:*';
+
+  const footer = isPro(user)
+    ? 'Reply with:\n• `done [microtask words]`\n• /reflect for a personalized reflection'
+    : 'Reply with:\n• `done [microtask words]`\n• /reflect to log a quick reflection';
+
+  const proLine = isPro(user)
+    ? '\n✨ _Personalized coaching active (Pro)_.'
+    : '';
+  const text = `${header}\n\n${sections}\n\n${footer}${proLine}`;
+
   await sendTelegram({
     chat_id: user.telegram_id,
     text,
     parse_mode: 'Markdown',
   });
-  console.log(`[daily] sent to user ${user.id} (${packs.length} sections)`);
+  console.log(`[daily] sent to user ${user.id} (${packs.length} section(s))`);
 }
 
-/* ──────────────────────────────
-   Weekly check-in
-   ────────────────────────────── */
+/* weekly check-in */
 const WEEKLY_LOCAL_TIME = { hour: 18, minute: 0 };
-const WEEKLY_ISO_WEEKDAY = 7; // Sun
+const WEEKLY_ISO_WEEKDAY = 7; // Sunday
+
 async function sendWeeklyCheckins() {
   const { rows: users } = await pool.query(
-    `select id, name, email, telegram_id, timezone, plan, plan_status
-       from users
-      where telegram_id is not null
-        and telegram_enabled = true`
+    `SELECT id, name, email, telegram_id, timezone, plan, plan_status
+       FROM users
+      WHERE telegram_id IS NOT NULL
+        AND telegram_enabled = TRUE`
   );
   let sent = 0;
   for (const u of users) {
     try {
       if (!isLocalWeeklyNow(u.timezone, WEEKLY_LOCAL_TIME, WEEKLY_ISO_WEEKDAY))
         continue;
+      if (!can(u, 'weeklyCheckin')) continue;
       if (!(await isTelegramEnabled(u.id))) continue;
 
-      const msg = await buildWeeklyCheckin({
+      const base = await buildWeeklyCheckin({
         user: u,
         tz: u.timezone || 'Etc/UTC',
       });
+      const text = isPro(u)
+        ? `${base.text}\n\n✨ _Personalized coaching active (Pro)_.`
+        : base.text;
+
       const res = await sendTelegram({
         chat_id: u.telegram_id,
-        text: msg.text,
+        text,
         parse_mode: 'Markdown',
       });
 
       try {
         const tgId = res?.data?.result?.message_id || null;
         await pool.query(
-          `insert into weekly_prompts (user_id, goal_id, sent_at, telegram_message_id)
-           values ($1, null, now(), $2)`,
+          `INSERT INTO weekly_prompts (user_id, goal_id, sent_at, telegram_message_id)
+           VALUES ($1, NULL, NOW(), $2)`,
           [u.id, tgId]
         );
       } catch {
-        // best effort
+        // ignore if not found
       }
       sent++;
     } catch (e) {
       console.error('[weekly] failed for user', u.id, e.message);
     }
   }
-  if (sent) console.log(`[weekly] sent ${sent} weekly prompts`);
+  if (sent) console.log(`[weekly] Sent ${sent} weekly check-ins.`);
 }
 
-/* ──────────────────────────────
-   Deletion sweeper (hourly)
-   ────────────────────────────── */
-async function sweepDeletions() {
-  const { rows } = await pool.query(
-    `select user_id from privacy_deletes
-      where status = 'pending' and now() >= eta`
-  );
-
-  for (const r of rows) {
-    const uid = r.user_id;
-    try {
-      await pool.query('begin');
-
-      // Delete child → parent to satisfy FKs
-      await pool.query(`delete from reflections where user_id=$1`, [uid]);
-
-      await pool.query(
-        `delete from microtasks
-         using tasks t, subgoals sg, goals g
-         where microtasks.task_id=t.id
-           and t.subgoal_id=sg.id
-           and sg.goal_id=g.id
-           and g.user_id=$1`,
-        [uid]
-      );
-
-      await pool.query(
-        `delete from tasks
-         using subgoals sg, goals g
-         where tasks.subgoal_id=sg.id
-           and sg.goal_id=g.id
-           and g.user_id=$1`,
-        [uid]
-      );
-
-      await pool.query(
-        `delete from subgoals
-         using goals g
-         where subgoals.goal_id=g.id
-           and g.user_id=$1`,
-        [uid]
-      );
-
-      await pool.query(`delete from goals where user_id=$1`, [uid]);
-      await pool.query(`delete from privacy_exports where user_id=$1`, [uid]);
-      await pool.query(`delete from privacy_deletes where user_id=$1`, [uid]);
-      await pool.query(`delete from users where id=$1`, [uid]);
-
-      await pool.query('commit');
-      console.log('[delete] hard-deleted user', uid);
-    } catch (e) {
-      await pool.query('rollback');
-      console.error('[delete] failed for', uid, e.message);
-    }
-  }
-}
-
-/* ──────────────────────────────
-   Schedules
-   ────────────────────────────── */
+/* schedules */
 if (CRON_ENABLED) {
   console.log('[cron] scheduling jobs…');
 
-  // Every minute: check if a user's local time is 08:00
   cron.schedule('* * * * *', async () => {
     try {
       const { rows: users } = await pool.query(
-        `select id, name, telegram_id, timezone
-           from users
-          where telegram_id is not null
-            and telegram_enabled = true`
+        `SELECT id, name, telegram_id, timezone, plan, plan_status
+           FROM users
+          WHERE telegram_id IS NOT NULL
+            AND telegram_enabled = TRUE`
       );
       for (const user of users) {
         if (isLocalTimeNow(user.timezone, DAILY_NUDGE_LOCAL_TIME)) {
@@ -252,7 +198,6 @@ if (CRON_ENABLED) {
     }
   });
 
-  // Every minute: weekly check-in window
   cron.schedule('* * * * *', async () => {
     try {
       await sendWeeklyCheckins();
@@ -260,40 +205,6 @@ if (CRON_ENABLED) {
       console.error('❌ Cron weekly loop error:', err.message);
     }
   });
-
-  // Hourly: deletion sweeper
-  cron.schedule('0 * * * *', () => {
-    sweepDeletions().catch((e) => console.error('[cron delete]', e.message));
-  });
 }
 
-/* ──────────────────────────────
-   Manual test (node server/cron.js)
-   ────────────────────────────── */
-if (require.main === module) {
-  (async () => {
-    console.log('🚨 Manual test run…');
-    try {
-      const { rows: users } = await pool.query(
-        `select id, name, telegram_id, timezone
-           from users
-          where telegram_id is not null
-            and telegram_enabled = true
-          limit 1`
-      );
-      if (users[0]) {
-        await sendDailyNudgeForUser(users[0]);
-        await sendWeeklyCheckins();
-        console.log('✅ Sent test daily + weekly.');
-      } else {
-        console.log('ℹ️ No Telegram users found.');
-      }
-    } catch (e) {
-      console.error('Manual test error:', e.message);
-    } finally {
-      process.exit(0);
-    }
-  })();
-}
-
-module.exports = { sendWeeklyCheckins, sendDailyNudgeForUser, sweepDeletions };
+module.exports = { sendWeeklyCheckins, sendDailyNudgeForUser };
