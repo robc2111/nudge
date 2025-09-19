@@ -12,7 +12,7 @@ module.exports = function requireAuth(req, res, next) {
     // attach decoded user; adjust keys to your token payload
     req.user = { id: payload.id, email: payload.email };
     return next();
-  } catch (err) {
+  } catch {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 };

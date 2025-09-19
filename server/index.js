@@ -5,10 +5,7 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 
-// Sentry (request + tracing first, error handler later)
 const { initSentry, sentryErrorHandler } = require('./monitoring/sentry');
-
-// 🔒 Rate limiting
 const {
   apiLimiter,
   authLimiter,
@@ -18,19 +15,19 @@ const {
 
 const app = express();
 
-/**
- * IMPORTANT for rate limiting behind proxies (Render/Heroku/Nginx/Cloudflare):
- * This lets express-rate-limit read the real client IP from X-Forwarded-For.
- * If you’re behind multiple proxies, you can bump this number or use true.
- */
+// Let express-rate-limit see the client IP behind proxies (Render/CF/etc.)
 app.set('trust proxy', process.env.TRUST_PROXY ?? 1);
 
 const isProd = process.env.NODE_ENV === 'production';
 
-// ---- Sentry (must be before any other middleware/routers) ----
+/* ──────────────────────────
+   Sentry (must be first)
+   ────────────────────────── */
 initSentry(app);
 
-// ---- tiny request logger ----
+/* ──────────────────────────
+   Tiny request logger
+   ────────────────────────── */
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
@@ -45,14 +42,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// ---- allow-list for CORS & CSP ----
+/* ──────────────────────────
+   Security headers (Helmet)
+   ────────────────────────── */
 const allowedOrigins = [
   'https://goalcrumbs.com',
   'https://www.goalcrumbs.com',
-  'http://localhost:5173',
+  'http://localhost:5173', // local dev UI
 ];
 
-// ---- Helmet (secure headers) ----
 app.use(
   helmet({
     contentSecurityPolicy: isProd
@@ -68,15 +66,17 @@ app.use(
             'connect-src': ["'self'", ...allowedOrigins],
           },
         }
-      : false, // keep CSP off in dev so Vite/WS aren't blocked
+      : false, // Off in dev to not block Vite/WS
     crossOriginEmbedderPolicy: false,
   })
 );
 
-// ---- CORS ----
+/* ──────────────────────────
+   CORS
+   ────────────────────────── */
 const corsOptions = {
   origin(origin, cb) {
-    if (!origin) return cb(null, true);
+    if (!origin) return cb(null, true); // allow curl/postman
     if (allowedOrigins.includes(origin)) return cb(null, true);
     return cb(new Error('Not allowed by CORS'));
   },
@@ -86,9 +86,11 @@ const corsOptions = {
   maxAge: 600,
 };
 app.use(cors(corsOptions));
-app.options(/.*/, cors(corsOptions));
+app.options(/.*/, cors(corsOptions)); // preflight
 
-// ---- Stripe webhook (raw body) MUST be before json() & NOT rate-limited ----
+/* ──────────────────────────
+   Stripe webhook (raw) BEFORE json()
+   ────────────────────────── */
 const paymentsController = require('./controllers/paymentsController');
 app.post(
   '/api/payments/webhook',
@@ -96,29 +98,30 @@ app.post(
   paymentsController.handleWebhook
 );
 
-// ---- JSON for everything else ----
+/* ──────────────────────────
+   JSON body for everything else
+   ────────────────────────── */
 app.use(express.json({ limit: '1mb' }));
 
 // Sentry test
-app.get('/api/debug-sentry', (req, res, next) =>
+app.get('/api/debug-sentry', (req, _res, next) =>
   next(new Error('Sentry test error'))
 );
 
-/**
- * Mount health endpoints BEFORE global API limiter so they’re never rate-limited
- * (useful for uptime checks and platform health probes).
- */
-const healthRoutes = require('./routes/health');
-app.use('/api', healthRoutes);
+/* ──────────────────────────
+   Health endpoints (never rate-limited)
+   ────────────────────────── */
+app.use('/api', require('./routes/health'));
 
-// ---------- 🔒 Rate limiters (mount BEFORE other routes) ----------
-// Global soft guard for API traffic (excludes the Stripe webhook and health above)
+/* ──────────────────────────
+   Global API rate limiter (after health & webhook)
+   ────────────────────────── */
 app.use('/api', apiLimiter);
-
-// Name-spaced guard for auth; /login has its own limiter inside its router if you added one
 app.use('/api/auth', authLimiter);
 
-// ---- Routes ----
+/* ──────────────────────────
+   Routes
+   ────────────────────────── */
 app.use('/api/telegram', require('./routes/telegram'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/goals', require('./routes/goals'));
@@ -128,7 +131,6 @@ app.use('/api/microtasks', require('./routes/microtasks'));
 app.use('/api/check_ins', require('./routes/check_ins'));
 app.use('/api/reflections', require('./routes/reflections'));
 
-// AI endpoints — per-user limiter + short burst per-IP limiter
 const aiRouter = require('./routes/ai');
 app.use('/api/ai', aiLimiter, aiIpBurstLimiter, aiRouter);
 
@@ -137,37 +139,45 @@ app.use('/api/password', require('./routes/passwordReset'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/gpt', require('./routes/gptRoutes'));
 app.use('/api/payments', require('./routes/payments'));
-app.use('/api/privacy', require('./routes/privacy'));
+app.use('/api/privacy', require('./routes/privacy')); // ← your new router
+
 try {
   app.use('/api/og', require('./routes/og'));
 } catch (e) {
   console.warn('[og] disabled:', e.message);
 }
 
-// 🔒 plan management
 app.use('/api/plan', require('./routes/plan'));
 
-// ---- Health/root (root is not rate-limited anyway) ----
+/* ──────────────────────────
+   Root + 404
+   ────────────────────────── */
 app.get('/', (_req, res) => res.send('🚀 GoalCrumbs API is running'));
 
-// ---- 404 ----
 app.use((req, res) => {
   res
     .status(404)
     .json({ error: `Route not found: ${req.method} ${req.originalUrl}` });
 });
 
-// ---- Sentry error handler ----
+/* ──────────────────────────
+   Sentry error handler & final handler
+   ────────────────────────── */
 sentryErrorHandler(app);
 
-// ---- Final error handler ----
 // eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
+app.use((err, _req, res, _next) => {
   console.error('Unhandled error:', err);
+  // Friendly CORS error response if origin blocked
+  if (err && err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ error: 'Origin is not allowed by CORS' });
+  }
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// ---- Cron (gate with env so dev can disable) ----
+/* ──────────────────────────
+   Cron (optional)
+   ────────────────────────── */
 if (process.env.CRON_ENABLED !== 'false') {
   try {
     require('./cron');
@@ -178,10 +188,12 @@ if (process.env.CRON_ENABLED !== 'false') {
   console.log('[cron] disabled (CRON_ENABLED=false)');
 }
 
+/* ──────────────────────────
+   Start
+   ────────────────────────── */
 const PORT = process.env.PORT || 5050;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
-// Process-level safety nets
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled Rejection:', reason);
 });

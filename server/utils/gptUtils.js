@@ -15,7 +15,7 @@ async function breakdownMicrotask(title) {
 
   const lines = text
     .split('\n')
-    .map(line => line.replace(/^\d+[\).\s-]+/, '').trim())
+    .map((line) => line.replace(/^\d+[).\s-]+/, '').trim())
     .filter(Boolean);
 
   return lines;

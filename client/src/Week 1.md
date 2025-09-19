@@ -1,7 +1,6 @@
 Week 1
 
 • Medium: Ensure Pro vs Free features exactly match Stripe product
-• Medium: Data export/delete policy doc (backend stub + button text)
 
 - remove test accounts and make telggram id unique
   • Quick: Ensure helmet headers cover XSS/Clickjacking basics

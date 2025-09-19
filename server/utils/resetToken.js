@@ -1,12 +1,16 @@
-const crypto = require('crypto');
+const nodeCrypto = require('crypto');
 const { DateTime } = require('luxon');
 const pool = require('../db');
 
 function base64url(buf) {
-  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,'');
+  return buf
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 }
 function sha256(str) {
-  return crypto.createHash('sha256').update(str, 'utf8').digest('hex');
+  return nodeCrypto.createHash('sha256').update(str, 'utf8').digest('hex');
 }
 
 /**
@@ -14,7 +18,7 @@ function sha256(str) {
  * Returns the raw token for the email; stores only its hash.
  */
 async function issueResetTokenForUser(userId, meta = {}) {
-  const raw = base64url(crypto.randomBytes(32));
+  const raw = base64url(nodeCrypto.randomBytes(32));
   const tokenHash = sha256(raw);
   const expiresAt = DateTime.utc().plus({ minutes: 60 }).toISO();
 

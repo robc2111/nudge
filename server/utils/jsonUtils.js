@@ -3,13 +3,23 @@ function extractJsonObject(text = '') {
   if (!text || typeof text !== 'string') return null;
 
   // 1) If the model returned a fenced block ```json ... ```
-  const fence = text.match(/```json\s*([\s\S]*?)```/i) || text.match(/```\s*([\s\S]*?)```/i);
+  const fence =
+    text.match(/```json\s*([\s\S]*?)```/i) ||
+    text.match(/```\s*([\s\S]*?)```/i);
   if (fence && fence[1]) {
-    try { return JSON.parse(fence[1].trim()); } catch {}
+    try {
+      return JSON.parse(fence[1].trim());
+    } catch {
+      /* ignore fenced JSON parse failure */
+    }
   }
 
   // 2) Try plain parse
-  try { return JSON.parse(text.trim()); } catch {}
+  try {
+    return JSON.parse(text.trim());
+  } catch {
+    /* ignore plain parse failure */
+  }
 
   // 3) Last resort: find the first balanced {...}
   const s = text;
@@ -22,7 +32,11 @@ function extractJsonObject(text = '') {
       depth--;
       if (depth === 0) {
         const candidate = s.slice(start, i + 1);
-        try { return JSON.parse(candidate); } catch {}
+        try {
+          return JSON.parse(candidate);
+        } catch {
+          /* ignore balanced parse failure */
+        }
       }
     }
   }
