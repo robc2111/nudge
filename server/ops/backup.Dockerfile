@@ -16,7 +16,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY server/scripts/backup.sh /app/backup.sh
+COPY /scripts/backup.sh /app/backup.sh
 RUN chmod +x /app/backup.sh
 
 ENV PGCLIENTENCODING=UTF8
