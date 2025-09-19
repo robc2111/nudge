@@ -137,6 +137,7 @@ app.use('/api/password', require('./routes/passwordReset'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/gpt', require('./routes/gptRoutes'));
 app.use('/api/payments', require('./routes/payments'));
+app.use('/api/privacy', require('./routes/privacy'));
 try {
   app.use('/api/og', require('./routes/og'));
 } catch (e) {
