@@ -1,16 +1,24 @@
 // server/utils/analytics.js
-const { createHash } = require('node:crypto'); // ← no shadowing
-const { parse } = require('useragent');
+const nodeCrypto = require('crypto');
 const pool = require('../db');
 
-const ENABLED = process.env.ANALYTICS_ENABLED !== 'false'; // default ON
+let uaParse; // optional dependency
+try {
+  // only present if added to server/package.json
+  ({ parse: uaParse } = require('useragent'));
+} catch {
+  uaParse = null;
+}
+
+const ENABLED = process.env.ANALYTICS_ENABLED !== 'false';
 const SALT = process.env.ANALYTICS_IP_SALT || 'rotate-me-please';
-const RESPECT_DNT = process.env.ANALYTICS_RESPECT_DNT !== 'false'; // default true
+const RESPECT_DNT = process.env.ANALYTICS_RESPECT_DNT !== 'false';
 
 function hashIp(ip) {
   if (!ip) return null;
   try {
-    return createHash('sha256')
+    return nodeCrypto
+      .createHash('sha256')
       .update(SALT + ip)
       .digest('hex');
   } catch {
@@ -18,22 +26,60 @@ function hashIp(ip) {
   }
 }
 
-function parseUA(uaString = '') {
-  try {
-    const ua = parse(uaString);
-    return {
-      ua_family: ua.family || null,
-      ua_os: ua.os?.family || null,
-      ua_device: ua.device?.family ? ua.device.family.toLowerCase() : 'desktop',
-    };
-  } catch {
-    return { ua_family: null, ua_os: null, ua_device: null };
-  }
+// very small fallback parser when `useragent` isn’t available
+function cheapUaSummary(ua = '') {
+  const s = String(ua);
+  const os = /Windows/i.test(s)
+    ? 'Windows'
+    : /Mac OS X|Macintosh/i.test(s)
+      ? 'macOS'
+      : /Android/i.test(s)
+        ? 'Android'
+        : /iPhone|iPad|iOS/i.test(s)
+          ? 'iOS'
+          : /Linux/i.test(s)
+            ? 'Linux'
+            : null;
+
+  const fam = /Chrome/i.test(s)
+    ? 'Chrome'
+    : /Safari/i.test(s) && !/Chrome/i.test(s)
+      ? 'Safari'
+      : /Firefox/i.test(s)
+        ? 'Firefox'
+        : /Edge/i.test(s)
+          ? 'Edge'
+          : /Node\.js/i.test(s)
+            ? 'Node'
+            : null;
+
+  const device = /Mobile|iPhone|Android/i.test(s)
+    ? 'mobile'
+    : /iPad|Tablet/i.test(s)
+      ? 'tablet'
+      : 'desktop';
+
+  return { ua_family: fam, ua_os: os, ua_device: device };
 }
 
-/**
- * Core tracker (privacy-respecting)
- */
+function parseUA(uaString = '') {
+  if (uaParse) {
+    try {
+      const ua = uaParse(uaString);
+      return {
+        ua_family: ua.family || null,
+        ua_os: ua.os?.family || null,
+        ua_device: ua.device?.family
+          ? ua.device.family.toLowerCase()
+          : 'desktop',
+      };
+    } catch {
+      /* fall through */
+    }
+  }
+  return cheapUaSummary(uaString);
+}
+
 async function track({
   req,
   userId = null,
@@ -42,8 +88,7 @@ async function track({
   source = 'server',
 }) {
   if (!ENABLED || !event) return;
-
-  if (RESPECT_DNT && req && req.headers['dnt'] === '1') return;
+  if (RESPECT_DNT && req && req.headers?.dnt === '1') return;
 
   const ip =
     req?.headers?.['x-forwarded-for']?.split(',')[0]?.trim() ||
