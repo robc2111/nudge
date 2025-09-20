@@ -45,29 +45,53 @@ app.use((req, res, next) => {
 /* ──────────────────────────
    Security headers (Helmet)
    ────────────────────────── */
+// ---- Helmet (secure headers) ----
+app.disable('x-powered-by'); // don't leak Express
+
 const allowedOrigins = [
   'https://goalcrumbs.com',
   'https://www.goalcrumbs.com',
-  'http://localhost:5173', // local dev UI
+  'http://localhost:5173',
 ];
 
 app.use(
   helmet({
+    // Strong CSP in prod; disabled in dev to avoid blocking Vite/HMR
     contentSecurityPolicy: isProd
       ? {
           useDefaults: true,
           directives: {
+            // Baseline
             'default-src': ["'self'"],
             'base-uri': ["'self'"],
+
+            // Clickjacking protection (also provides X-Frame-Options: DENY via frameguard below)
             'frame-ancestors': ["'none'"],
+
+            // XSS hardening
+            'script-src': ["'self'"], // no inline/eval in prod
+            'style-src': ["'self'", "'unsafe-inline'"], // allow inline styles only (React styles)
             'img-src': ["'self'", 'data:', 'blob:'],
-            'style-src': ["'self'", "'unsafe-inline'"],
-            'script-src': ["'self'"],
             'connect-src': ["'self'", ...allowedOrigins],
+            'object-src': ["'none'"], // disallow Flash/etc.
+            'upgrade-insecure-requests': [], // auto-upgrade http->https
           },
         }
-      : false, // Off in dev to not block Vite/WS
+      : false,
+
+    // Some frameworks/features need this disabled; keep as you had
     crossOriginEmbedderPolicy: false,
+
+    // Explicitly keep these strong & on:
+    frameguard: { action: 'deny' }, // Clickjacking header (X-Frame-Options: DENY)
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    noSniff: true, // X-Content-Type-Options: nosniff
+    xssFilter: false, // deprecated; CSP does the job
+    hsts: isProd
+      ? { maxAge: 60 * 60 * 24 * 365, includeSubDomains: true, preload: true }
+      : false, // only when served over HTTPS
+    crossOriginResourcePolicy: { policy: 'same-site' },
+    // (Permissions-Policy moved out of helmet; add if/when you need specific APIs)
   })
 );
 

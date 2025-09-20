@@ -1,7 +1,7 @@
-- allow user to convert to pdf/csv their goal inc progress and breakdown
-  • Quick: Ensure helmet headers cover XSS/Clickjacking basics
-  • Medium: Analytics (privacy-respecting, basic server-side events)
-  • Large: OpenAI org setup: dedicated key, usage caps, prod/dev split
+• Quick: Ensure helmet headers cover XSS/Clickjacking basics
+• Medium: Analytics (privacy-respecting, basic server-side events)
+• Large: OpenAI org setup: dedicated key, usage caps, prod/dev split
+
 - db rls
 
   Day 13 - soft launch - business plan with marketing and sales strategy
