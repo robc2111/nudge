@@ -1,7 +1,8 @@
 {
   "dependencies": {
     "framer-motion": "^12.23.12",
-    "react-toastify": "^11.0.5"
+    "react-toastify": "^11.0.5",
+    "useragent": "^2.3.0"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.28.4",
