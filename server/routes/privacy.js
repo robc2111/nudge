@@ -1,7 +1,7 @@
 // server/routes/privacy.js
 const router = require('express').Router();
 const pool = require('../db');
-const requireAuth = require('../middleware/auth');
+const { requireAuth } = require('../middleware/auth');
 const { kickOffExport } = require('../services/exportService'); // ← must match
 
 // Quick ping for troubleshooting

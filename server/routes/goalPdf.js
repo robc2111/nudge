@@ -4,7 +4,7 @@ const PDFDocument = require('pdfkit');
 const { DateTime } = require('luxon');
 
 const pool = require('../db');
-const requireAuth = require('../middleware/auth');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
