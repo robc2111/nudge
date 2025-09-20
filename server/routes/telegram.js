@@ -4,7 +4,17 @@ const { DateTime } = require('luxon');
 const router = express.Router();
 
 const pool = require('../db');
-const requireAuth = require('../middleware/auth');
+const _auth = require('../middleware/auth');
+const requireAuth =
+  typeof _auth === 'function'
+    ? _auth
+    : typeof _auth?.requireAuth === 'function'
+      ? _auth.requireAuth
+      : null;
+
+if (!requireAuth) {
+  throw new Error('middleware/auth must export a function or { requireAuth }');
+}
 
 const {
   sendTelegram,
