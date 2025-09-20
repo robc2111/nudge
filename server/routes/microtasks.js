@@ -1,7 +1,7 @@
 // server/routes/microtasks.js
 const express = require('express');
 const router = express.Router();
-const verifyToken = require('../middleware/verifyToken');
+const requireAuth = require('../middleware/auth');
 
 const {
   getMicrotasks,
@@ -20,24 +20,34 @@ const {
   MicrotaskStatusBody,
 } = require('../validation/schemas');
 
-router.get('/', verifyToken, getMicrotasks);
-router.get('/:id', verifyToken, validate(IdParam, 'params'), getMicrotaskById);
+router.get('/', requireAuth, getMicrotasks);
+router.get('/:id', requireAuth, validate(IdParam, 'params'), getMicrotaskById);
 
-router.post('/', verifyToken, validate(MicrotaskCreateSchema, 'body'), createMicrotask);
+router.post(
+  '/',
+  requireAuth,
+  validate(MicrotaskCreateSchema, 'body'),
+  createMicrotask
+);
 
 router.put(
   '/:id',
-  verifyToken,
+  requireAuth,
   validate(IdParam, 'params'),
   validate(MicrotaskUpdateSchema, 'body'),
   updateMicrotask
 );
 
-router.delete('/:id', verifyToken, validate(IdParam, 'params'), deleteMicrotask);
+router.delete(
+  '/:id',
+  requireAuth,
+  validate(IdParam, 'params'),
+  deleteMicrotask
+);
 
 router.patch(
   '/:id/status',
-  verifyToken,
+  requireAuth,
   validate(IdParam, 'params'),
   validate(MicrotaskStatusBody, 'body'),
   updateMicrotaskStatus

@@ -2,7 +2,17 @@
 const express = require('express');
 const router = express.Router();
 
-const verifyToken = require('../middleware/verifyToken');
+const _auth = require('../middleware/auth');
+const requireAuth =
+  typeof _auth === 'function'
+    ? _auth
+    : typeof _auth?.requireAuth === 'function'
+      ? _auth.requireAuth
+      : (() => {
+          throw new Error(
+            'middleware/auth must export a function or { requireAuth }'
+          );
+        })();
 
 const {
   getUsers,
@@ -31,30 +41,30 @@ router.get('/', getUsers);
 router.post('/', createUser);
 
 // Authenticated
-router.get('/me', verifyToken, getCurrentUser);
-router.patch('/me', verifyToken, validate(UserPatchSchema, 'body'), patchMe);
-router.get('/me/dashboard', verifyToken, getMyDashboard);
+router.get('/me', requireAuth, getCurrentUser);
+router.patch('/me', requireAuth, validate(UserPatchSchema, 'body'), patchMe);
+router.get('/me/dashboard', requireAuth, getMyDashboard);
 
 // Delete own account (soft delete + Stripe cancel + Telegram farewell + unlink)
-router.delete('/me', verifyToken, deleteMe);
+router.delete('/me', requireAuth, deleteMe);
 
 router.get(
   '/:userId/dashboard',
-  verifyToken,
+  requireAuth,
   validate(UserDashboardParams, 'params'),
   getUserDashboard
 );
 
-router.get('/:id', verifyToken, validate(UserIdParam, 'params'), getUserById);
+router.get('/:id', requireAuth, validate(UserIdParam, 'params'), getUserById);
 
 router.put(
   '/:id',
-  verifyToken,
+  requireAuth,
   validate(UserIdParam, 'params'),
   validate(UserPatchSchema, 'body'),
   updateUser
 );
 
-router.delete('/:id', verifyToken, validate(UserIdParam, 'params'), deleteUser);
+router.delete('/:id', requireAuth, validate(UserIdParam, 'params'), deleteUser);
 
 module.exports = router;

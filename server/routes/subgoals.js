@@ -1,7 +1,7 @@
 // server/routes/subgoals.js
 const express = require('express');
 const router = express.Router();
-const verifyToken = require('../middleware/verifyToken');
+const requireAuth = require('../middleware/auth');
 
 const {
   getSubgoals,
@@ -12,21 +12,30 @@ const {
 } = require('../controllers/subgoalsController');
 
 const { validate } = require('../validation/middleware');
-const { IdParam, SubgoalCreateSchema, SubgoalUpdateSchema } = require('../validation/schemas');
+const {
+  IdParam,
+  SubgoalCreateSchema,
+  SubgoalUpdateSchema,
+} = require('../validation/schemas');
 
-router.get('/', verifyToken, getSubgoals);
-router.get('/:id', verifyToken, validate(IdParam, 'params'), getSubgoalById);
+router.get('/', requireAuth, getSubgoals);
+router.get('/:id', requireAuth, validate(IdParam, 'params'), getSubgoalById);
 
-router.post('/', verifyToken, validate(SubgoalCreateSchema, 'body'), createSubgoal);
+router.post(
+  '/',
+  requireAuth,
+  validate(SubgoalCreateSchema, 'body'),
+  createSubgoal
+);
 
 router.put(
   '/:id',
-  verifyToken,
+  requireAuth,
   validate(IdParam, 'params'),
   validate(SubgoalUpdateSchema, 'body'),
   updateSubgoal
 );
 
-router.delete('/:id', verifyToken, validate(IdParam, 'params'), deleteSubgoal);
+router.delete('/:id', requireAuth, validate(IdParam, 'params'), deleteSubgoal);
 
 module.exports = router;

@@ -4,7 +4,7 @@ const router = express.Router();
 
 const pool = require('../db');
 const goalsController = require('../controllers/goalsController');
-const verifyToken = require('../middleware/verifyToken');
+const requireAuth = require('../middleware/auth');
 
 const { validate } = require('../validation/middleware');
 const {
@@ -68,7 +68,7 @@ async function limitGateOnCreate(req, res, next) {
 // ---------- Authenticated writes ----------
 router.post(
   '/',
-  verifyToken,
+  requireAuth,
   validate(GoalCreateSchema, 'body'),
   proGateIfTone, // Pro-gate tone on create
   limitGateOnCreate, // Enforce Free plan active-goal limit
@@ -77,7 +77,7 @@ router.post(
 
 router.put(
   '/:id',
-  verifyToken,
+  requireAuth,
   validate(IdParam, 'params'),
   validate(GoalUpdateSchema, 'body'),
   proGateIfTone, // Pro-gate tone on update
@@ -86,21 +86,21 @@ router.put(
 
 router.delete(
   '/:id',
-  verifyToken,
+  requireAuth,
   validate(IdParam, 'params'),
   goalsController.deleteGoal
 );
 
 router.put(
   '/:id/status',
-  verifyToken,
+  requireAuth,
   validate(IdParam, 'params'),
   validate(GoalUpdateSchema.pick({ status: true }), 'body'),
   goalsController.updateGoalStatus
 );
 
 // ---------- Authenticated: mine ----------
-router.get('/mine', verifyToken, goalsController.getMyGoals);
+router.get('/mine', requireAuth, goalsController.getMyGoals);
 
 // ---------- Public/dev ----------
 router.get('/', goalsController.getAllGoals);
