@@ -4,7 +4,7 @@ const router = express.Router();
 
 const pool = require('../db');
 const goalsController = require('../controllers/goalsController');
-const requireAuth = require('../middleware/auth');
+const { requireAuth } = require('../middleware/auth');
 
 const { validate } = require('../validation/middleware');
 const {
