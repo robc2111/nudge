@@ -1,5 +1,3 @@
-• Quick: Ensure helmet headers cover XSS/Clickjacking basics
-• Medium: Analytics (privacy-respecting, basic server-side events)
 • Large: OpenAI org setup: dedicated key, usage caps, prod/dev split
 
 - db rls

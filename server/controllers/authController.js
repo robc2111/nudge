@@ -3,8 +3,10 @@ const jwt = require('jsonwebtoken');
 
 function sign(user) {
   return jwt.sign(
-    { id: user.id, email: user.email },   // 👈 exactly these keys
+    { id: user.id, email: user.email }, // 👈 exactly these keys
     process.env.JWT_SECRET,
     { expiresIn: '30d' }
   );
 }
+
+module.exports = { sign };

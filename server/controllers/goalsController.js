@@ -3,6 +3,7 @@ const pool = require('../db');
 const { limitsFor } = require('../utils/plan');
 const { normalizeProgressByGoal } = require('../utils/progressUtils');
 const { materializeGoal } = require('../utils/materializeGoal');
+const { track } = require('../utils/analytics');
 
 /* ────────────────────────────────────────────────────────────
    Helpers
@@ -47,8 +48,6 @@ async function countActiveGoals(userId) {
 
 exports.createGoal = async (req, res) => {
   const client = await pool.connect();
-  console.log('🛬 POST /api/goals hit');
-
   try {
     const authUserId = req.user?.id || req.user?.sub || req.body.user_id;
     const {
@@ -56,8 +55,6 @@ exports.createGoal = async (req, res) => {
       description = null,
       due_date = null,
       tone = null,
-
-      // Either can be provided by the client:
       breakdown = [],
       subgoals = [],
     } = req.body || {};
@@ -79,13 +76,11 @@ exports.createGoal = async (req, res) => {
       });
     }
 
-    // Normalize inputs
     const normalizedTone = plan === 'pro' ? normalizeTone(tone) : null;
     const normalizedDue = normalizeDate(due_date);
 
     await client.query('BEGIN');
 
-    // Create the goal row
     const {
       rows: [goal],
     } = await client.query(
@@ -96,7 +91,6 @@ exports.createGoal = async (req, res) => {
     );
     const goalId = goal.id;
 
-    // Insert children (either from breakdown, subgoals, or scaffold)
     await materializeGoal(client, {
       userId: authUserId,
       goalId,
@@ -106,14 +100,27 @@ exports.createGoal = async (req, res) => {
 
     await client.query('COMMIT');
 
-    // Put first-by-position items into in_progress etc.
+    // normalize in_progress pointers
     await normalizeProgressByGoal(goalId);
+
+    // analytics (server-side)
+    await track({
+      req,
+      userId: authUserId,
+      event: 'goal_created',
+      props: {
+        goal_id: goalId,
+        has_breakdown: Boolean(
+          (breakdown && breakdown.length) || (subgoals && subgoals.length)
+        ),
+      },
+    });
 
     return res
       .status(201)
       .json({ message: 'Goal saved successfully', goal_id: goalId });
   } catch (err) {
-    await client.query('ROLLBACK');
+    await pool.query('ROLLBACK').catch(() => {});
     console.error('❌ Error creating goal:', err);
     return res.status(500).json({ error: 'Internal server error' });
   } finally {
@@ -171,22 +178,14 @@ exports.getMyGoals = async (req, res) => {
 };
 
 /* ────────────────────────────────────────────────────────────
-   Update (metadata: title, description, due_date, tone)
-   - Tone is Pro-only
-   - Ownership enforced
-   - No dependence on a non-existent updated_at column
+   Update (metadata)
    ──────────────────────────────────────────────────────────── */
 
 exports.updateGoal = async (req, res) => {
   const userId = req.user?.id || req.user?.sub;
   const goalId = req.params.id;
 
-  const {
-    title,
-    description,
-    due_date,
-    tone, // ← Pro-only
-  } = req.body || {};
+  const { title, description, due_date, tone } = req.body || {};
 
   const sets = [];
   const vals = [];
@@ -254,7 +253,7 @@ exports.updateGoal = async (req, res) => {
 };
 
 /* ────────────────────────────────────────────────────────────
-   Update status only (ownership enforced)
+   Update status only
    ──────────────────────────────────────────────────────────── */
 
 exports.updateGoalStatus = async (req, res) => {
@@ -290,7 +289,7 @@ exports.updateGoalStatus = async (req, res) => {
 };
 
 /* ────────────────────────────────────────────────────────────
-   Delete (ownership enforced)
+   Delete
    ──────────────────────────────────────────────────────────── */
 
 exports.deleteGoal = async (req, res) => {

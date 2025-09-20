@@ -5,6 +5,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 });
 const pool = require('../db');
 const { limitsFor } = require('../utils/plan');
+const { track } = require('../utils/analytics');
 
 const APP_BASE = process.env.APP_BASE_URL || 'http://localhost:5173';
 
@@ -124,6 +125,14 @@ async function checkout(req, res) {
       metadata: { user_id: String(user.id) },
     });
 
+    // analytics
+    await track({
+      req,
+      userId: user.id,
+      event: 'checkout_session_created',
+      props: { price_id: priceId, session_id: session.id },
+    });
+
     res.json({ url: session.url });
   } catch (err) {
     console.error('createCheckoutSession error:', err?.message || err);
@@ -197,6 +206,12 @@ async function handleWebhook(req, res) {
             `UPDATE users SET plan = 'pro', plan_status = 'active' WHERE id = $1`,
             [userId]
           );
+          await track({
+            req,
+            userId,
+            event: 'checkout_completed',
+            props: { session_id: sess.id },
+          });
         }
         break;
       }
@@ -239,6 +254,13 @@ async function handleWebhook(req, res) {
 
           const isActive = ['active', 'trialing'].includes(sub.status);
           await enforceGoalLimitForPlan(uid, isActive ? 'pro' : 'free');
+
+          await track({
+            req,
+            userId: uid,
+            event: 'subscription_updated',
+            props: { sub_id: sub.id, status: sub.status },
+          });
         }
         break;
       }
@@ -260,6 +282,13 @@ async function handleWebhook(req, res) {
             [sub.id]
           );
           await enforceGoalLimitForPlan(uid, 'free');
+
+          await track({
+            req,
+            userId: uid,
+            event: 'subscription_canceled',
+            props: { sub_id: sub.id },
+          });
         }
         break;
       }
@@ -280,5 +309,5 @@ module.exports = {
   portalLink,
   syncPlanForMe,
   handleWebhook,
-  enforceGoalLimitForPlan, // used by /api/plan etc.
+  enforceGoalLimitForPlan, // used by other routes
 };
