@@ -24,10 +24,30 @@ function apiUrl(method) {
 }
 
 /**
+ * Escape only the characters that Telegram Markdown (v1) treats specially:
+ *  _ * [ `
+ * (We keep (), ~, >, # etc. because we’re not using v2 here.)
+ */
+function escapeTgMarkdown(s = '') {
+  // Escape Telegram Markdown (v1) specials we actually use: _, *, [, ], `
+  // (We’re not using MarkdownV2, so no need to escape the entire zoo.)
+  return String(s).replace(/([_*[\]`])/g, '\\$1');
+}
+
+/** If you ever switch parse_mode to 'HTML' */
+function escapeHtml(s = '') {
+  return String(s)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
+
+/**
  * Generic resilient Telegram call with:
  * - network retries
  * - basic 5xx retries
  * - 429 retry_after handling
+ * Adds a short text preview to 4xx errors to help pinpoint bad markdown.
  */
 async function callTelegram(method, payload) {
   const url = apiUrl(method);
@@ -38,7 +58,7 @@ async function callTelegram(method, payload) {
     try {
       const res = await axios.post(url, payload, {
         timeout: 10000,
-        validateStatus: (s) => s >= 200 && s < 500, // treat 5xx as errors (retry)
+        validateStatus: (s) => s >= 200 && s < 500, // 5xx => throw/retry
       });
 
       if (res.status === 429) {
@@ -51,9 +71,14 @@ async function callTelegram(method, payload) {
       }
 
       if (res.status >= 400) {
-        throw new Error(
-          `Telegram error ${res.status}: ${JSON.stringify(res.data)}`
+        const preview =
+          typeof payload?.text === 'string' ? payload.text.slice(0, 300) : '';
+        const err = new Error(
+          `Telegram error ${res.status}: ${JSON.stringify(
+            res.data
+          )} | preview="${preview}"`
         );
+        throw err;
       }
 
       return res; // success
@@ -62,9 +87,8 @@ async function callTelegram(method, payload) {
       const code = err.code || err.cause?.code;
       const networky = code && NETWORK_CODES.has(code);
       const looks5xx = /\b5\d{2}\b/.test(String(err.message || ''));
-
       if ((networky || looks5xx) && attempt < maxAttempts) {
-        await sleep(attempt * 1000); // backoff: 1s, 2s, 3s…
+        await sleep(attempt * 1000); // 1s, 2s, 3s backoff
         continue;
       }
       break;
@@ -75,8 +99,7 @@ async function callTelegram(method, payload) {
 }
 
 /**
- * Safe wrapper for Telegram sendMessage with a few retries and 429 handling.
- * Usage: sendTelegram({ chat_id, text, parse_mode, reply_markup })
+ * Safe wrapper for Telegram sendMessage.
  */
 async function sendTelegram({
   chat_id,
@@ -91,7 +114,6 @@ async function sendTelegram({
 
 /**
  * Edit an existing message (used to confirm tone selection in-place)
- * Usage: editTelegramMessage({ chat_id, message_id, text, parse_mode, reply_markup })
  */
 async function editTelegramMessage({
   chat_id,
@@ -107,7 +129,6 @@ async function editTelegramMessage({
 
 /**
  * ACK a button tap so Telegram shows instant feedback (toast/spinner stops).
- * Usage: answerCallbackQuery({ callback_query_id, text, show_alert })
  */
 async function answerCallbackQuery({
   callback_query_id,
@@ -143,4 +164,6 @@ module.exports = {
   editTelegramMessage,
   answerCallbackQuery,
   toneKeyboard,
+  escapeTgMarkdown,
+  escapeHtml,
 };

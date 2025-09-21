@@ -3,6 +3,14 @@ const express = require('express');
 const { DateTime } = require('luxon');
 const router = express.Router();
 
+const {
+  sendTelegram,
+  editTelegramMessage,
+  answerCallbackQuery,
+  toneKeyboard,
+  escapeTgMarkdown,
+} = require('../utils/telegram');
+
 const pool = require('../db');
 const _auth = require('../middleware/auth');
 const requireAuth =
@@ -17,20 +25,13 @@ if (!requireAuth) {
 }
 
 const {
-  sendTelegram,
-  editTelegramMessage,
-  answerCallbackQuery,
-  toneKeyboard,
-} = require('../utils/telegram');
-
-const {
   cascadeAfterMicrotaskDone,
   normalizeProgressByGoal,
 } = require('../utils/progressUtils');
 
 const {
   fetchNextAcrossGoals,
-  renderChecklist,
+  renderChecklist, // NOTE: ensure this escapes microtask titles inside (recommended)
 } = require('../utils/goalHelpers');
 
 const { assertPro } = require('../utils/plan');
@@ -147,7 +148,9 @@ async function setActiveGoalTone(userId, tone) {
   }
   return {
     updated: true,
-    msg: `✅ Coach tone set to *${tone}* for *${goal.title}*`,
+    msg: `✅ Coach tone set to *${escapeTgMarkdown(tone)}* for *${escapeTgMarkdown(
+      goal.title
+    )}*`,
     goal: { ...goal, tone },
   };
 }
@@ -176,7 +179,10 @@ async function markMicrotaskDoneById(microtaskId, chatId) {
 
   const cascade = await cascadeAfterMicrotaskDone(hit.id);
 
-  await sendMessage(chatId, `✅ Marked *${hit.title}* as done! 🎉`);
+  await sendMessage(
+    chatId,
+    `✅ Marked *${escapeTgMarkdown(hit.title)}* as done! 🎉`
+  );
 
   if (cascade?.activeMicroId) {
     const { rows: nxt } = await pool.query(
@@ -184,7 +190,10 @@ async function markMicrotaskDoneById(microtaskId, chatId) {
       [cascade.activeMicroId]
     );
     if (nxt[0]?.title) {
-      await sendMessage(chatId, `👉 Next up: *${nxt[0].title}*`);
+      await sendMessage(
+        chatId,
+        `👉 Next up: *${escapeTgMarkdown(nxt[0].title)}*`
+      );
     }
   } else {
     await sendMessage(
@@ -241,7 +250,10 @@ async function handleMarkDone({ text, user, chatId }) {
 
   const hit = rows[0];
   if (!hit) {
-    await sendMessage(chatId, `⚠️ Couldn't find a microtask matching: *${q}*`);
+    await sendMessage(
+      chatId,
+      `⚠️ Couldn't find a microtask matching: *${escapeTgMarkdown(q)}*`
+    );
     return;
   }
 
@@ -263,8 +275,11 @@ async function startDonePicker({ user, chatId }) {
 
   const lines = items.map((it, idx) => {
     const n = idx + 1;
-    const ctx = it.goal ? ` — *${it.goal}* › ${it.task || ''}`.trim() : '';
-    return `${n}. ${it.title}${ctx ? `\n   ${ctx}` : ''}`;
+    const title = escapeTgMarkdown(it.title);
+    const goal = it.goal ? escapeTgMarkdown(it.goal) : '';
+    const task = it.task ? escapeTgMarkdown(it.task) : '';
+    const ctx = goal ? ` — *${goal}* › ${task}`.trim() : '';
+    return `${n}. ${title}${ctx ? `\n   ${ctx}` : ''}`;
   });
 
   await sendMessage(
@@ -402,7 +417,9 @@ router.post('/webhook', async (req, res) => {
           if (result.updated && currentGoal?.title) {
             await sendMessage(
               chatId,
-              `✅ Coach tone set to *${currentTone}* for *${currentGoal.title}*`
+              `✅ Coach tone set to *${escapeTgMarkdown(
+                currentTone
+              )}* for *${escapeTgMarkdown(currentGoal.title)}*`
             );
           } else if (!result.updated) {
             await sendMessage(chatId, result.msg);
@@ -587,12 +604,15 @@ router.post('/webhook', async (req, res) => {
       }
 
       const sections = packs
-        .map(
-          (p, i) => `*Goal ${i + 1}:* ${p.goal.title}
-*Task:* ${p.task.title}
+        .map((p, i) => {
+          const goalTitle = escapeTgMarkdown(p.goal.title);
+          const taskTitle = escapeTgMarkdown(p.task.title);
+          // Ensure renderChecklist escapes microtask titles internally
+          return `*Goal ${i + 1}:* ${goalTitle}
+*Task:* ${taskTitle}
 
-${renderChecklist(p.microtasks, p.nextIdx)}`
-        )
+${renderChecklist(p.microtasks, p.nextIdx)}`;
+        })
         .join('\n\n— — —\n\n');
 
       const msg =
@@ -619,7 +639,7 @@ ${renderChecklist(p.microtasks, p.nextIdx)}`
         await sendMessage(
           chatId,
           `Here are your active goals:\n\n${rows
-            .map((r) => `🎯 ${r.title}`)
+            .map((r) => `🎯 ${escapeTgMarkdown(r.title)}`)
             .join('\n')}`
         );
       }
@@ -633,7 +653,7 @@ ${renderChecklist(p.microtasks, p.nextIdx)}`
       await sendMessage(
         chatId,
         tone
-          ? `🎙️ Your current coach tone is: *${tone}*`
+          ? `🎙️ Your current coach tone is: *${escapeTgMarkdown(tone)}*`
           : '📭 You don’t have an active goal or a tone set.'
       );
       return res.sendStatus(200);
@@ -698,7 +718,7 @@ Here’s what I can do:
     /* ---------- Fallback ---------- */
     await sendMessage(
       chatId,
-      `Hi ${user.name}, I didn’t understand that command. 🤔
+      `Hi ${escapeTgMarkdown(user.name)}, I didn’t understand that command. 🤔
 
 Try:
 - *done*     (pick from a list)
