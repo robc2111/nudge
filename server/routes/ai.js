@@ -5,7 +5,8 @@ const router = express.Router();
 const { optionalAuth } = require('../middleware/auth');
 const { aiBudgetGuard } = require('../middleware/aiBudget');
 
-const { client, projectHeaders, defaultModels } = require('../utils/openai');
+const { getClient, projectHeaders, defaultModels } = require('../utils/openai');
+const client = getClient();
 const { logOpenAIUsage } = require('../utils/aiUsageLogger');
 
 const systemPrompts = require('../prompts');
