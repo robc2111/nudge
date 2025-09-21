@@ -1,24 +1,31 @@
-// utils/gptUtils.js
-const OpenAI = require('openai');
+// server/utils/gptUtils.js
+const { getClient, projectHeaders } = require('./openai');
 const mtPrompt = require('../prompts/mtBreakdown');
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
+/**
+ * Ask the model to break a single microtask title into smaller steps.
+ * Returns an array of clean step strings.
+ */
 async function breakdownMicrotask(title) {
+  const client = getClient(); // <-- uses OPENAI_ENV split + keys
   const prompt = mtPrompt.prompt(title);
-  const chatCompletion = await openai.chat.completions.create({
-    model: mtPrompt.model,
-    messages: [{ role: 'user', content: prompt }],
-    temperature: mtPrompt.temperature,
-  });
-  const text = chatCompletion.choices[0].message.content;
 
-  const lines = text
+  const completion = await client.chat.completions.create(
+    {
+      model: mtPrompt.model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: mtPrompt.temperature,
+    },
+    { headers: projectHeaders() }
+  );
+
+  const text = completion.choices?.[0]?.message?.content || '';
+
+  // Convert numbered list to array of trimmed lines
+  return String(text)
     .split('\n')
-    .map((line) => line.replace(/^\d+[).\s-]+/, '').trim())
+    .map((line) => line.replace(/^\s*\d+[).\s-]+/, '').trim())
     .filter(Boolean);
-
-  return lines;
 }
 
 module.exports = { breakdownMicrotask };

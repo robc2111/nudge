@@ -6,7 +6,6 @@ const { optionalAuth } = require('../middleware/auth');
 const { aiBudgetGuard } = require('../middleware/aiBudget');
 
 const { getClient, projectHeaders, defaultModels } = require('../utils/openai');
-const client = getClient();
 const { logOpenAIUsage } = require('../utils/aiUsageLogger');
 
 const systemPrompts = require('../prompts');
@@ -33,7 +32,7 @@ function tryParseJson(text) {
   try {
     return JSON.parse(raw);
   } catch {
-    //ignore
+    // ignore
   }
 
   // Second, try to grab first {...} or [...] block
@@ -42,7 +41,7 @@ function tryParseJson(text) {
     try {
       return JSON.parse(m[1]);
     } catch {
-      //ignore
+      // ignore
     }
   }
 
@@ -65,6 +64,16 @@ router.post(
     const prompt = systemPrompts.goalBreakdown.prompt(goal);
     const model = breakdownModel || defaultModels.chat;
     const temperature = Number.isFinite(breakdownTemp) ? breakdownTemp : 0.3;
+
+    let client;
+    try {
+      client = getClient(); // ← lazy init at request time
+    } catch (e) {
+      // e.g. our utils threw OPENAI_MISSING_KEY
+      const msg = e?.message || 'OpenAI client not configured';
+      console.error('[ai.goal-breakdown] getClient failed:', msg);
+      return res.status(500).json({ error: msg });
+    }
 
     try {
       const completion = await client.chat.completions.create(
@@ -107,7 +116,7 @@ router.post(
     } catch (err) {
       console.error(
         '🛑 AI Breakdown Error:',
-        err.response?.data || err.message
+        err?.response?.data || err.message
       );
       return res.status(500).json({ error: 'Failed to generate breakdown' });
     }
