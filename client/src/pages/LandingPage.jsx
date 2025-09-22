@@ -24,8 +24,7 @@ export default function LandingPage() {
           <h1>Break Big Goals Into Tiny Crumbs</h1>
           <p>
             Your AI-powered accountability partner. Stay on track, stay
-            motivated, achieve your goals without being overwhelmed and make
-            your dreams come true.
+            motivated, achieve your goals.
           </p>
           <p>
             <Link className="cta-button" to="/signup">

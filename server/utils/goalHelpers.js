@@ -2,11 +2,11 @@
 const pool = require('../db');
 
 /**
- * Return an array of { goal, task, microtasks, nextIdx }
- * For each goal that has unfinished microtasks, pick the first actionable task.
- * You can filter to in_progress goals by passing { onlyInProgress: true }.
+ * Returns the first *task* per goal that has unfinished microtasks,
+ * determined by the earliest unfinished microtask’s global_pos.
  */
 async function fetchNextAcrossGoals(userId, { onlyInProgress = true } = {}) {
+  // 1) Candidate goals (same as before)
   const { rows: goals } = await pool.query(
     `
     SELECT g.id, g.title
@@ -14,12 +14,9 @@ async function fetchNextAcrossGoals(userId, { onlyInProgress = true } = {}) {
     WHERE g.user_id = $1
       ${onlyInProgress ? `AND g.status = 'in_progress'` : ''}
       AND EXISTS (
-        SELECT 1
-        FROM subgoals sg
-        JOIN tasks t      ON t.subgoal_id = sg.id
-        JOIN microtasks mt ON mt.task_id = t.id
-        WHERE sg.goal_id = g.id
-          AND mt.status <> 'done'
+        SELECT 1 FROM v_microtasks_global v
+        WHERE v.goal_id = g.id
+          AND COALESCE(v.status, 'todo') <> 'done'
       )
     ORDER BY g.created_at, g.id
     `,
@@ -29,34 +26,41 @@ async function fetchNextAcrossGoals(userId, { onlyInProgress = true } = {}) {
   const result = [];
 
   for (const g of goals) {
-    const { rows: ts } = await pool.query(
+    // 2) Find the task that owns the *earliest* unfinished microtask globally
+    const { rows: first } = await pool.query(
       `
-      SELECT t.id, t.title
-      FROM tasks t
-      JOIN subgoals sg ON sg.id = t.subgoal_id
-      WHERE sg.goal_id = $1
-        AND EXISTS (SELECT 1 FROM microtasks mt WHERE mt.task_id = t.id AND mt.status <> 'done')
-      ORDER BY t.position NULLS LAST, t.id
+      SELECT v.task_id, t.title
+      FROM v_microtasks_global v
+      JOIN tasks t ON t.id = v.task_id
+      WHERE v.goal_id = $1
+        AND COALESCE(v.status, 'todo') <> 'done'
+      ORDER BY v.global_pos ASC, v.id
       LIMIT 1
       `,
       [g.id]
     );
-    if (!ts[0]) continue;
+    if (!first[0]) continue;
 
+    // 3) List that task’s microtasks in natural order
     const { rows: mts } = await pool.query(
       `
       SELECT id, title, status
       FROM microtasks
       WHERE task_id = $1
-      ORDER BY position NULLS LAST, id
+      ORDER BY position ASC NULLS LAST, id
       `,
-      [ts[0].id]
+      [first[0].task_id]
     );
 
-    let nextIdx = mts.findIndex(m => m.status !== 'done');
+    let nextIdx = mts.findIndex((m) => m.status !== 'done');
     if (nextIdx === -1) nextIdx = null;
 
-    result.push({ goal: g, task: ts[0], microtasks: mts, nextIdx });
+    result.push({
+      goal: g,
+      task: { id: first[0].task_id, title: first[0].title },
+      microtasks: mts,
+      nextIdx,
+    });
   }
 
   return result;
@@ -64,7 +68,10 @@ async function fetchNextAcrossGoals(userId, { onlyInProgress = true } = {}) {
 
 function renderChecklist(microtasks, nextIdx) {
   return microtasks
-    .map((m, i) => `${m.status === 'done' ? '✅' : (i === nextIdx ? '🔸' : '⭕')} ${m.title}`)
+    .map(
+      (m, i) =>
+        `${m.status === 'done' ? '✅' : i === nextIdx ? '🔸' : '⭕'} ${m.title}`
+    )
     .join('\n');
 }
 

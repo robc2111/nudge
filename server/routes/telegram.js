@@ -82,21 +82,29 @@ const sendMessage = (chatId, text, extra = {}) =>
 async function fetchCandidateMicrotasks(userId, limit = 8) {
   const { rows } = await pool.query(
     `
-    SELECT mt.id,
-           mt.title,
-           g.title  AS goal,
-           t.title  AS task,
-           mt.status,
-           mt.created_at
-      FROM microtasks mt
-      JOIN tasks t      ON t.id  = mt.task_id
-      JOIN subgoals sg  ON sg.id = t.subgoal_id
-      JOIN goals g      ON g.id  = sg.goal_id
-     WHERE g.user_id = $1
-       AND (mt.status <> 'done' OR mt.status IS NULL)
-     ORDER BY CASE WHEN mt.status = 'in_progress' THEN 0 ELSE 1 END,
-              mt.created_at ASC NULLS LAST
-     LIMIT $2
+    SELECT
+      mt.id,
+      mt.title,
+      g.title  AS goal,
+      t.title  AS task,
+      mt.status,
+      mt.created_at,
+      sg.position AS sg_pos,
+      t.position  AS task_pos,
+      mt.position AS micro_pos
+    FROM microtasks mt
+    JOIN tasks t      ON t.id  = mt.task_id
+    JOIN subgoals sg  ON sg.id = t.subgoal_id
+    JOIN goals g      ON g.id  = sg.goal_id
+    WHERE g.user_id = $1
+      AND COALESCE(mt.status, 'todo') <> 'done'
+    ORDER BY
+      CASE WHEN mt.status = 'in_progress' THEN 0 ELSE 1 END,
+      sg.position ASC,
+      t.position  ASC,
+      mt.position ASC,
+      mt.created_at ASC NULLS LAST
+    LIMIT $2
     `,
     [userId, limit]
   );
