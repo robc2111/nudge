@@ -1610,3 +1610,23 @@ body {
   gap: 1rem;
   margin-top: 2rem;
 }
+/* Header links: keep white by default; custom hover color */
+.goalcrumbs-header a,
+.goalcrumbs-header a:link,
+.goalcrumbs-header a:visited {
+  color: #fff; /* default */
+  text-decoration: none;
+}
+
+.goalcrumbs-header a:hover,
+.goalcrumbs-header a:focus {
+  color: #fcefe3; /* your preferred hover font color */
+  text-decoration: none; /* remove underline if you want */
+}
+
+/* If you also want a hover background chip */
+.goalcrumbs-header a:hover {
+  background: #a55217; /* brand hover bg */
+  border-radius: 6px;
+  padding: 0.15rem 0.4rem; /* tiny padding so bg is visible */
+}
