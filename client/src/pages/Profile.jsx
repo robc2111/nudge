@@ -1,5 +1,5 @@
 // src/pages/Profile.jsx
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import axios from '../api/axios';
 import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -37,7 +37,6 @@ function guessBrowserTZ() {
 
 function UpgradeButton() {
   const [busy, setBusy] = useState(false);
-
   const onUpgrade = async () => {
     try {
       setBusy(true);
@@ -51,7 +50,6 @@ function UpgradeButton() {
       setBusy(false);
     }
   };
-
   return (
     <button className="btn" onClick={onUpgrade} disabled={busy}>
       {busy
@@ -81,12 +79,77 @@ function ManageSubscriptionButton() {
   );
 }
 
+/** Reset *all* scrollable containers to top */
+function resetAllScroll() {
+  try {
+    document.documentElement.style.scrollBehavior = 'auto';
+  } catch {
+    //ignore
+  }
+  const main = document.getElementById('main');
+  const root = document.getElementById('root');
+  const candidates = [
+    document.scrollingElement,
+    document.documentElement,
+    document.body,
+    main,
+    root,
+  ].filter(Boolean);
+  for (const el of candidates) {
+    try {
+      el.scrollTop = 0;
+      el.scrollLeft = 0;
+    } catch {
+      //ignore
+    }
+  }
+  try {
+    window.scrollTo(0, 0);
+  } catch {
+    //ignore
+  }
+}
+
+/** Keep scroll locked to top for a short time (prevents late “jump down”) */
+function useTopLock(enable, durationMs = 1200) {
+  useEffect(() => {
+    if (!enable) return;
+    let raf = 0;
+    let stop = false;
+    const start = performance.now();
+
+    const tick = () => {
+      resetAllScroll();
+      if (!stop && performance.now() - start < durationMs) {
+        raf = requestAnimationFrame(tick);
+      }
+    };
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      stop = true;
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [enable, durationMs]);
+}
+
 export default function Profile() {
+  const location = useLocation();
+  const hasBillingHash = location.hash === '#billing';
+
+  // 1) Immediate pin to top on first paint (unless we intentionally want #billing)
+  useLayoutEffect(() => {
+    if (!hasBillingHash) {
+      resetAllScroll();
+      const main = document.getElementById('main');
+      if (main?.focus) main.focus({ preventScroll: true });
+    }
+  }, [hasBillingHash]);
+
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const fetchCtrl = useRef(null);
-  const location = useLocation();
 
   const [tz, setTz] = useState('');
   const [savingTz, setSavingTz] = useState(false);
@@ -95,6 +158,7 @@ export default function Profile() {
   const [savingTel, setSavingTel] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
 
+  // 2) Small SEO side-effect
   useEffect(() => {
     setSEO({
       title: 'Profile – GoalCrumbs',
@@ -146,6 +210,7 @@ export default function Profile() {
     }
   }
 
+  // 3) Fetch profile
   useEffect(() => {
     if (fetchCtrl.current) fetchCtrl.current.abort();
     const controller = new AbortController();
@@ -178,6 +243,26 @@ export default function Profile() {
 
     return () => controller.abort();
   }, [location.key]);
+
+  // 4) After async load resolves, lock scroll briefly (prevents the “late jump”),
+  //    but only if we’re NOT intentionally navigating to #billing.
+  useTopLock(!loading && !hasBillingHash, 1400);
+
+  // 5) If there IS a #billing hash, ensure a stable anchor target exists
+  const billingRef = useRef(null);
+  useEffect(() => {
+    if (hasBillingHash && billingRef.current) {
+      // Let ScrollManager handle hash normally; this is just a safety nudge after data fill
+      const id = setTimeout(() => {
+        try {
+          billingRef.current.scrollIntoView({ block: 'start' });
+        } catch {
+          //ignore
+        }
+      }, 0);
+      return () => clearTimeout(id);
+    }
+  }, [hasBillingHash]);
 
   if (loading) {
     return (
@@ -299,6 +384,9 @@ export default function Profile() {
           </p>
         </div>
       </div>
+
+      {/* Anchor target for /profile#billing so hash jumps are intentional & stable */}
+      <div id="billing" ref={billingRef} />
 
       <div
         className="profile-buttons"

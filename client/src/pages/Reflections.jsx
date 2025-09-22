@@ -1,10 +1,10 @@
-// src/pages/Reflections.jsx
 import React, {
   useEffect,
   useMemo,
   useRef,
   useState,
   useCallback,
+  useLayoutEffect,
 } from 'react';
 import axios from '../api/axios';
 import { setSEO, seoPresets } from '../lib/seo';
@@ -25,6 +25,13 @@ function loadCachedUser() {
 }
 
 export default function Reflections() {
+  // 🔝 Keep page pinned to top and ensure heading isn’t cut off
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    const main = document.getElementById('main');
+    if (main?.focus) main.focus({ preventScroll: true });
+  }, []);
+
   const [reflections, setReflections] = useState([]);
   const [goals, setGoals] = useState([]);
   const [filters, setFilters] = useState({
@@ -334,27 +341,48 @@ export default function Reflections() {
           ))}
         </select>
 
-        <input
-          id="flt-start"
-          type="date"
-          name="start_date"
-          value={filters.start_date}
-          onChange={(e) =>
-            setFilters((prev) => ({ ...prev, start_date: e.target.value }))
-          }
-          className="form-input"
-        />
+        {/* Visible labels for mobile so Start/End are obvious */}
+        <div className="flt-date">
+          <label
+            htmlFor="flt-start"
+            className="form-label"
+            style={{ fontSize: 12, marginBottom: 4 }}
+          >
+            Start
+          </label>
+          <input
+            id="flt-start"
+            type="date"
+            name="start_date"
+            aria-label="Start date"
+            value={filters.start_date}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, start_date: e.target.value }))
+            }
+            className="form-input"
+          />
+        </div>
 
-        <input
-          id="flt-end"
-          type="date"
-          name="end_date"
-          value={filters.end_date}
-          onChange={(e) =>
-            setFilters((prev) => ({ ...prev, end_date: e.target.value }))
-          }
-          className="form-input"
-        />
+        <div className="flt-date">
+          <label
+            htmlFor="flt-end"
+            className="form-label"
+            style={{ fontSize: 12, marginBottom: 4 }}
+          >
+            End
+          </label>
+          <input
+            id="flt-end"
+            type="date"
+            name="end_date"
+            aria-label="End date"
+            value={filters.end_date}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, end_date: e.target.value }))
+            }
+            className="form-input"
+          />
+        </div>
 
         <select
           id="flt-sort"

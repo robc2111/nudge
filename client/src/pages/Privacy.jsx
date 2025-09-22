@@ -1,8 +1,14 @@
-// src/pages/Privacy.jsx
+import { useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 export default function Privacy() {
-  // Update this whenever you materially change the policy text
+  // Force top on mount and focus #main for a11y (without scrolling)
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    const main = document.getElementById('main');
+    if (main?.focus) main.focus({ preventScroll: true });
+  }, []);
+
   const updated = '2025-01-01';
 
   return (
@@ -124,7 +130,6 @@ export default function Privacy() {
           strong, unique password.
         </p>
 
-        {/* EU/UK add-ons */}
         <h2 className="legal-section-title">Legal bases (EU/UK)</h2>
         <p>
           Where the GDPR/UK GDPR applies, we process personal data based on:

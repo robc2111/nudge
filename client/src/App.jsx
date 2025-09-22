@@ -10,6 +10,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import ResetPassword from './pages/ResetPassword';
 import PlanGuard from './components/PlanGuard';
 import CookieBanner from './components/CookieBanner';
+import ScrollManager from './components/ScrollManager';
 
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const Login = lazy(() => import('./pages/Login'));
@@ -43,6 +44,9 @@ export default function App() {
         </a>
 
         <Header />
+
+        {/* 🔝 Always reset scroll on route changes */}
+        <ScrollManager />
 
         <ToastContainer
           position="bottom-right"

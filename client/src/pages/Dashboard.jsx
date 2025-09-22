@@ -75,6 +75,16 @@ const Dashboard = () => {
   const abortRef = useRef(null);
   const navigate = useNavigate();
 
+  // ✅ mirrors to avoid stale closures in callbacks
+  const dataRef = useRef(null);
+  const selectedGoalIdRef = useRef(null);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+  useEffect(() => {
+    selectedGoalIdRef.current = selectedGoalId;
+  }, [selectedGoalId]);
+
   useEffect(() => {
     setSEO({
       title: 'Dashboard – GoalCrumbs',
@@ -106,7 +116,7 @@ const Dashboard = () => {
   async function downloadGoalPdf(goalId) {
     try {
       const resp = await axios.get(`/goals/${goalId}/pdf`, {
-        responseType: 'blob', // important!
+        responseType: 'blob',
       });
 
       const blob = new Blob([resp.data], { type: 'application/pdf' });
@@ -144,10 +154,10 @@ const Dashboard = () => {
     }
   }, []);
 
-  // Refresh from network
+  // ✅ Stable callback: reads latest values from refs
   const refreshData = useCallback(async () => {
     setError('');
-    setLoading(data ? false : true);
+    setLoading(dataRef.current ? false : true);
 
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
@@ -172,14 +182,17 @@ const Dashboard = () => {
       setCachedAt(Date.now());
 
       const goals = payload.goals ?? [];
-      let nextGoalId = selectedGoalId;
+      let nextGoalId = selectedGoalIdRef.current;
       if (!nextGoalId || !goals.find((g) => g.id === nextGoalId)) {
-        const defaultGoal = firstInProgressOrFirst(goals);
+        const defaultGoal =
+          goals.find((x) => x.status === 'in_progress') || goals[0] || null;
         nextGoalId = defaultGoal?.id ?? null;
       }
       setSelectedGoalId(nextGoalId);
     } catch (err) {
       if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return;
+
+      const hasCached = Boolean(dataRef.current);
       const msg = !navigator.onLine
         ? 'You appear to be offline.'
         : err.code === 'ECONNABORTED'
@@ -188,17 +201,20 @@ const Dashboard = () => {
             err.response?.statusText ||
             err.message ||
             'Failed to load dashboard.';
-      setError(data ? `Sync failed — showing cached dashboard. (${msg})` : msg);
+
+      setError(
+        hasCached ? `Sync failed — showing cached dashboard. (${msg})` : msg
+      );
       console.error('[Dashboard] load error:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // no deps
 
   useEffect(() => {
     refreshData();
     return () => abortRef.current?.abort();
-  }, []);
+  }, [refreshData]); // include stable callback
 
   const goalsList = useMemo(() => data?.goals ?? [], [data]);
   const selectedGoal = useMemo(

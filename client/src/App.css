@@ -1598,3 +1598,8 @@ a.btn:focus {
 .btn.btn-ghost:hover {
   border-color: #666;
 }
+/* Prevent smooth-scroll from causing mid-page jumps on route changes */
+html,
+body {
+  scroll-behavior: auto;
+}
