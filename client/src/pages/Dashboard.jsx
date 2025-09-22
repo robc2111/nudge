@@ -7,7 +7,7 @@ import SubgoalCard from '../components/SubgoalCard';
 import TaskCard from '../components/TaskCard';
 import { toast } from 'react-toastify';
 import { setSEO, seoPresets } from '../lib/seo';
-import { atActiveGoalLimit, isPro as isProPlan } from '../utils/planGuard';
+import { atActiveGoalLimit } from '../utils/planGuard';
 
 const REQ_TIMEOUT_MS = 12000;
 
@@ -422,7 +422,6 @@ const Dashboard = () => {
       ? me.activeGoalCount
       : derivedActiveCount;
 
-  const pro = isProPlan(plan, planStatus);
   const atLimit = atActiveGoalLimit(activeGoalCount, plan, planStatus, 1);
 
   async function saveTone(goalId, tone) {
@@ -445,11 +444,7 @@ const Dashboard = () => {
         return copy;
       });
     } catch (e) {
-      const msg =
-        e?.response?.status === 403
-          ? 'Tone customization is a Pro feature.'
-          : e?.response?.data?.error || 'Failed to update tone';
-      toast.error(msg);
+      toast.error(e?.response?.data?.error || 'Failed to update tone');
     } finally {
       setSavingTone(false);
     }
@@ -547,7 +542,7 @@ const Dashboard = () => {
           </select>
         </div>
 
-        {/* Tone selector (Pro only) */}
+        {/* Tone selector (everyone) */}
         {!!selectedGoal && (
           <div
             className="controls-group"
@@ -574,11 +569,8 @@ const Dashboard = () => {
               id="toneSelect"
               className="form-input"
               value={selectedGoalTone}
-              onChange={(e) =>
-                pro ? saveTone(selectedGoal.id, e.target.value) : null
-              }
-              disabled={!pro || savingTone}
-              title={!pro ? 'Upgrade to Pro to customize tone' : ''}
+              onChange={(e) => saveTone(selectedGoal.id, e.target.value)}
+              disabled={savingTone}
               style={{ minWidth: 200 }}
             >
               {TONE_OPTIONS.map((o) => (
@@ -587,11 +579,6 @@ const Dashboard = () => {
                 </option>
               ))}
             </select>
-            {!pro && (
-              <Link to="/profile#billing" className="brand-link-dark">
-                Upgrade
-              </Link>
-            )}
           </div>
         )}
 

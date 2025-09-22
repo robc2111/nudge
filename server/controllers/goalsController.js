@@ -76,7 +76,7 @@ exports.createGoal = async (req, res) => {
       });
     }
 
-    const normalizedTone = plan === 'pro' ? normalizeTone(tone) : null;
+    const normalizedTone = normalizeTone(tone) ?? 'friendly';
     const normalizedDue = normalizeDate(due_date);
 
     await client.query('BEGIN');
@@ -205,12 +205,6 @@ exports.updateGoal = async (req, res) => {
   }
 
   if (typeof tone !== 'undefined') {
-    const plan = await getUserPlan(userId);
-    if (plan !== 'pro') {
-      return res
-        .status(403)
-        .json({ error: 'Changing coach tone is available on Pro.' });
-    }
     const normalized = normalizeTone(tone);
     if (!normalized) {
       return res.status(400).json({ error: 'Invalid tone value' });

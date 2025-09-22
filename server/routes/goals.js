@@ -14,30 +14,7 @@ const {
   UserDashboardParams,
 } = require('../validation/schemas');
 
-const {
-  assertProSync,
-  assertCanCreateActiveGoal,
-} = require('../utils/planGuard');
-
-/** If request sets `tone`, require Pro. */
-function proGateIfTone(req, res, next) {
-  try {
-    if (typeof req.body?.tone !== 'undefined') {
-      // req.user should have plan info if your auth populates it.
-      // If not, you can fetch it, but most apps attach plan + status during auth.
-      assertProSync(req.user?.plan, req.user?.plan_status);
-    }
-    next();
-  } catch (e) {
-    if (e.code === 'PRO_REQUIRED') {
-      return res.status(403).json({
-        error: 'Changing coach tone is a Pro feature.',
-        feature: 'tone',
-      });
-    }
-    next(e);
-  }
-}
+const { assertCanCreateActiveGoal } = require('../utils/planGuard');
 
 /** Ensure user is allowed to create another active goal (Free limit). */
 async function limitGateOnCreate(req, res, next) {
@@ -70,7 +47,6 @@ router.post(
   '/',
   requireAuth,
   validate(GoalCreateSchema, 'body'),
-  proGateIfTone, // Pro-gate tone on create
   limitGateOnCreate, // Enforce Free plan active-goal limit
   goalsController.createGoal
 );
@@ -80,7 +56,6 @@ router.put(
   requireAuth,
   validate(IdParam, 'params'),
   validate(GoalUpdateSchema, 'body'),
-  proGateIfTone, // Pro-gate tone on update
   goalsController.updateGoal
 );
 
