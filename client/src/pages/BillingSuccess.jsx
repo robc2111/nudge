@@ -1,8 +1,9 @@
 // src/pages/BillingSuccess.jsx
 import { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom'; // ✅ no Link here
 import axios from '../api/axios';
 import { toast } from 'react-toastify';
+import BrandButton from '../components/BrandButton';
 
 export default function BillingSuccess() {
   const [params] = useSearchParams();
@@ -11,29 +12,34 @@ export default function BillingSuccess() {
 
   useEffect(() => {
     let mounted = true;
-
     (async () => {
       try {
-        // Ask backend to re-sync plan and enforce limits (idempotent)
         await axios.post('/payments/sync-plan');
-        // Optionally refresh cached user in localStorage if you store it:
-        // const { data } = await axios.get('/users/me');
-        // localStorage.setItem('user', JSON.stringify(data));
         if (mounted) setSynced(true);
       } catch (e) {
-        console.error('Plan sync after checkout failed:', e?.response?.data || e.message);
+        console.error(
+          'Plan sync after checkout failed:',
+          e?.response?.data || e.message
+        );
         toast.info('Subscription created. It may take a moment to reflect.');
       }
     })();
-
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [sessionId]);
 
   return (
-    <div className="p-8" style={{ textAlign: 'center' }}>
-      <h2>✅ Thanks! Your subscription is {synced ? 'active' : 'being activated'}.</h2>
-      <p>{synced ? 'Enjoy Pro features immediately.' : 'This will update shortly.'}</p>
-      <Link to="/profile" className="cta-button">Go to Profile</Link>
+    <div className="billing-buttons" style={{ textAlign: 'center' }}>
+      <h2>
+        ✅ Thanks! Your subscription is {synced ? 'active' : 'being activated'}.
+      </h2>
+      <p>
+        {synced
+          ? 'Enjoy Pro features immediately.'
+          : 'This will update shortly.'}
+      </p>
+      <BrandButton to="/profile">Back to Profile</BrandButton>
     </div>
   );
 }

@@ -1603,3 +1603,10 @@ html,
 body {
   scroll-behavior: auto;
 }
+.billing-buttons {
+  display: flex;
+  flex-direction: column; /* 🔑 vertical stack */
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}

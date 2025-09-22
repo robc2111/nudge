@@ -1,7 +1,7 @@
 // LandingPage.jsx
-import { Link } from 'react-router-dom';
 import SEO from '../seo/SEO';
 import UpgradeButton from '../components/UpgradeButton';
+import BrandButton from '../components/BrandButton';
 
 const PROMO_DEADLINE_MS = new Date('2025-10-31T23:59:59Z').getTime();
 const promoActive = Date.now() <= PROMO_DEADLINE_MS;
@@ -27,13 +27,8 @@ export default function LandingPage() {
             motivated, achieve your goals.
           </p>
           <p>
-            <Link className="cta-button" to="/signup">
-              Get Started
-            </Link>{' '}
-            or{' '}
-            <Link className="cta-button secondary" to="/login">
-              Sign In
-            </Link>
+            <BrandButton to="/signup">Get Started</BrandButton> or{' '}
+            <BrandButton to="/login">Sign In</BrandButton>
           </p>
         </div>
       </section>
@@ -83,9 +78,7 @@ export default function LandingPage() {
 
           <div className="faq-cta">
             <span>Want more details?</span>
-            <Link to="/faq" className="cta-button">
-              Read the FAQ
-            </Link>
+            <BrandButton to="/faq">Read the FAQ</BrandButton>
           </div>
         </div>
 
@@ -122,9 +115,7 @@ export default function LandingPage() {
               <li>✅ Tasks & microtasks with progress</li>
               <li>✅ Daily reminders + weekly check-ins (Telegram)</li>
             </ul>
-            <Link to="/signup" className="cta-button">
-              Start Free Plan
-            </Link>
+            <BrandButton to="/signup">Start Free Plan</BrandButton>
           </div>
 
           <div className="pricing-card">
@@ -170,13 +161,9 @@ export default function LandingPage() {
             <div style={{ marginTop: '1rem' }}>
               {/* use the Upgrade button so the server decides which price to use */}
               <UpgradeButton promoActive={promoActive} />
-              <Link
-                to="/login"
-                className="cta-button secondary"
-                style={{ marginLeft: 8 }}
-              >
+              <BrandButton to="/login" style={{ marginLeft: 8 }}>
                 I already have an account
-              </Link>
+              </BrandButton>
             </div>
 
             <p className="tagline">
