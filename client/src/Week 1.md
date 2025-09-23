@@ -1,8 +1,8 @@
 • Large: OpenAI org setup: dedicated key, usage caps, prod/dev split
 
-- db rls
-
-  Day 13 - soft launch - business plan with marketing and sales strategy
+- cookies banner
+- download link for telegram
+- telegram welcome message
 
 - investigate buisness insurance
 - check if i need an accountant or can this be automated

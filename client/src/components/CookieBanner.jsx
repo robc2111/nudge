@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const CONSENT_KEY = 'gc:cookie-consent:v1';
 
@@ -34,6 +34,7 @@ function shouldShowBanner() {
 
 export default function CookieBanner() {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setOpen(shouldShowBanner());
@@ -74,9 +75,14 @@ export default function CookieBanner() {
           <button type="button" className="btn" onClick={accept}>
             OK
           </button>
-          <Link to="/privacy" className="btn btn-ghost" aria-label="Learn more">
+          <button
+            type="button"
+            className="btn btn-ghost"
+            aria-label="Learn more"
+            onClick={() => navigate('/privacy')}
+          >
             Learn more
-          </Link>
+          </button>
         </div>
       </div>
     </div>

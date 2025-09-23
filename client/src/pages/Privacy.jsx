@@ -9,10 +9,10 @@ export default function Privacy() {
     if (main?.focus) main.focus({ preventScroll: true });
   }, []);
 
-  const updated = '2025-01-01';
+  const updated = '2025-09-22';
 
   return (
-    <main className="page--legal">
+    <main id="main" tabIndex="-1" className="page--legal">
       <div className="legal-card">
         <h1 className="legal-title">Privacy Policy</h1>
         <p className="legal-updated">Last updated: {updated}</p>
@@ -31,11 +31,14 @@ export default function Privacy() {
           </li>
           <li>
             <strong>Usage data:</strong> goals, subgoals, tasks/microtasks you
-            create, status, timestamps, and related in-app activity.
+            create, their status and timestamps, reflections you choose to
+            record, and related in-app activity. Some of this may be sent (in
+            limited form) to AI services to generate coaching messages (see “AI
+            Services”).
           </li>
           <li>
-            <strong>Telegram (optional):</strong> if you connect Telegram, we
-            store your Telegram ID to send reminders you request.
+            <strong>Telegram:</strong> we store your Telegram ID to send
+            reminders you request.
           </li>
           <li>
             <strong>Payments:</strong> processed by Stripe. We receive
@@ -90,11 +93,31 @@ export default function Privacy() {
         <ul className="legal-list">
           <li>Provide, maintain, and improve the Service</li>
           <li>Authenticate you and secure your account</li>
-          <li>Send Telegram or email reminders if enabled by you</li>
+          <li>
+            Send Telegram reminders and weekly check-ins, including generating
+            personalized message text via AI services (when you enable
+            reminders)
+          </li>
           <li>Process subscriptions and billing via Stripe</li>
           <li>Communicate updates, security notices, and support messages</li>
           <li>Comply with legal obligations</li>
         </ul>
+
+        <h2 className="legal-section-title">AI Services</h2>
+        <p>
+          Some daily reminders and weekly check-ins are generated using
+          third-party artificial intelligence services (currently OpenAI’s API).
+          To produce these messages, we send only the minimum necessary context
+          (for example: goal title, subgoal titles, selected tone, and short
+          snippets from your reflections). We never send your password, payment
+          details, or full account data.
+        </p>
+        <p>
+          We instruct providers not to use this data to train their models.
+          OpenAI processes your data to return the generated text. We may switch
+          or add providers in the future; if so, we’ll update this Privacy
+          Policy.
+        </p>
 
         <h2 className="legal-section-title">Sharing</h2>
         <p>
@@ -105,7 +128,12 @@ export default function Privacy() {
             <strong>Stripe</strong> (payments &amp; subscriptions)
           </li>
           <li>
-            <strong>Telegram</strong> (optional reminders)
+            <strong>Telegram</strong> (to deliver reminders you enable)
+          </li>
+          <li>
+            <strong>OpenAI</strong> (to generate some reminders and check-ins);
+            we share only the minimal context required to create the message and
+            do not permit training on your data.
           </li>
           <li>
             <strong>Service providers</strong> (hosting, logging/monitoring,
@@ -115,12 +143,21 @@ export default function Privacy() {
           <li>Authorities where required by law or to protect rights/safety</li>
         </ul>
 
+        <h2 className="legal-section-title">Your Choices</h2>
+        <ul className="legal-list">
+          <li>Enable/disable Telegram reminders at any time in settings</li>
+          <li>Change tone and other preferences without affecting your data</li>
+          <li>Export your data or delete your account from Profile</li>
+          <li>Contact us to exercise privacy rights (see “Your Rights”)</li>
+        </ul>
+
         <h2 className="legal-section-title">Data Retention</h2>
         <p>
           We keep account and content data while your account is active. You can
           delete goals or your account at any time; we remove personal data
           unless we must retain it for legal, billing, or security reasons.
-          Backups roll off on a schedule.
+          Backups roll off on a schedule. We do not retain AI prompts/responses
+          beyond what’s needed to deliver the message and maintain service logs.
         </p>
 
         <h2 className="legal-section-title">Security</h2>
@@ -130,6 +167,12 @@ export default function Privacy() {
           strong, unique password.
         </p>
 
+        <h2 className="legal-section-title">Automated decision-making</h2>
+        <p>
+          We do not make decisions with legal or similarly significant effects
+          about you solely by automated means.
+        </p>
+
         <h2 className="legal-section-title">Legal bases (EU/UK)</h2>
         <p>
           Where the GDPR/UK GDPR applies, we process personal data based on:
@@ -137,21 +180,22 @@ export default function Privacy() {
         <ul className="legal-list">
           <li>
             <strong>Contract</strong> (Art. 6(1)(b)): to provide the Service you
-            request.
+            request (including reminders you enable).
           </li>
           <li>
             <strong>Legitimate interests</strong> (Art. 6(1)(f)): securing and
-            improving the Service, preventing fraud/abuse, customer support. We
-            balance these interests against your rights and expectations.
+            improving the Service, preventing fraud/abuse, customer support, and
+            generating helpful reminder content. We balance these interests
+            against your rights and expectations.
           </li>
           <li>
             <strong>Legal obligation</strong> (Art. 6(1)(c)): compliance with
             applicable laws and accounting rules.
           </li>
           <li>
-            <strong>Consent</strong> (Art. 6(1)(a)): for optional cookies/
-            analytics and similar technologies where required. You can withdraw
-            consent at any time.
+            <strong>Consent</strong> (Art. 6(1)(a)): for optional
+            cookies/analytics and similar technologies where required. You can
+            withdraw consent at any time.
           </li>
         </ul>
 

@@ -341,49 +341,6 @@ export default function Reflections() {
           ))}
         </select>
 
-        {/* Visible labels for mobile so Start/End are obvious */}
-        <div className="flt-date">
-          <label
-            htmlFor="flt-start"
-            className="form-label"
-            style={{ fontSize: 12, marginBottom: 4 }}
-          >
-            Start
-          </label>
-          <input
-            id="flt-start"
-            type="date"
-            name="start_date"
-            aria-label="Start date"
-            value={filters.start_date}
-            onChange={(e) =>
-              setFilters((prev) => ({ ...prev, start_date: e.target.value }))
-            }
-            className="form-input"
-          />
-        </div>
-
-        <div className="flt-date">
-          <label
-            htmlFor="flt-end"
-            className="form-label"
-            style={{ fontSize: 12, marginBottom: 4 }}
-          >
-            End
-          </label>
-          <input
-            id="flt-end"
-            type="date"
-            name="end_date"
-            aria-label="End date"
-            value={filters.end_date}
-            onChange={(e) =>
-              setFilters((prev) => ({ ...prev, end_date: e.target.value }))
-            }
-            className="form-input"
-          />
-        </div>
-
         <select
           id="flt-sort"
           name="sort"

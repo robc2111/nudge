@@ -21,7 +21,7 @@ export default function LandingPage() {
           <img className="hero-image" src="/logo.png" alt="GoalCrumbs Logo" />
         </div>
         <div className="hero-right">
-          <h1>Break Big Goals Into Tiny Crumbs</h1>
+          <h1>Make Big Goals Feel Small</h1>
           <p>
             Your AI-powered accountability partner. Stay on track, stay
             motivated, achieve your goals.
@@ -36,12 +36,28 @@ export default function LandingPage() {
       <section className="about-section">
         <h2>Why GoalCrumbs Works</h2>
         <ul className="benefits-list">
-          <li>✅ Layered structure: goals → subgoals → tasks → microtasks</li>
-          <li>✅ Daily reminders and weekly reviews to build consistency</li>
           <li>
-            ✅ Smart defaults and progress tracking that reduce decision fatigue
+            ✅ Big goals are no longer overwhelming. GoalCrumbs breaks your goal
+            down into smaller, more manageable tasks.
           </li>
-          <li>✅ Telegram integration for frictionless check-ins</li>
+          <li>
+            ✅ Not enough time for today&apos;s task? Break microtasks down even
+            further on your dashboard. No more excuses.
+          </li>
+          <li>
+            ✅ Do you forget or get distracted? Daily Telegram reminders can
+            help keep you focused.
+          </li>
+          <li>✅ Track your progress to keep motivated.</li>
+          <li>
+            ✅ After you&apos;ve set up your goal, you can update progress and
+            reflect on your progress using Telegram.
+          </li>
+          <li>
+            ✅ Need to pivot? Edit your goal, while keeping your progress so
+            far, and GoalCrumbs will generate new subgoals, tasks and microtasks
+            to take you in a new direction.
+          </li>
         </ul>
       </section>
 
