@@ -46,10 +46,18 @@ const reflectionSessions = {}; // chatId -> boolean (awaiting freeform reflectio
 
 /** Number-picker session for /done */
 const donePickSessions = Object.create(null);
-// shape: donePickSessions[chatId] = { items: [{id,title,goal,task}], createdAt: ts }
+/** Number-picker session for /today */
+const todayPickSessions = Object.create(null);
+
+// shape: { items: [{id,title,goal,task}], createdAt: ts }
 const DONE_PICK_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const TODAY_PICK_TTL_MS = 10 * 60 * 1000;
+
 function clearDoneSession(chatId) {
   delete donePickSessions[chatId];
+}
+function clearTodaySession(chatId) {
+  delete todayPickSessions[chatId];
 }
 
 /* --------------------------------------------------------------------------------
@@ -241,13 +249,39 @@ async function markMicrotaskDoneById(microtaskId, chatId) {
 /** Original search-based 'done <words>' handler, now also aware of pick-number */
 async function handleMarkDone({ text, user, chatId }) {
   const pick = parsePickNumber(text);
+
+  // Prefer active /today picker first
+  if (pick && todayPickSessions[chatId]?.items) {
+    const { items, createdAt } = todayPickSessions[chatId];
+    if (Date.now() - createdAt > TODAY_PICK_TTL_MS) {
+      clearTodaySession(chatId);
+      await sendMessage(
+        chatId,
+        '⏰ That list from /today expired. Send /today again to get a fresh list.'
+      );
+      return;
+    }
+    if (pick > items.length) {
+      await sendMessage(
+        chatId,
+        `Please reply with a number between 1 and ${items.length}.`
+      );
+      return;
+    }
+    const chosen = items[pick - 1];
+    clearTodaySession(chatId);
+    await markMicrotaskDoneById(chosen.id, chatId);
+    return;
+  }
+
+  // Then prefer active /done picker
   if (pick && donePickSessions[chatId]?.items) {
     const { items, createdAt } = donePickSessions[chatId];
     if (Date.now() - createdAt > DONE_PICK_TTL_MS) {
       clearDoneSession(chatId);
       await sendMessage(
         chatId,
-        '⏰ That selection list expired. Send /done again to get a fresh list.'
+        '⏰ That selection list expired. Send `done` again to get a fresh list.'
       );
       return;
     }
@@ -264,6 +298,20 @@ async function handleMarkDone({ text, user, chatId }) {
     return;
   }
 
+  // If a number was given but no list is active, guide the user
+  if (
+    pick &&
+    !donePickSessions[chatId]?.items &&
+    !todayPickSessions[chatId]?.items
+  ) {
+    await sendMessage(
+      chatId,
+      'I don’t have a numbered list to use. Send /today for a cross-goal list or type *done* to get a picker.'
+    );
+    return;
+  }
+
+  // Fallback: fuzzy search "done <words>"
   const q = text.replace(/^\/?done/i, '').trim();
   if (!q) {
     await startDonePicker({ user, chatId });
@@ -295,7 +343,7 @@ async function handleMarkDone({ text, user, chatId }) {
   await markMicrotaskDoneById(hit.id, chatId);
 }
 
-/** Start number-picker flow for /done */
+/** Start number-picker flow for /done (goal-focused suggestions) */
 async function startDonePicker({ user, chatId }) {
   const items = await fetchCandidateMicrotasks(user.id, 8);
   if (!items.length) {
@@ -313,15 +361,19 @@ async function startDonePicker({ user, chatId }) {
     const title = escapeTgMarkdown(it.title);
     const goal = it.goal ? escapeTgMarkdown(it.goal) : '';
     const task = it.task ? escapeTgMarkdown(it.task) : '';
-    const ctx = goal ? ` — *${goal}* › ${task}`.trim() : '';
-    return `${n}. ${title}${ctx ? `\n   ${ctx}` : ''}`;
+    const ctx = goal
+      ? `— *${goal}*${task ? ` › ${task}` : ''}`
+      : task
+        ? `— ${task}`
+        : '';
+    return `${n}. ${title}\n   ${ctx}`;
   });
 
   await sendMessage(
     chatId,
     `Which microtask did you finish?\n\n${lines.join(
       '\n\n'
-    )}\n\nReply with a number (e.g. *1*) or type *cancel*.`
+    )}\n\nReply with the number (e.g. *1*) or type *cancel*.\nNumbers refer to this list.`
   );
 }
 
@@ -491,7 +543,70 @@ router.post('/webhook', async (req, res) => {
       return res.sendStatus(200);
     }
 
+    /* ---------- Helper: present a multi-goal numbered list (/list and /done) ---------- */
+    async function presentNumberedList() {
+      const items = await fetchCandidateMicrotasks(user.id, 12);
+      if (!items.length) {
+        await sendMessage(
+          chatId,
+          '🎉 No pending microtasks. You’re all caught up!'
+        );
+        return null;
+      }
+
+      // Save session BEFORE sending message so replies map correctly.
+      donePickSessions[chatId] = { items, createdAt: Date.now() };
+
+      // Group by goal for clarity, but keep a single global counter
+      const byGoal = new Map();
+      for (const it of items) {
+        if (!byGoal.has(it.goal)) byGoal.set(it.goal, []);
+        byGoal.get(it.goal).push(it);
+      }
+
+      const lines = [];
+      let n = 1;
+      for (const [goalTitle, arr] of byGoal.entries()) {
+        const g = goalTitle ? `*${escapeTgMarkdown(goalTitle)}*` : '*Unsorted*';
+        lines.push(`🎯 ${g}`);
+        for (const it of arr) {
+          const t = it.task ? ` › ${escapeTgMarkdown(it.task)}` : '';
+          const mt = escapeTgMarkdown(it.title);
+          lines.push(`${n}. ${mt}${t}`);
+          n += 1;
+        }
+        lines.push(''); // blank line between goals
+      }
+
+      const msg =
+        `Here are your next microtasks (grouped by goal):\n\n` +
+        lines.join('\n') +
+        `\nReply with a number (e.g. *1*) or type *cancel*.\n` +
+        `Tip: You can also send \`done 2\` directly to pick #2.`;
+
+      await sendMessage(chatId, msg);
+      return items;
+    }
+
     /* ---------- DONE picker: cancel / numeric replies ---------- */
+
+    // If a user typed "done <n>" without a current list, generate one first.
+    const doneNumMatch = textLower.match(/^\/?done\s+(\d{1,2})$/);
+    if (doneNumMatch && !donePickSessions[chatId]?.items) {
+      const created = await presentNumberedList();
+      if (created) {
+        // Try immediately to honor their original selection
+        const pick = Number(doneNumMatch[1]);
+        if (pick >= 1 && pick <= created.length) {
+          const chosen = created[pick - 1];
+          clearDoneSession(chatId);
+          await markMicrotaskDoneById(chosen.id, chatId);
+          return res.sendStatus(200);
+        }
+      }
+      // If we can't fulfill immediately, just return after showing list
+      return res.sendStatus(200);
+    }
 
     if (donePickSessions[chatId] && /^cancel$/i.test(textLower)) {
       clearDoneSession(chatId);
@@ -507,7 +622,7 @@ router.post('/webhook', async (req, res) => {
           clearDoneSession(chatId);
           await sendMessage(
             chatId,
-            '⏰ That selection list expired. Send /done again to get a fresh list.'
+            '⏰ That selection list expired. Send /list (or /done) to get a fresh list.'
           );
           return res.sendStatus(200);
         }
@@ -527,7 +642,20 @@ router.post('/webhook', async (req, res) => {
 
     // Mark-as-done priority
     if (/^(?:\/)?(?:done|complete|✔)\b/i.test(textLower)) {
+      const q = text.replace(/^\/?done/i, '').trim();
+      if (!q) {
+        // No query => show numbered list first (clear for multi-goal)
+        await presentNumberedList();
+        return res.sendStatus(200);
+      }
+      // With query => original search flow
       await handleMarkDone({ text, user, chatId });
+      return res.sendStatus(200);
+    }
+
+    /* ---------- /list: explicit numbered list across goals ---------- */
+    if (textLower === '/list') {
+      await presentNumberedList();
       return res.sendStatus(200);
     }
 
@@ -652,7 +780,8 @@ ${renderChecklist(p.microtasks, p.nextIdx)}`;
 
       const msg =
         `🗓️ *Today’s Focus Across Your Goals*\n\n${sections}\n\nReply with:` +
-        `\n• \`done\` to pick one to check off (or \`done 2\` to pick #2)` +
+        `\n• \`/list\` to get a numbered picker you can reply to` +
+        `\n• \`done\` to pick from a numbered list (or \`done 2\` to pick #2)` +
         `\n• \`done [words]\` to search by title` +
         `\n• /reflect to log a quick reflection`;
       await sendMessage(chatId, msg);
@@ -737,11 +866,12 @@ Here’s what I can do:
 
 🪞 \`/reflect\` — Log a weekly reflection  
 🎯 \`/goals\` — View your active goals  
-🎙️ \`/tone\` — Change your coach's tone  
+📝 \`/list\` — Show a numbered list across all goals  
+🎙️ \`/tone\` — Change your coach's tone (Pro)  
 🎙️ \`/tone status\` — Check your current tone  
 💡 Pro users get tone-aware weekly coaching messages
 
-✅ \`done\` — Show a numbered list of your next microtasks  
+✅ \`done\` — Show a numbered list you can reply to  
 ✅ \`done 2\` — Mark option #2 from the last list  
 ✅ \`done [words]\` — Search by title and mark it done  
 
@@ -756,9 +886,10 @@ Here’s what I can do:
       `Hi ${escapeTgMarkdown(user.name)}, I didn’t understand that command. 🤔
 
 Try:
-- *done*     (pick from a list)
-- *done 2*   (mark #2)
-- *done plan meals* (search)
+- /list       (numbered picker across goals)
+- done 2      (mark #2 from the last list)
+- done meals  (search by title)
+- /today
 - /reflect
 - /goals
 - /tone
