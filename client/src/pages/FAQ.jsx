@@ -4,6 +4,8 @@ import { setSEO, seoPresets } from '../lib/seo';
 
 const updated = '2025-09-18';
 
+// You can use plain apostrophes inside these strings.
+// For answers that need links, set `jsx: true` and provide a React node in `a`.
 const faqs = [
   {
     q: 'What is GoalCrumbs?',
@@ -15,11 +17,28 @@ const faqs = [
   },
   {
     q: 'What do Cake / Slice / Crumbs mean?',
-    a: 'Cake = the big goal, Slice = a subgoal, Crumbs = tasks & microtasks. It&apos;s a playful mental model to keep things simple.',
+    a: "Cake = the big goal, Slice = a subgoal, Crumbs = tasks & microtasks. It's a playful mental model to keep things simple.",
   },
   {
     q: 'Do I need Telegram?',
-    a: 'Yes — Telegram is currently the primary channel for reminders, tone-based coaching, and quick commands like /reflect or marking microtasks as done. If you don&apos;t have it yet, you can download it from https://telegram.org/ (desktop and mobile).',
+    jsx: true,
+    a: (
+      <>
+        Yes — Telegram is currently the primary channel for reminders,
+        tone-based coaching, and quick commands like /reflect or marking
+        microtasks as done. If you don&apos;t have it yet, you can download it
+        from{' '}
+        <a
+          className="legal-link"
+          href="https://telegram.org/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          telegram.org
+        </a>{' '}
+        (desktop and mobile).
+      </>
+    ),
   },
   {
     q: 'How do I find my Telegram ID?',
@@ -35,11 +54,11 @@ const faqs = [
   },
   {
     q: 'What happens if I stop responding?',
-    a: 'We&apos;ll keep sending you daily reminders and weekly check-ins. You can mute or pause reminders anytime on the profile page. Weekly reflections still help you reset even if you miss some days.',
+    a: "We'll keep sending you daily reminders and weekly check-ins. You can mute or pause reminders anytime on the profile page. Weekly reflections still help you reset even if you miss some days.",
   },
   {
     q: 'Is my data safe?',
-    a: 'We use a managed Postgres database and token-based authentication. Your personal data isn&apos;t sold to third parties.',
+    a: "We use a managed Postgres database and token-based authentication. Your personal data isn't sold to third parties.",
   },
   {
     q: 'Who is it for?',
@@ -81,15 +100,14 @@ export default function FAQ() {
           {faqs.map((item, idx) => (
             <li key={idx}>
               <strong>{item.q}</strong>
-              <p>{item.a}</p>
+              <p>{item.jsx ? item.a : item.a}</p>
             </li>
           ))}
         </ul>
 
         <h2 className="legal-section-title">Didn’t find what you need?</h2>
         <p>
-          Message us via Telegram or email support — we usually respond within a
-          day. <br />
+          Message us via email — we usually respond within a day. <br />
           <a className="legal-link" href="mailto:support@goalcrumbs.com">
             support@goalcrumbs.com
           </a>

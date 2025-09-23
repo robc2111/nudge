@@ -31,19 +31,6 @@ export default function LandingPage() {
             <span style={{ margin: '0 6px' }}>or</span>{' '}
             <BrandButton to="/login">Sign In</BrandButton>
           </p>
-          {/* Subtle helper for first-time users */}
-          <p style={{ marginTop: 8, fontSize: '0.95rem' }}>
-            Don&apos;t have Telegram?{' '}
-            <a
-              className="brand-link-dark"
-              href="https://telegram.org/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Download Telegram
-            </a>
-            .
-          </p>
         </div>
       </section>
 
@@ -103,6 +90,19 @@ export default function LandingPage() {
             <p>
               <strong>Daily Reminders:</strong> The next steps toward your goal
               are sent to you daily via Telegram.
+            </p>
+            {/* Subtle helper for first-time users */}
+            <p style={{ marginTop: 8, fontSize: '0.95rem' }}>
+              Don&apos;t have Telegram?{' '}
+              <a
+                className="brand-link-dark"
+                href="https://telegram.org/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Download Telegram
+              </a>
+              .
             </p>
           </div>
 
