@@ -1,9 +1,9 @@
-// server/controllers/goalsController.js
 const pool = require('../db');
 const { limitsFor } = require('../utils/plan');
 const { normalizeProgressByGoal } = require('../utils/progressUtils');
 const { materializeGoal } = require('../utils/materializeGoal');
 const { track } = require('../utils/analytics');
+const { sendGoalCreated, sendGoalCompleted } = require('../utils/telegram');
 
 /* ────────────────────────────────────────────────────────────
    Helpers
@@ -86,7 +86,7 @@ exports.createGoal = async (req, res) => {
     } = await client.query(
       `INSERT INTO goals (user_id, title, description, due_date, tone, status, created_at)
        VALUES ($1,$2,$3,$4,$5,'in_progress', NOW())
-       RETURNING id`,
+       RETURNING id, title`,
       [authUserId, title.trim(), description, normalizedDue, normalizedTone]
     );
     const goalId = goal.id;
@@ -100,10 +100,8 @@ exports.createGoal = async (req, res) => {
 
     await client.query('COMMIT');
 
-    // normalize in_progress pointers
-    await normalizeProgressByGoal(goalId);
-
-    // analytics (server-side)
+    // Normalize pointers and analytics (non-blocking)
+    await normalizeProgressByGoal(goalId).catch(() => {});
     await track({
       req,
       userId: authUserId,
@@ -114,7 +112,40 @@ exports.createGoal = async (req, res) => {
           (breakdown && breakdown.length) || (subgoals && subgoals.length)
         ),
       },
-    });
+    }).catch(() => {});
+
+    // Fire a Telegram "goal created" DM (non-blocking)
+    (async () => {
+      try {
+        const [
+          {
+            rows: [user],
+          },
+          { rows: nextMicros },
+        ] = await Promise.all([
+          pool.query(
+            `SELECT id, name, telegram_id, telegram_enabled FROM users WHERE id = $1`,
+            [authUserId]
+          ),
+          pool.query(
+            `SELECT mt.title
+               FROM microtasks mt
+               JOIN tasks t ON t.id = mt.task_id
+               JOIN subgoals sg ON sg.id = t.subgoal_id
+              WHERE sg.goal_id = $1
+                AND COALESCE(mt.status, 'todo') <> 'done'
+              ORDER BY sg.position, t.position, mt.position
+              LIMIT 3`,
+            [goalId]
+          ),
+        ]);
+        if (user) {
+          await sendGoalCreated(user, goal, nextMicros || []);
+        }
+      } catch (e) {
+        console.warn('[goals.create] goal-created DM failed:', e.message);
+      }
+    })();
 
     return res
       .status(201)
@@ -275,6 +306,24 @@ exports.updateGoalStatus = async (req, res) => {
         .status(404)
         .json({ error: 'Goal not found or not owned by user' });
     }
+
+    // If the goal is completed, send a congrats DM (best-effort)
+    if (status === 'done') {
+      (async () => {
+        try {
+          const {
+            rows: [user],
+          } = await pool.query(
+            `SELECT id, name, telegram_id, telegram_enabled FROM users WHERE id = $1`,
+            [userId]
+          );
+          if (user) await sendGoalCompleted(user, goal);
+        } catch (e) {
+          console.warn('[goals.status] goal-completed DM failed:', e.message);
+        }
+      })();
+    }
+
     return res.json(goal);
   } catch (err) {
     console.error('❌ Error updating goal status:', err.message);

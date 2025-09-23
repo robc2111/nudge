@@ -9,6 +9,7 @@ const {
   answerCallbackQuery,
   toneKeyboard,
   escapeTgMarkdown,
+  sendGoalCompleted,
 } = require('../utils/telegram');
 
 const pool = require('../db');
@@ -186,13 +187,39 @@ async function markMicrotaskDoneById(microtaskId, chatId) {
   );
 
   const cascade = await cascadeAfterMicrotaskDone(hit.id);
+  if (cascade?.impact?.goal?.status === 'done') {
+    // fetch minimal goal data to include title
+    const { rows: g } = await pool.query(
+      `SELECT id, title FROM goals WHERE id = $1`,
+      [cascade.impact.goal.id]
+    );
+    try {
+      // You need the user to DM; we have chatId here, but not always user object.
+      const { rows: u } = await pool.query(
+        `SELECT id, name, telegram_id, telegram_enabled FROM users WHERE id = (
+         SELECT user_id FROM goals WHERE id = $1
+       )`,
+        [cascade.impact.goal.id]
+      );
+      if (u[0]) {
+        await sendGoalCompleted(
+          u[0],
+          g[0] || { id: cascade.impact.goal.id, title: '' }
+        );
+      }
+    } catch (e) {
+      console.warn('[tg] goal-completed send failed:', e.message);
+    }
+  }
 
   await sendMessage(
     chatId,
     `✅ Marked *${escapeTgMarkdown(hit.title)}* as done! 🎉`
   );
 
-  if (cascade?.activeMicroId) {
+  const goalJustCompleted = cascade?.impact?.goal?.status === 'done';
+
+  if (cascade?.activeMicroId && !goalJustCompleted) {
     const { rows: nxt } = await pool.query(
       `SELECT title FROM microtasks WHERE id = $1`,
       [cascade.activeMicroId]
@@ -203,7 +230,7 @@ async function markMicrotaskDoneById(microtaskId, chatId) {
         `👉 Next up: *${escapeTgMarkdown(nxt[0].title)}*`
       );
     }
-  } else {
+  } else if (!goalJustCompleted) {
     await sendMessage(
       chatId,
       '🎉 You’ve completed all microtasks for this goal. Great work!'
@@ -708,17 +735,17 @@ ${renderChecklist(p.microtasks, p.nextIdx)}`;
         `🤖 *GoalCrumbs Bot Help*
 Here’s what I can do:
 
-🪞 */reflect* — Log a weekly reflection  
-🎯 */goals* — View your active goals  
-🎙️ */tone* — Change your coach's tone (Pro)  
-🎙️ */tone status* — Check your current tone  
-💡 *Pro users* get tone-aware weekly coaching messages
+🪞 \`/reflect\` — Log a weekly reflection  
+🎯 \`/goals\` — View your active goals  
+🎙️ \`/tone\` — Change your coach's tone  
+🎙️ \`/tone status\` — Check your current tone  
+💡 Pro users get tone-aware weekly coaching messages
 
-✅ *done* — Show a numbered list of your next microtasks  
-✅ *done 2* — Mark option #2 from the last list  
-✅ *done [words]* — Search by title and mark it done  
+✅ \`done\` — Show a numbered list of your next microtasks  
+✅ \`done 2\` — Mark option #2 from the last list  
+✅ \`done [words]\` — Search by title and mark it done  
 
-❓ */help* — Show this message`
+❓ \`/help\` — Show this message`
       );
       return res.sendStatus(200);
     }

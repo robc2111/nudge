@@ -1,4 +1,3 @@
-- download link for telegram
 - telegram welcome message
 
 - investigate buisness insurance

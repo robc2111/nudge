@@ -1,4 +1,3 @@
-// server/utils/telegram.js
 const axios = require('axios');
 
 const NETWORK_CODES = new Set([
@@ -13,6 +12,83 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/** Only DM if we have a numeric chat id and the user hasn't disabled Telegram. */
+function canDM(user) {
+  const id = String(user?.telegram_id ?? '').trim();
+  return /^[0-9]+$/.test(id) && user?.telegram_enabled !== false;
+}
+
+function bullets(list = []) {
+  return list.map((s) => `• ${s}`).join('\n');
+}
+
+async function sendWelcomeOnRegister(user) {
+  if (!canDM(user)) return;
+  const name = escapeTgMarkdown(user.name || 'there');
+
+  const text =
+    `👋 Hi ${name}! Welcome to *GoalCrumbs*.\n\n` +
+    `Here’s how to use Telegram with your goals:\n` +
+    bullets([
+      '* /today* — see your next microtasks',
+      '* done* — pick a microtask to mark done (or `done 2` for #2)',
+      '* /reflect* — log a quick weekly reflection',
+      '* /tone* — change coach tone',
+      '* /help* - view your options',
+    ]) +
+    `\n\nOpen your dashboard: https://goalcrumbs.com/dashboard`;
+
+  await sendTelegram({
+    chat_id: user.telegram_id,
+    text,
+    parse_mode: 'Markdown',
+  });
+}
+
+async function sendGoalCreated(user, goal, nextMicros = []) {
+  if (!canDM(user)) return;
+  const g = escapeTgMarkdown(goal?.title || 'your goal');
+
+  let text =
+    `🎯 New goal set: *${g}*\n\n` +
+    `I’ll remind you daily with the next microtasks. You can also use the following commands:\n` +
+    bullets([
+      '* /today* — view what’s next',
+      '* done* — check one microtask off',
+      '* /reflect* — capture learnings weekly',
+    ]);
+
+  if (nextMicros?.length) {
+    const preview = nextMicros
+      .slice(0, 3)
+      .map((m) => `• ${escapeTgMarkdown(m.title)}`)
+      .join('\n');
+    text += `\n\nNext up:\n${preview}`;
+  }
+
+  await sendTelegram({
+    chat_id: user.telegram_id,
+    text,
+    parse_mode: 'Markdown',
+  });
+}
+
+async function sendGoalCompleted(user, goal) {
+  if (!canDM(user)) return;
+  const g = escapeTgMarkdown(goal?.title || 'your goal');
+
+  const text =
+    `🏁 *Goal completed!*\n` +
+    `Huge congrats on finishing *${g}* 🎉\n\n` +
+    `Take a minute to /reflect on what worked, then set your next goal when you’re ready.`;
+
+  await sendTelegram({
+    chat_id: user.telegram_id,
+    text,
+    parse_mode: 'Markdown',
+  });
+}
+
 function getToken() {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) throw new Error('TELEGRAM_BOT_TOKEN is missing');
@@ -24,13 +100,9 @@ function apiUrl(method) {
 }
 
 /**
- * Escape only the characters that Telegram Markdown (v1) treats specially:
- *  _ * [ `
- * (We keep (), ~, >, # etc. because we’re not using v2 here.)
+ * Escape Telegram Markdown (v1) specials we use: _, *, [, ], `
  */
 function escapeTgMarkdown(s = '') {
-  // Escape Telegram Markdown (v1) specials we actually use: _, *, [, ], `
-  // (We’re not using MarkdownV2, so no need to escape the entire zoo.)
   return String(s).replace(/([_*[\]`])/g, '\\$1');
 }
 
@@ -42,13 +114,7 @@ function escapeHtml(s = '') {
     .replaceAll('>', '&gt;');
 }
 
-/**
- * Generic resilient Telegram call with:
- * - network retries
- * - basic 5xx retries
- * - 429 retry_after handling
- * Adds a short text preview to 4xx errors to help pinpoint bad markdown.
- */
+/** Resilient Telegram call with retries and 429 handling */
 async function callTelegram(method, payload) {
   const url = apiUrl(method);
   const maxAttempts = 4;
@@ -58,7 +124,7 @@ async function callTelegram(method, payload) {
     try {
       const res = await axios.post(url, payload, {
         timeout: 10000,
-        validateStatus: (s) => s >= 200 && s < 500, // 5xx => throw/retry
+        validateStatus: (s) => s >= 200 && s < 500,
       });
 
       if (res.status === 429) {
@@ -73,22 +139,21 @@ async function callTelegram(method, payload) {
       if (res.status >= 400) {
         const preview =
           typeof payload?.text === 'string' ? payload.text.slice(0, 300) : '';
-        const err = new Error(
+        throw new Error(
           `Telegram error ${res.status}: ${JSON.stringify(
             res.data
           )} | preview="${preview}"`
         );
-        throw err;
       }
 
-      return res; // success
+      return res;
     } catch (err) {
       lastErr = err;
       const code = err.code || err.cause?.code;
       const networky = code && NETWORK_CODES.has(code);
       const looks5xx = /\b5\d{2}\b/.test(String(err.message || ''));
       if ((networky || looks5xx) && attempt < maxAttempts) {
-        await sleep(attempt * 1000); // 1s, 2s, 3s backoff
+        await sleep(attempt * 1000);
         continue;
       }
       break;
@@ -98,9 +163,7 @@ async function callTelegram(method, payload) {
   throw lastErr;
 }
 
-/**
- * Safe wrapper for Telegram sendMessage.
- */
+/** Wrapper for sendMessage */
 async function sendTelegram({
   chat_id,
   text,
@@ -112,9 +175,7 @@ async function sendTelegram({
   return callTelegram('sendMessage', payload);
 }
 
-/**
- * Edit an existing message (used to confirm tone selection in-place)
- */
+/** Edit message text */
 async function editTelegramMessage({
   chat_id,
   message_id,
@@ -127,9 +188,7 @@ async function editTelegramMessage({
   return callTelegram('editMessageText', payload);
 }
 
-/**
- * ACK a button tap so Telegram shows instant feedback (toast/spinner stops).
- */
+/** ACK inline button tap */
 async function answerCallbackQuery({
   callback_query_id,
   text,
@@ -141,9 +200,7 @@ async function answerCallbackQuery({
   return callTelegram('answerCallbackQuery', payload);
 }
 
-/**
- * Inline keyboard for tone picker. `current` can be 'friendly' | 'strict' | 'motivational'
- */
+/** Tone picker keyboard */
 function toneKeyboard(current) {
   const norm = String(current || '').toLowerCase();
   const row = (tone, label) => {
@@ -166,4 +223,7 @@ module.exports = {
   toneKeyboard,
   escapeTgMarkdown,
   escapeHtml,
+  sendWelcomeOnRegister,
+  sendGoalCreated,
+  sendGoalCompleted,
 };
