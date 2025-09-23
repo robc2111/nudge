@@ -15,15 +15,15 @@ const faqs = [
   },
   {
     q: 'What do Cake / Slice / Crumbs mean?',
-    a: "Cake = the big goal, Slice = a subgoal, Crumbs = tasks & microtasks. It's a playful mental model to keep things simple.",
+    a: 'Cake = the big goal, Slice = a subgoal, Crumbs = tasks & microtasks. It&apos;s a playful mental model to keep things simple.',
   },
   {
     q: 'Do I need Telegram?',
-    a: 'Yes — Telegram is currently the primary channel for reminders, tone-based coaching, and quick commands like /reflect or marking microtasks as done.',
+    a: 'Yes — Telegram is currently the primary channel for reminders, tone-based coaching, and quick commands like /reflect or marking microtasks as done. If you don&apos;t have it yet, you can download it from https://telegram.org/ (desktop and mobile).',
   },
   {
     q: 'How do I find my Telegram ID?',
-    a: `Open Telegram and search for @userinfobot. Tap “Start” and it will reply with your numeric user ID (e.g., 123456789). Copy that number and paste it into GoalCrumbs during signup (or view it later on your Profile page). If you prefer, any similar “user info” bot works too — the key is the numeric ID.`,
+    a: 'Open Telegram and search for @userinfobot. Tap “Start” and it will reply with your numeric user ID (e.g., 123456789). Copy that number and paste it into GoalCrumbs during signup (or view it later on your Profile page). If you prefer, any similar “user info” bot works too — the key is the numeric ID.',
   },
   {
     q: 'Is GoalCrumbs free?',
@@ -35,11 +35,11 @@ const faqs = [
   },
   {
     q: 'What happens if I stop responding?',
-    a: "We'll keep sending you daily reminders and weekly check-ins. You can mute or pause reminders anytime on the profile page. Weekly reflections still help you reset even if you miss some days.",
+    a: 'We&apos;ll keep sending you daily reminders and weekly check-ins. You can mute or pause reminders anytime on the profile page. Weekly reflections still help you reset even if you miss some days.',
   },
   {
     q: 'Is my data safe?',
-    a: "We use a managed Postgres database and token-based authentication. Your personal data isn't sold to third parties.",
+    a: 'We use a managed Postgres database and token-based authentication. Your personal data isn&apos;t sold to third parties.',
   },
   {
     q: 'Who is it for?',
@@ -93,6 +93,17 @@ export default function FAQ() {
           <a className="legal-link" href="mailto:support@goalcrumbs.com">
             support@goalcrumbs.com
           </a>
+          <br />
+          Don&apos;t have Telegram?{' '}
+          <a
+            className="legal-link"
+            href="https://telegram.org/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Download Telegram
+          </a>
+          .
         </p>
       </div>
     </main>

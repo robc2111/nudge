@@ -22,7 +22,7 @@ export default function Signup() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [showPw, setShowPw] = useState(false);
-  const [showTgHelp, setShowTgHelp] = useState(false); // NEW
+  const [showTgHelp, setShowTgHelp] = useState(false);
 
   useEffect(() => {
     setSEO({
@@ -147,14 +147,25 @@ export default function Signup() {
             <label htmlFor="telegram_id" className="block font-medium mb-1">
               Telegram ID (numeric)
             </label>
-            <button
-              type="button"
-              className="help-link"
-              onClick={() => setShowTgHelp(true)}
-              aria-haspopup="dialog"
-            >
-              What’s this?
-            </button>
+            <div>
+              <button
+                type="button"
+                className="help-link"
+                onClick={() => setShowTgHelp(true)}
+                aria-haspopup="dialog"
+                style={{ marginRight: 10 }}
+              >
+                What’s this?
+              </button>
+              <a
+                className="help-link"
+                href="https://telegram.org/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Download Telegram
+              </a>
+            </div>
           </div>
           <input
             id="telegram_id"
@@ -251,7 +262,7 @@ export default function Signup() {
           aria-labelledby="tg-help-title"
           onClick={() => setShowTgHelp(false)}
         >
-          <div className="modal-card">
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 id="tg-help-title">Find your Telegram numeric ID</h3>
               <button
@@ -288,6 +299,18 @@ export default function Signup() {
               <p style={{ marginTop: 8 }}>
                 Tip: your <code>@username</code> is <em>not</em> the ID — we
                 need the number so our bot can message you.
+              </p>
+              <p style={{ marginTop: 12 }}>
+                Don&apos;t have Telegram yet?{' '}
+                <a
+                  className="brand-link"
+                  href="https://telegram.org/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Download Telegram
+                </a>
+                .
               </p>
             </div>
           </div>

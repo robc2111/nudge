@@ -1,6 +1,3 @@
-• Large: OpenAI org setup: dedicated key, usage caps, prod/dev split
-
-- cookies banner
 - download link for telegram
 - telegram welcome message
 

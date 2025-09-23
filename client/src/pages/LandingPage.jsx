@@ -27,8 +27,22 @@ export default function LandingPage() {
             motivated, achieve your goals.
           </p>
           <p>
-            <BrandButton to="/signup">Get Started</BrandButton> or{' '}
+            <BrandButton to="/signup">Get Started</BrandButton>{' '}
+            <span style={{ margin: '0 6px' }}>or</span>{' '}
             <BrandButton to="/login">Sign In</BrandButton>
+          </p>
+          {/* Subtle helper for first-time users */}
+          <p style={{ marginTop: 8, fontSize: '0.95rem' }}>
+            Don&apos;t have Telegram?{' '}
+            <a
+              className="brand-link-dark"
+              href="https://telegram.org/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Download Telegram
+            </a>
+            .
           </p>
         </div>
       </section>
@@ -128,7 +142,7 @@ export default function LandingPage() {
             <p className="tagline">Your first goal, end-to-end.</p>
             <ul className="benefits-list">
               <li>✅ 1 active goal (full breakdown)</li>
-              <li>✅ Tasks & microtasks with progress</li>
+              <li>✅ Tasks &amp; microtasks with progress</li>
               <li>✅ Daily reminders + weekly check-ins (Telegram)</li>
             </ul>
             <BrandButton to="/signup">Start Free Plan</BrandButton>
