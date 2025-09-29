@@ -1,9 +1,9 @@
 // src/pages/signup.jsx
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
 import { useAuth } from '../auth/auth-context';
-import { setSEO } from '../lib/seo';
+import SEO from '../seo/SEO';
 
 const MIN_PASSWORD = 8;
 
@@ -23,14 +23,6 @@ export default function Signup() {
   const [success, setSuccess] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [showTgHelp, setShowTgHelp] = useState(false);
-
-  useEffect(() => {
-    setSEO({
-      title: 'Create GoalCrumbs Account | GoalCrumbs',
-      description:
-        'Create your GoalCrumbs account to break big goals into tiny crumbs with AI nudges and a clean dashboard.',
-    });
-  }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -99,6 +91,19 @@ export default function Signup() {
 
   return (
     <div className="auth-card">
+      <SEO
+        title="Create Account – GoalCrumbs"
+        description="Create your GoalCrumbs account to break big goals into tiny crumbs."
+        image="/og/birdog.png"
+        keywords={[
+          'create goal-tracking account',
+          'sign up',
+          'goal setting',
+          'habit tracker',
+          'accountability app',
+        ]}
+        url="https://goalcrumbs.com/signup"
+      />
       <h2 className="auth-title">Create your GoalCrumbs account</h2>
 
       {error && <p className="auth-error">{error}</p>}

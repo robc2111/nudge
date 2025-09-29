@@ -3,15 +3,16 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
 import { toast } from 'react-toastify';
+import SEO from '../seo/SEO';
 
 const MAX_LEN = 300;
 
 const placeholders = [
-  "Describe your goal with what, why, and when. Example: Run a marathon in April 2026 by training 4 days a week.",
-  "Be specific so we can break it down for you: Save £5,000 in 6 months by cutting expenses and freelancing.",
-  "Think of your goal like you’re explaining it to a coach — clear, measurable, and time-bound.",
-  "What do you want to achieve, why is it important, and by when? Example: Learn Spanish to conversational level in 6 months by practicing 30 mins daily.",
-  "Write your goal in natural language, but add details (what, when, why). The more detail, the better the plan.",
+  'Describe your goal with what, why, and when. Example: Run a marathon in April 2026 by training 4 days a week.',
+  'Be specific so we can break it down for you: Save £5,000 in 6 months by cutting expenses and freelancing.',
+  'Think of your goal like you’re explaining it to a coach — clear, measurable, and time-bound.',
+  'What do you want to achieve, why is it important, and by when? Example: Learn Spanish to conversational level in 6 months by practicing 30 mins daily.',
+  'Write your goal in natural language, but add details (what, when, why). The more detail, the better the plan.',
 ];
 
 const GoalSetup = () => {
@@ -55,7 +56,7 @@ const GoalSetup = () => {
         setUserId(me.id || null);
 
         const goals = Array.isArray(myGoalsRes.data) ? myGoalsRes.data : [];
-        const activeCount = goals.filter(g => g.status !== 'done').length;
+        const activeCount = goals.filter((g) => g.status !== 'done').length;
         const atFreeLimit = plan === 'free' && activeCount >= 1;
 
         if (atFreeLimit) {
@@ -72,7 +73,9 @@ const GoalSetup = () => {
         if (mounted) setCheckingPlan(false);
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [navigate]);
 
   // ──────────────────────────────
@@ -178,7 +181,10 @@ const GoalSetup = () => {
     };
 
     try {
-      await axios.post('/goals', payload, { timeout: 20000, signal: controller.signal });
+      await axios.post('/goals', payload, {
+        timeout: 20000,
+        signal: controller.signal,
+      });
       setSaved(true);
       setTimeout(() => navigate('/dashboard'), 700);
     } catch (err) {
@@ -187,7 +193,8 @@ const GoalSetup = () => {
 
       const msg =
         err.response?.data?.code === 'GOAL_LIMIT_REACHED'
-          ? (err.response?.data?.error || 'Free plan allows 1 active goal. Upgrade to add more.')
+          ? err.response?.data?.error ||
+            'Free plan allows 1 active goal. Upgrade to add more.'
           : err.response?.data?.error || 'Failed to save goal';
 
       setError(msg);
@@ -209,11 +216,29 @@ const GoalSetup = () => {
 
   return (
     <div className="max-w-3xl mx-auto mt-8 p-4 bg-white rounded shadow">
-      <h2 className="text-2xl font-bold text-center mb-4">🎯 Goal Setup</h2>
+      <SEO
+        title="Set up your goal – GoalCrumbs"
+        description="Describe your goal and generate a breakdown with AI."
+        image="/og/birdog.png"
+        keywords={[
+          'goal setup',
+          'goal breakdown',
+          'AI goal planning',
+          'accountability app',
+          'habit tracker',
+        ]}
+        url="https://goalcrumbs.com/goal-setup"
+        noindex
+      />
+      <h1 className="text-2xl font-bold text-center mb-4">
+        🎯 Set up your goal with GoalCrumbs
+      </h1>
 
       {/* Compose goal */}
       <div className="flex flex-col items-stretch gap-2 mb-4">
-        <label htmlFor="goalText" className="font-medium describe">Describe your goal</label>
+        <label htmlFor="goalText" className="font-medium describe">
+          Describe your goal
+        </label>
         <textarea
           id="goalText"
           className="goal-textarea"
@@ -240,7 +265,11 @@ const GoalSetup = () => {
 
       {/* Messages */}
       {error && <p className="text-red-600 text-center mt-1">{error}</p>}
-      {saved && <p className="text-green-600 text-center mt-1">✅ Goal saved successfully</p>}
+      {saved && (
+        <p className="text-green-600 text-center mt-1">
+          ✅ Goal saved successfully
+        </p>
+      )}
 
       {/* AI Breakdown preview */}
       {breakdown && (
@@ -272,16 +301,21 @@ const GoalSetup = () => {
           <div className="goalsetup-container">
             <div className="tone-block">
               <label className="tone-label" htmlFor="toneSelect">
-                Choose your coaching tone: <span style={{ color: '#b91c1c' }}>*</span>
+                Choose your coaching tone:{' '}
+                <span style={{ color: '#b91c1c' }}>*</span>
               </label>
               <select
                 id="toneSelect"
                 className="tone-select"
                 value={breakdown.tone || ''}
-                onChange={(e) => setBreakdown((prev) => ({ ...prev, tone: e.target.value }))}
+                onChange={(e) =>
+                  setBreakdown((prev) => ({ ...prev, tone: e.target.value }))
+                }
                 required
               >
-                <option value="" disabled>Select tone</option>
+                <option value="" disabled>
+                  Select tone
+                </option>
                 <option value="friendly">😊 Friendly</option>
                 <option value="strict">💼 Strict</option>
                 <option value="motivational">💪 Motivational</option>
@@ -293,7 +327,12 @@ const GoalSetup = () => {
               )}
             </div>
 
-            <button className="btn save" onClick={handleSave} disabled={!canSave} aria-busy={saving}>
+            <button
+              className="btn save"
+              onClick={handleSave}
+              disabled={!canSave}
+              aria-busy={saving}
+            >
               {saving ? 'Saving…' : 'Confirm & Save'}
             </button>
           </div>

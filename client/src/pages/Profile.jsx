@@ -4,7 +4,7 @@ import axios from '../api/axios';
 import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import DeleteAccountSection from '../components/DeleteAccountSection';
-import { setSEO, seoPresets } from '../lib/seo';
+import SEO from '../seo/SEO';
 
 const PROMO_DEADLINE_MS = new Date('2025-10-31T23:59:59Z').getTime();
 const promoActive = Date.now() <= PROMO_DEADLINE_MS;
@@ -158,18 +158,6 @@ export default function Profile() {
   const [savingTel, setSavingTel] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
 
-  // 2) Small SEO side-effect
-  useEffect(() => {
-    setSEO({
-      title: 'Profile – GoalCrumbs',
-      description:
-        'Manage your GoalCrumbs account: timezone, Telegram reminders, and subscription settings.',
-      url: `${seoPresets.baseUrl}/profile`,
-      image: '/og/mouseog.png',
-      noindex: true,
-    });
-  }, []);
-
   async function saveTimezone() {
     if (!tz) return;
     setSavingTz(true);
@@ -286,6 +274,12 @@ export default function Profile() {
 
   return (
     <div style={{ maxWidth: '700px', margin: '2rem auto' }}>
+      <SEO
+        title="Profile – GoalCrumbs"
+        description="Manage timezone, Telegram reminders, and subscription."
+        image="/og/mouseog.png"
+        url="https://goalcrumbs.com/profile"
+      />
       <div className="auth-card">
         <h1 className="auth-title">👤 Your Profile</h1>
         {error && <p className="auth-error">{error}</p>}

@@ -11,9 +11,11 @@ import ResetPassword from './pages/ResetPassword';
 import PlanGuard from './components/PlanGuard';
 import CookieBanner from './components/CookieBanner';
 import ScrollManager from './components/ScrollManager';
+import BlogIndex from './pages/BlogIndex';
+import BlogPost from './pages/BlogPost';
 
 const LandingPage = lazy(() => import('./pages/LandingPage'));
-const Login = lazy(() => import('./pages/Login'));
+const LogIn = lazy(() => import('./pages/LogIn'));
 const SignUp = lazy(() => import('./pages/SignUp'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Profile = lazy(() => import('./pages/Profile'));
@@ -65,11 +67,13 @@ export default function App() {
             <Routes>
               {/* Public */}
               <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<Login />} />
+              <Route path="/logIn" element={<LogIn />} />
               <Route path="/signup" element={<SignUp />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/faq" element={<FAQ />} />
+              <Route path="/blog" element={<BlogIndex />} />
+              <Route path="/blog/:slug" element={<BlogPost />} />
 
               {/* Private */}
               <Route element={<Protected />}>

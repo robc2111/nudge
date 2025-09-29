@@ -1,5 +1,6 @@
 import React, { useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
+import SEO from '../seo/SEO';
 
 export default function Terms() {
   // Force top on mount and focus #main for a11y (without scrolling)
@@ -13,6 +14,19 @@ export default function Terms() {
 
   return (
     <main id="main" tabIndex="-1" className="page--legal">
+      <SEO
+        title="Terms of Service – GoalCrumbs"
+        description="The terms that apply when you use GoalCrumbs."
+        image="/og/birdog.png"
+        keywords={[
+          'terms of service',
+          'legal',
+          'accountability app',
+          'goal tracking',
+          'habit tracker',
+        ]}
+        url="https://goalcrumbs.com/terms"
+      />
       <div className="legal-card">
         <h1 className="legal-title">Terms of Service</h1>
         <p className="legal-updated">Last updated: {updated}</p>

@@ -165,6 +165,8 @@ app.use('/api/gpt', require('./routes/gptRoutes'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/privacy', require('./routes/privacy'));
 app.use('/api', require('./routes/goalPdf'));
+const blogRoutes = require('./routes/blog');
+app.use('/api/blog', blogRoutes);
 
 try {
   app.use('/api/og', require('./routes/og'));

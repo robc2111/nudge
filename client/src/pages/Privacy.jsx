@@ -1,5 +1,6 @@
 import { useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
+import SEO from '../seo/SEO';
 
 export default function Privacy() {
   // Force top on mount and focus #main for a11y (without scrolling)
@@ -13,6 +14,19 @@ export default function Privacy() {
 
   return (
     <main id="main" tabIndex="-1" className="page--legal">
+      <SEO
+        title="Privacy Policy – GoalCrumbs"
+        description="How GoalCrumbs collects, uses, and protects your data."
+        image="/og/birdog.png"
+        keywords={[
+          'privacy policy',
+          'data protection',
+          'accountability app',
+          'goal tracking',
+          'habit tracker',
+        ]}
+        url="https://goalcrumbs.com/privacy"
+      />
       <div className="legal-card">
         <h1 className="legal-title">Privacy Policy</h1>
         <p className="legal-updated">Last updated: {updated}</p>

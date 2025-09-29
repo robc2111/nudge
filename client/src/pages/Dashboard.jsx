@@ -6,7 +6,7 @@ import GoalCard from '../components/GoalCard';
 import SubgoalCard from '../components/SubgoalCard';
 import TaskCard from '../components/TaskCard';
 import { toast } from 'react-toastify';
-import { setSEO, seoPresets } from '../lib/seo';
+import SEO from '../seo/SEO';
 import { atActiveGoalLimit } from '../utils/planGuard';
 
 const REQ_TIMEOUT_MS = 12000;
@@ -84,18 +84,6 @@ const Dashboard = () => {
   useEffect(() => {
     selectedGoalIdRef.current = selectedGoalId;
   }, [selectedGoalId]);
-
-  useEffect(() => {
-    setSEO({
-      title: 'Dashboard – GoalCrumbs',
-      description:
-        'See your goals, subgoals, tasks, and microtasks at a glance.',
-      url: `${seoPresets.baseUrl}/dashboard`,
-      image: '/og/dashboard.png',
-      noindex: true,
-      type: 'website',
-    });
-  }, []);
 
   const getStatusIcon = (status) =>
     ({ todo: '🕒', in_progress: '⚙️', done: '✅' })[status] ?? '❓';
@@ -507,6 +495,13 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard">
+      <SEO
+        title="Dashboard – GoalCrumbs"
+        description="See your goals, subgoals, tasks, and microtasks at a glance."
+        image="/og/dashboard.png"
+        url="https://goalcrumbs.com/dashboard"
+        noindex
+      />
       <div className="dashboard-controls" style={{ gap: '1rem' }}>
         {cachedAt && (
           <div

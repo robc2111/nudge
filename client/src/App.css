@@ -150,7 +150,7 @@ body {
   padding: 0.3rem 0.6rem;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 1rem;
   margin-left: 0.5rem;
 }
 .logout-button:hover {
@@ -177,7 +177,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.95rem;
+  font-size: 1rem;
   white-space: nowrap;
 }
 .header-user button {
@@ -280,7 +280,7 @@ body {
 .dashboard .card li {
   padding: 0.4rem 0;
   border-bottom: 1px solid #eee;
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 /* Goal selector */
@@ -311,7 +311,7 @@ body {
 .status-filter button {
   margin: 0 0.5rem;
   padding: 0.4rem 1rem;
-  font-size: 0.9rem;
+  font-size: 1rem;
   border-radius: 6px;
   border: 1px solid #ccc;
   background-color: #fef0dd;
@@ -875,7 +875,7 @@ img {
   flex-direction: column;
 }
 .char-counter {
-  font-size: 0.8rem;
+  font-size: 1rem;
   color: #666;
   margin-top: 0.25rem;
   text-align: right;
@@ -918,12 +918,12 @@ img {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 .reflection-date {
-  font-size: 0.85rem;
+  font-size: 1rem;
   color: #666;
   margin-bottom: 4px;
 }
 .reflection-goal {
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: #444;
   font-style: italic;
   margin-bottom: 6px;
@@ -984,7 +984,7 @@ img {
   cursor: pointer;
 }
 .modal-meta {
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: #555;
   display: grid;
   gap: 0.25rem;
@@ -1015,13 +1015,13 @@ h1 {
   font-size: clamp(1.6rem, 2.5vw + 1rem, 2.6rem);
 }
 h2 {
-  font-size: clamp(1.3rem, 2vw + 0.75rem, 2rem);
+  font-size: clamp(1.3rem, 2vw + 1rem, 2rem);
 }
 h3 {
-  font-size: clamp(1.1rem, 1.3vw + 0.8rem, 1.4rem);
+  font-size: clamp(1.1rem, 1.3vw + 1rem, 1.4rem);
 }
 .btn {
-  font-size: clamp(0.95rem, 0.4vw + 0.85rem, 1rem);
+  font-size: clamp(1rem, 0.4vw + 1rem, 1rem);
 }
 
 .landing-page,
@@ -1125,7 +1125,7 @@ h3 {
     padding: 0.55rem 0.8rem;
   }
   .dashboard .card li {
-    font-size: 0.9rem;
+    font-size: 1rem;
   }
 }
 
@@ -1214,7 +1214,7 @@ button,
 .footer-link {
   color: #bd661d;
   text-decoration: none;
-  font-size: 0.95rem;
+  font-size: 1rem;
   transition:
     color 0.2s ease,
     border-bottom 0.2s ease;
@@ -1232,7 +1232,7 @@ button,
 }
 .footer-copy {
   margin-top: 1.5rem;
-  font-size: 0.85rem;
+  font-size: 1rem;
   color: #555;
 }
 
@@ -1261,7 +1261,7 @@ button,
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
 }
 .banner-text {
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: #7a4a10;
 }
 .banner-text strong {
@@ -1326,7 +1326,7 @@ button,
 }
 
 .lock-badge {
-  font-size: 0.95rem;
+  font-size: 1rem;
   margin-left: 0.5rem;
   opacity: 0.85;
 }
@@ -1451,7 +1451,7 @@ body,
 }
 
 .legal-card .legal-updated {
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: #666;
   margin-bottom: 1.5rem;
 }
@@ -1549,7 +1549,7 @@ a.btn:focus {
   color: #bd661d;
   text-decoration: underline;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: 1rem;
   padding: 0;
 }
 .help-link:hover {
@@ -1581,7 +1581,7 @@ a.btn:focus {
 .cookie-banner__text {
   margin: 0;
   line-height: 1.4;
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 .cookie-banner__actions {
@@ -1629,4 +1629,42 @@ body {
   background: #a55217; /* brand hover bg */
   border-radius: 6px;
   padding: 0.15rem 0.4rem; /* tiny padding so bg is visible */
+}
+/* src/styles/blog.css (import where appropriate) */
+.page--blog .blog-list {
+  display: grid;
+  gap: 1rem;
+}
+.blog-card {
+  padding: 1rem;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  background: #fff;
+}
+.blog-card h2 {
+  margin: 0 0 0.25rem;
+}
+.blog-card .meta {
+  color: #777;
+  font-size: 1rem;
+}
+.page--post .post {
+  max-width: 720px;
+  margin: 0 auto;
+}
+.post-header h1 {
+  margin-bottom: 0.25rem;
+}
+.post-body :is(h2, h3) {
+  margin-top: 1.5rem;
+}
+.post-cta {
+  text-align: center;
+}
+.post-cta .button {
+  display: inline-block;
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
+  background: #111;
+  color: #fff;
 }

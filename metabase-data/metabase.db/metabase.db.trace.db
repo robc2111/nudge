@@ -4219,3 +4219,5 @@ select t."ARCHIVED_AT" from "PUBLIC"."METABASE_TABLE" t where 0=1 [42122-214]
 	at clojure.lang.AFn.applyToHelper(AFn.java:152)
 	at clojure.lang.RestFn.applyTo(RestFn.java:135)
 	at metabase.core.bootstrap.main(Unknown Source)
+2025-09-26 04:09:04 jdbc[1887]: exception
+org.h2.jdbc.JdbcSQLNonTransientException: The object is already closed [90007-214]

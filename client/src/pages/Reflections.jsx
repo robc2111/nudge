@@ -7,7 +7,7 @@ import React, {
   useLayoutEffect,
 } from 'react';
 import axios from '../api/axios';
-import { setSEO, seoPresets } from '../lib/seo';
+import SEO from '../seo/SEO';
 import { logoutBus } from '../auth/logoutBus';
 
 const MAX_LEN = 500;
@@ -60,19 +60,6 @@ export default function Reflections() {
   const goalsCtrl = useRef(null);
   const addCtrl = useRef(null);
   const debounceRef = useRef(null);
-
-  // ✅ SEO
-  useEffect(() => {
-    setSEO({
-      title: 'Reflections – GoalCrumbs',
-      description:
-        'Review your weekly reflections to spot trends, celebrate wins, and adjust next steps.',
-      url: `${seoPresets.baseUrl}/reflections`,
-      image: '/og/reflections.png',
-      type: 'website',
-      noindex: false,
-    });
-  }, []);
 
   const closeModal = useCallback(() => setOpenRef(null), []);
   useEffect(() => {
@@ -249,6 +236,20 @@ export default function Reflections() {
 
   return (
     <div className="reflections-container">
+      <SEO
+        title="Reflections – GoalCrumbs"
+        description="Review weekly reflections and insights."
+        image="/og/reflections.png"
+        keywords={[
+          'weekly reflections',
+          'self improvement',
+          'goal tracking',
+          'habit tracker',
+          'accountability app',
+        ]}
+        url="https://goalcrumbs.com/reflections"
+        noindex
+      />
       <h1 className="auth-title" style={{ marginBottom: '1rem' }}>
         🪞 Your Reflections
       </h1>

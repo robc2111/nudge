@@ -10,10 +10,17 @@ export default function LandingPage() {
   return (
     <div className="landing-page">
       <SEO
-        title="GoalCrumbs - Your friendly accountability partner"
-        description="Break big goals into small crumbs. Telegram nudges, weekly check-ins, and a clean dashboard."
-        image="/og/birdog.png" // page-specific OG/Twitter image
+        title="GoalCrumbs – Break big goals into tiny crumbs"
+        description="AI accountability, Telegram nudges, weekly check-ins."
+        image="/og/birdog.png"
         url="https://goalcrumbs.com/"
+        keywords={[
+          'goal tracking',
+          'accountability app',
+          'AI coach',
+          'habit tracker',
+          'Telegram reminders',
+        ]}
       />
 
       <section className="hero-section">
@@ -21,7 +28,7 @@ export default function LandingPage() {
           <img className="hero-image" src="/logo.png" alt="GoalCrumbs Logo" />
         </div>
         <div className="hero-right">
-          <h1>Make Big Goals Feel Small</h1>
+          <h1>The Goal Trakcing App That Makes Big Goals Feel Small</h1>
           <p>
             Your AI-powered accountability partner. Stay on track, stay
             motivated, achieve your goals.
@@ -114,12 +121,12 @@ export default function LandingPage() {
 
         <div className="mx-auto max-w-screen-xl px-6 md:px-10 py-12 md:py-16 text-center">
           <h2 className="text-2xl md:text-3xl font-bold">
-            See Your Progress at a Glance
+            Track Your Progress at a Glance
           </h2>
           <img
             className="mx-auto mt-6 rounded-2xl shadow-md w-full max-w-5xl"
             src="/dashboard.png"
-            alt="GoalCrumbs dashboard preview"
+            alt="GoalCrumbs AI accountability app dashboard"
             loading="lazy"
             width={500}
             height={350}

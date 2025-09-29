@@ -1,19 +1,31 @@
 /**
  * Imperative helper for Vite/SPA pages. Call once in a useEffect per page.
- * Example: setSEO({ title: 'Dashboard – GoalCrumbs', description: '...' })
+ * Example: setSEO({ title: 'Dashboard', description: '...' })
  */
 export function setSEO({
   title,
   description,
   url = window.location.href,
-  image = '/og/birdog.png', // sensible default
+  image = '/og/birdog.png',
   siteName = 'GoalCrumbs',
   type = 'website',
   noindex = false,
   canonical,
   jsonLd,
-}) {
+  keywords, // <-- NEW (optional)
+  imageAlt = siteName, // <-- NEW
+  imageWidth = '1200', // <-- NEW (string for attrs)
+  imageHeight = '630', // <-- NEW
+  titleSuffix = ` – ${siteName}`, // <-- NEW
+  twitterSite = '@goalcrumbs', // <-- NEW (adjust if you have one)
+  baseUrl = seoPresets?.baseUrl || 'https://goalcrumbs.com', // absolute fallback
+} = {}) {
   const d = document;
+
+  const abs = (maybeRelative) =>
+    String(maybeRelative || '').startsWith('http')
+      ? maybeRelative
+      : `${baseUrl.replace(/\/$/, '')}/${String(maybeRelative || '').replace(/^\//, '')}`;
 
   const set = (selector, attrs) => {
     let el = d.querySelector(selector);
@@ -25,22 +37,30 @@ export function setSEO({
     }
     Object.entries(attrs).forEach(([k, v]) => {
       if (['tag', 'name', 'property'].includes(k)) return;
-      el.setAttribute(k, v);
+      if (v != null) el.setAttribute(k, v);
     });
   };
 
-  if (title) d.title = title;
+  // Title (with suffix)
+  const finalTitle = title ? `${title}${titleSuffix}` : siteName;
+  d.title = finalTitle;
 
-  if (canonical || url) {
-    let link = d.querySelector('link[rel="canonical"]');
-    if (!link) {
-      link = d.createElement('link');
-      link.rel = 'canonical';
-      d.head.appendChild(link);
-    }
-    link.href = canonical || url;
+  // Canonical (prefer explicit canonical; otherwise normalized current URL)
+  const canonicalHref = canonical
+    ? abs(canonical)
+    : abs(
+        new URL(url).pathname +
+          new URL(url).search.replace(/\b(utm_[^=&]+|ref|source)=[^&]+&?/gi, '')
+      );
+  let link = d.querySelector('link[rel="canonical"]');
+  if (!link) {
+    link = d.createElement('link');
+    link.rel = 'canonical';
+    d.head.appendChild(link);
   }
+  link.href = canonicalHref;
 
+  // Description
   if (description) {
     set('meta[name="description"]', {
       tag: 'meta',
@@ -59,10 +79,20 @@ export function setSEO({
     });
   }
 
+  // Optional keywords
+  if (keywords && Array.isArray(keywords) && keywords.length) {
+    set('meta[name="keywords"]', {
+      tag: 'meta',
+      name: 'keywords',
+      content: keywords.join(', '),
+    });
+  }
+
+  // Open Graph
   set('meta[property="og:title"]', {
     tag: 'meta',
     property: 'og:title',
-    content: title || 'GoalCrumbs',
+    content: finalTitle,
   });
   set('meta[property="og:type"]', {
     tag: 'meta',
@@ -72,7 +102,7 @@ export function setSEO({
   set('meta[property="og:url"]', {
     tag: 'meta',
     property: 'og:url',
-    content: url,
+    content: canonicalHref,
   });
   set('meta[property="og:site_name"]', {
     tag: 'meta',
@@ -82,9 +112,20 @@ export function setSEO({
   set('meta[property="og:image"]', {
     tag: 'meta',
     property: 'og:image',
-    content: image,
+    content: abs(image),
+  });
+  set('meta[property="og:image:width"]', {
+    tag: 'meta',
+    property: 'og:image:width',
+    content: imageWidth,
+  });
+  set('meta[property="og:image:height"]', {
+    tag: 'meta',
+    property: 'og:image:height',
+    content: imageHeight,
   });
 
+  // Twitter
   set('meta[name="twitter:card"]', {
     tag: 'meta',
     name: 'twitter:card',
@@ -93,20 +134,34 @@ export function setSEO({
   set('meta[name="twitter:title"]', {
     tag: 'meta',
     name: 'twitter:title',
-    content: title || 'GoalCrumbs',
+    content: finalTitle,
   });
   set('meta[name="twitter:image"]', {
     tag: 'meta',
     name: 'twitter:image',
-    content: image,
+    content: abs(image),
   });
+  set('meta[name="twitter:image:alt"]', {
+    tag: 'meta',
+    name: 'twitter:image:alt',
+    content: imageAlt,
+  });
+  if (twitterSite) {
+    set('meta[name="twitter:site"]', {
+      tag: 'meta',
+      name: 'twitter:site',
+      content: twitterSite,
+    });
+  }
 
+  // Robots
   set('meta[name="robots"]', {
     tag: 'meta',
     name: 'robots',
     content: noindex ? 'noindex,nofollow' : 'index,follow',
   });
 
+  // JSON-LD
   const existing = d.getElementById('seo-jsonld');
   if (existing) existing.remove();
   if (jsonLd) {

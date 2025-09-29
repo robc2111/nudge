@@ -24,6 +24,7 @@ const Header = () => {
         <nav className="header-nav">
           <Link to="/">Home</Link>
           <Link to="/faq">FAQs</Link>
+          <Link to="/blog">Blog</Link> {/* 👈 new link */}
           {user ? (
             <>
               <Link to="/dashboard">Dashboard</Link>

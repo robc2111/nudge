@@ -1,9 +1,9 @@
 // src/pages/Login.jsx
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from '../api/axios';
 import { useAuth } from '../auth/auth-context';
-import { setSEO, seoPresets } from '../lib/seo';
+import SEO from '../seo/SEO';
 
 const Login = () => {
   const { login } = useAuth();
@@ -16,16 +16,6 @@ const Login = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
-
-  useEffect(() => {
-    setSEO({
-      title: 'Log in – GoalCrumbs',
-      description: 'Access your GoalCrumbs account.',
-      url: `${seoPresets.baseUrl}/login`,
-      image: seoPresets.brandImage,
-      noindex: true,
-    });
-  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -83,6 +73,13 @@ const Login = () => {
 
   return (
     <div className="form-page">
+      <SEO
+        title="Log in – GoalCrumbs"
+        description="Access your GoalCrumbs account."
+        url="https://goalcrumbs.com/login"
+        image="/og/birdog.png"
+        noindex
+      />
       <div className="auth-card">
         <h2 className="auth-title">Log in to GoalCrumbs</h2>
 
