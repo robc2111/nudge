@@ -25,10 +25,29 @@ export default function LandingPage() {
 
       <section className="hero-section">
         <div className="hero-left">
-          <img className="hero-image" src="/logo.png" alt="GoalCrumbs Logo" />
+          <picture>
+            <source
+              srcSet="/images/logo-512.avif 2x, /images/logo-256.avif 1x"
+              type="image/avif"
+            />
+            <source
+              srcSet="/images/logo-512.webp 2x, /images/logo-256.webp 1x"
+              type="image/webp"
+            />
+            <img
+              src="/images/logo-256.webp"
+              alt="GoalCrumbs logo"
+              width="256"
+              height="256"
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+              className="hero-image"
+            />
+          </picture>
         </div>
         <div className="hero-right">
-          <h1>The Goal Trakcing App That Makes Big Goals Feel Small</h1>
+          <h1>The Goal Tracking App That Makes Big Goals Feel Small</h1>
           <p>
             Your AI-powered accountability partner. Stay on track, stay
             motivated, achieve your goals.
@@ -73,7 +92,24 @@ export default function LandingPage() {
         <div className="how-it-works-section">
           <h2>How It Works 🍰</h2>
           <div>
-            <img src="/cake.png" alt="Goal" />
+            <picture>
+              <source
+                srcSet="/images/cake-240.avif 2x, /images/cake-120.avif 1x"
+                type="image/avif"
+              />
+              <source
+                srcSet="/images/cake-240.webp 2x, /images/cake-120.webp 1x"
+                type="image/webp"
+              />
+              <img
+                src="/images/cake-120.webp"
+                alt="Goal"
+                width="120"
+                height="120"
+                loading="lazy"
+                decoding="async"
+              />
+            </picture>
             <p>
               <strong>Goal:</strong> Describe your mission.
             </p>
@@ -123,17 +159,29 @@ export default function LandingPage() {
           <h2 className="text-2xl md:text-3xl font-bold">
             Track Your Progress at a Glance
           </h2>
-          <img
-            className="mx-auto mt-6 rounded-2xl shadow-md w-full max-w-5xl"
-            src="/dashboard.png"
-            alt="GoalCrumbs AI accountability app dashboard"
-            loading="lazy"
-            width={500}
-            height={350}
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
-          />
+          <picture>
+            <source
+              type="image/avif"
+              srcSet="/images/dashboard-400.avif 400w, /images/dashboard-800.avif 800w, /images/dashboard-1600.avif 1600w"
+            />
+            <source
+              type="image/webp"
+              srcSet="/images/dashboard-400.webp 400w, /images/dashboard-800.webp 800w, /images/dashboard-1600.webp 1600w"
+            />
+            <img
+              src="/images/dashboard-800.webp"
+              alt="GoalCrumbs AI accountability app dashboard"
+              width="1600"
+              height="1000" // use your real aspect if you know it
+              loading="lazy"
+              decoding="async"
+              className="mx-auto mt-6 rounded-2xl shadow-md w-full max-w-5xl"
+              sizes="(max-width: 640px) 90vw, (max-width: 1024px) 80vw, 800px"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          </picture>
           <p>
             Visit the dashboard to view your goal in detail and the progress you
             have made so far.

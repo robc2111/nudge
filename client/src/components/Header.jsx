@@ -1,5 +1,5 @@
 // src/components/header.jsx
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 
 const Header = () => {
@@ -7,7 +7,7 @@ const Header = () => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    logout(); // clears token, caches, and emits logoutBus
+    logout();
     navigate('/login', { replace: true });
   };
 
@@ -15,25 +15,46 @@ const Header = () => {
     <header className="goalcrumbs-header">
       <div className="header-container">
         <div className="header-left">
-          <Link to="/" className="logo-link">
-            <img className="logo" src="/logo.png" alt="GoalCrumbs Logo" />
+          <Link to="/" className="logo-link" aria-label="GoalCrumbs home">
+            <picture>
+              <source
+                srcSet="/images/logo-512.avif 2x, /images/logo-256.avif 1x"
+                type="image/avif"
+              />
+              <source
+                srcSet="/images/logo-512.webp 2x, /images/logo-256.webp 1x"
+                type="image/webp"
+              />
+              <img
+                src="/images/logo-256.webp"
+                alt="GoalCrumbs logo"
+                width="256"
+                height="256"
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+                className="logo"
+              />
+            </picture>
             <span className="logo-text">GoalCrumbs</span>
           </Link>
         </div>
 
-        <nav className="header-nav">
-          <Link to="/">Home</Link>
-          <Link to="/faq">FAQs</Link>
-          <Link to="/blog">Blog</Link> {/* 👈 new link */}
+        <nav className="header-nav" aria-label="Primary">
+          <NavLink to="/" end>
+            Home
+          </NavLink>
+          <NavLink to="/faq">FAQs</NavLink>
+          <NavLink to="/blog">Blog</NavLink>
           {user ? (
             <>
-              <Link to="/dashboard">Dashboard</Link>
-              <Link to="/profile">Profile</Link>
+              <NavLink to="/dashboard">Dashboard</NavLink>
+              <NavLink to="/profile">Profile</NavLink>
             </>
           ) : (
             <>
-              <Link to="/login">Login</Link>
-              <Link to="/signup">Sign Up</Link>
+              <NavLink to="/login">Login</NavLink>
+              <NavLink to="/signup">Sign Up</NavLink>
             </>
           )}
         </nav>

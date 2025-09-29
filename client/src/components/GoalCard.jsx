@@ -12,8 +12,8 @@ const GoalCard = ({
   getProgress,
   getStatusIcon,
   canDelete = true,
-  userPlan = 'free',        // 👈 pass plan down (free/pro)
-  onRefresh,               // 👈 optional: refresh dashboard after actions
+  userPlan = 'free', // 👈 pass plan down (free/pro)
+  onRefresh, // 👈 optional: refresh dashboard after actions
 }) => {
   const navigate = useNavigate();
 
@@ -23,7 +23,8 @@ const GoalCard = ({
       const ai = Number(a?.order_index ?? Number.MAX_SAFE_INTEGER);
       const bi = Number(b?.order_index ?? Number.MAX_SAFE_INTEGER);
       if (ai !== bi) return ai - bi;
-      if (a?.created_at && b?.created_at) return new Date(a.created_at) - new Date(b.created_at);
+      if (a?.created_at && b?.created_at)
+        return new Date(a.created_at) - new Date(b.created_at);
       return String(a?.title || '').localeCompare(String(b?.title || ''));
     });
   }, [goal?.subgoals]);
@@ -33,10 +34,7 @@ const GoalCard = ({
     [goal?.subgoals, getProgress]
   );
 
-  const handleSelect = useCallback(
-    (id) => onSelect?.(id),
-    [onSelect]
-  );
+  const handleSelect = useCallback((id) => onSelect?.(id), [onSelect]);
 
   const onKeySelect = useCallback(
     (evt, id) => {
@@ -63,7 +61,26 @@ const GoalCard = ({
   if (!goal) {
     return (
       <div className="card">
-        <img src="/cake.png" alt="Goal" />
+        {/* empty-state card */}
+        <picture>
+          <source
+            srcSet="/images/cake-240.avif 2x, /images/cake-120.avif 1x"
+            type="image/avif"
+          />
+          <source
+            srcSet="/images/cake-240.webp 2x, /images/cake-120.webp 1x"
+            type="image/webp"
+          />
+          <img
+            src="/images/cake-120.webp"
+            alt="Goal"
+            width="120"
+            height="120"
+            loading="lazy"
+            decoding="async"
+            style={{ inlineSize: 60, blockSize: 60 }}
+          />
+        </picture>
         <h3>No goal selected</h3>
       </div>
     );
@@ -71,12 +88,36 @@ const GoalCard = ({
 
   return (
     <div className="card">
-      <div >
-        <img src="/cake.png" alt="Goal" />
+      <div>
+        {/* main card header */}
+        <picture>
+          <source
+            srcSet="/images/cake-240.avif 2x, /images/cake-120.avif 1x"
+            type="image/avif"
+          />
+          <source
+            srcSet="/images/cake-240.webp 2x, /images/cake-120.webp 1x"
+            type="image/webp"
+          />
+          <img
+            src="/images/cake-120.webp"
+            alt="Goal"
+            width="120"
+            height="120"
+            loading="lazy"
+            decoding="async"
+            style={{ inlineSize: 60, blockSize: 60 }}
+          />
+        </picture>
         <h3 style={{ margin: 0 }}>
           Goal: {goal.title}{' '}
           {isLockedByPlan && (
-            <span className="lock-badge" title="Free plan: only 1 active goal at a time">🔒</span>
+            <span
+              className="lock-badge"
+              title="Free plan: only 1 active goal at a time"
+            >
+              🔒
+            </span>
           )}
         </h3>
       </div>
@@ -84,15 +125,16 @@ const GoalCard = ({
       <p>📊 Progress: {progress}%</p>
 
       <h4 style={{ marginTop: '0.75rem' }}>Subgoals</h4>
-      <ul role="listbox" aria-label="Subgoals">
+      <ul className="subgoal-list">
         {sortedSubgoals.map((sg) => {
           const isSelected = sg.id === selectedId;
           const statusClass =
             sg.status === 'done'
               ? 'status-done'
               : sg.status === 'in_progress'
-              ? 'status-in-progress'
-              : '';
+                ? 'status-in-progress'
+                : '';
+
           return (
             <li
               key={sg.id}
@@ -113,7 +155,10 @@ const GoalCard = ({
       </ul>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-        <button className="card-buttons" onClick={() => navigate(`/edit-goal/${goal.id}`)}>
+        <button
+          className="card-buttons"
+          onClick={() => navigate(`/edit-goal/${goal.id}`)}
+        >
           📝 Edit Goal
         </button>
 
