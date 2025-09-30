@@ -28,42 +28,42 @@ const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
 const FAQ = lazy(() => import('./pages/FAQ'));
 
-const Loader = () => <div style={{ padding: '2rem' }}>Loading…</div>;
-
 const Protected = () => (
   <PrivateRoute>
     <Outlet />
   </PrivateRoute>
 );
 
+// App.jsx
 export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        {/* Skip link for keyboard users */}
-        <a href="#main" className="skip-link">
-          Skip to main content
-        </a>
+        <div className="app-shell">
+          {/* ✅ NEW wrapper */}
+          {/* Skip link for keyboard users */}
+          <a href="#main" className="skip-link">
+            Skip to main content
+          </a>
 
-        <Header />
+          <Header />
 
-        {/* 🔝 Always reset scroll on route changes */}
-        <ScrollManager />
+          {/* 🔝 Always reset scroll on route changes */}
+          <ScrollManager />
 
-        <ToastContainer
-          position="bottom-right"
-          autoClose={3000}
-          newestOnTop
-          pauseOnFocusLoss={false}
-          pauseOnHover
-          closeOnClick
-          draggable
-          limit={3}
-        />
+          <ToastContainer
+            position="bottom-right"
+            autoClose={3000}
+            newestOnTop
+            pauseOnFocusLoss={false}
+            pauseOnHover
+            closeOnClick
+            draggable
+            limit={3}
+          />
 
-        {/* Main content wrapper – give it the #main target */}
-        <main id="main" role="main" tabIndex={-1}>
-          <Suspense fallback={<Loader />}>
+          {/* ✅ give main the layout class */}
+          <main id="main" role="main" tabIndex={-1} className="app-main">
             <Routes>
               {/* Public */}
               <Route path="/" element={<LandingPage />} />
@@ -99,11 +99,17 @@ export default function App() {
               {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-            <CookieBanner />
-          </Suspense>
-        </main>
+            {typeof window !== 'undefined' && (
+              <Suspense
+                fallback={<div style={{ padding: '2rem' }}>Loading…</div>}
+              >
+                <CookieBanner />
+              </Suspense>
+            )}
+          </main>
 
-        <Footer />
+          <Footer />
+        </div>
       </BrowserRouter>
     </ErrorBoundary>
   );

@@ -114,3 +114,7 @@ button:focus-visible {
 .skip-link:focus {
   transform: translateY(0);
 }
+/* index.css (global) */
+html {
+  overflow-y: scroll;
+} /* not auto */

@@ -1330,6 +1330,18 @@ button,
   margin-left: 0.5rem;
   opacity: 0.85;
 }
+.footer-socials a {
+  display: inline-flex;
+  inline-size: 24px;
+  block-size: 24px;
+  align-items: center;
+  justify-content: center;
+}
+.footer-socials svg {
+  inline-size: 20px;
+  block-size: 20px;
+  flex: 0 0 20px;
+}
 
 /* Toggle switch */
 .switch {
@@ -1667,4 +1679,124 @@ body {
   border-radius: 10px;
   background: #111;
   color: #fff;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+.app-shell {
+  min-height: 100svh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.app-main {
+  flex: 1 0 auto; /* content grows, footer stays fixed height */
+}
+
+.footer-contacts a,
+.footer-links a {
+  min-width: 90px; /* avoids reflow when links wrap differently */
+  text-align: center;
+}
+
+.hero-logo-wrapper {
+  width: 256px;
+  height: 256px;
+  flex-shrink: 0;
+}
+
+.hero-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.footer-contacts a,
+.footer-links a {
+  min-width: 100px; /* reserve width */
+}
+
+/* Rows inside footer shouldn’t change height after font swap */
+.footer-contacts,
+.footer-socials,
+.footer-links {
+  min-block-size: 32px; /* at least one line tall */
+  align-items: center;
+}
+
+/* Prevent unexpected wrapping changes from altering height */
+.footer-contacts a,
+.footer-links a {
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  /* allow wrapping on tiny screens but keep line-height stable */
+  .footer-contacts a,
+  .footer-links a {
+    white-space: normal;
+    line-height: 1.25;
+  }
+}
+
+.goalcrumbs-header {
+  min-block-size: 56px; /* reserve height */
+  contain: layout paint; /* isolate layout */
+  content-visibility: auto;
+  contain-intrinsic-size: 56px;
+}
+.footer-socials {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  min-height: 32px; /* reserves space even before icons load */
+}
+
+.footer-social-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+/* App shell layout is fine to keep */
+.app-shell {
+  min-height: 100svh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+/* Footer grows with content (no clipping) */
+footer.footer {
+  min-block-size: 180px;
+}
+@media (max-width: 768px) {
+  footer.footer {
+    min-block-size: 220px;
+  }
+}
+
+/* Reserve icon space and row height */
+.footer-socials {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  min-block-size: 32px;
+}
+.footer-social-link {
+  display: inline-flex;
+  inline-size: 24px;
+  block-size: 24px;
+  align-items: center;
+  justify-content: center;
+}
+.footer-social-link svg {
+  inline-size: 20px;
+  block-size: 20px;
+  flex: 0 0 20px;
 }

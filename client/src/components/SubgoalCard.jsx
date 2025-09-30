@@ -24,9 +24,28 @@ const SubgoalCard = ({
   if (!subgoal) {
     return (
       <div className="card">
-        <img src="/slice.png" alt="Subgoal" />
+        <picture>
+          <source
+            srcSet="/images/slice-240.avif 2x, /images/slice-120.avif 1x"
+            type="image/avif"
+          />
+          <source
+            srcSet="/images/slice-240.webp 2x, /images/slice-120.webp 1x"
+            type="image/webp"
+          />
+          <img
+            src="/images/slice-120.webp"
+            alt="Subgoal"
+            width="120"
+            height="120"
+            loading="lazy"
+            decoding="async"
+          />
+        </picture>
         <h3>No Subgoal</h3>
-        <p className="text-sm text-gray-500">Select a subgoal to see its tasks.</p>
+        <p className="text-sm text-gray-500">
+          Select a subgoal to see its tasks.
+        </p>
       </div>
     );
   }
@@ -40,15 +59,36 @@ const SubgoalCard = ({
 
   return (
     <div className="card">
-      <img src="/slice.png" alt="Subgoal" />
-      <h3 className={`font-semibold px-2 py-1 rounded ${getStatusClass(subgoal.status)}`}>Current Subgoal: {" "}
-        {subgoal.title}
+      <picture>
+        <source
+          srcSet="/images/slice-240.avif 2x, /images/slice-120.avif 1x"
+          type="image/avif"
+        />
+        <source
+          srcSet="/images/slice-240.webp 2x, /images/slice-120.webp 1x"
+          type="image/webp"
+        />
+        <img
+          src="/images/slice-120.webp"
+          alt="Subgoal"
+          width="120"
+          height="120"
+          loading="lazy"
+          decoding="async"
+        />
+      </picture>
+      <h3
+        className={`font-semibold px-2 py-1 rounded ${getStatusClass(subgoal.status)}`}
+      >
+        Current Subgoal: {subgoal.title}
       </h3>
 
       <p>📊 Progress: {getProgress(subgoal.tasks || [])}%</p>
 
       {safeTasks.length === 0 ? (
-        <p className="text-sm text-gray-500 mt-2 italic">No tasks yet for this subgoal.</p>
+        <p className="text-sm text-gray-500 mt-2 italic">
+          No tasks yet for this subgoal.
+        </p>
       ) : (
         <ul role="listbox" aria-label="Tasks">
           {safeTasks.map((task) => {
@@ -57,8 +97,8 @@ const SubgoalCard = ({
               task.status === 'done'
                 ? 'status-done'
                 : task.status === 'in_progress'
-                ? 'status-in-progress'
-                : '';
+                  ? 'status-in-progress'
+                  : '';
 
             return (
               <li

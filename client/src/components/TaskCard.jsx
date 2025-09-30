@@ -12,7 +12,7 @@ const TaskCard = ({
   selectedMicrotask,
   handleMicrotaskToggle,
   getStatusIcon,
-  getStatusClass,   // keep status styling consistent across cards
+  getStatusClass, // keep status styling consistent across cards
   getProgress,
   refreshData,
 }) => {
@@ -57,7 +57,10 @@ const TaskCard = ({
       refreshData?.();
       setSelectedMicrotaskId(null);
     } catch (err) {
-      const msg = err.response?.data?.error || err.message || 'Failed to break down microtask';
+      const msg =
+        err.response?.data?.error ||
+        err.message ||
+        'Failed to break down microtask';
       console.error('Breakdown failed:', msg);
       toast.error(`Breakdown failed: ${msg}`);
     } finally {
@@ -68,16 +71,52 @@ const TaskCard = ({
   if (!task) {
     return (
       <div className="card">
-        <img src="/crumbs.png" alt="Task" />
+        <picture>
+          <source
+            srcSet="/images/crumbs-240.avif 2x, /images/crumbs-120.avif 1x"
+            type="image/avif"
+          />
+          <source
+            srcSet="/images/crumbs-240.webp 2x, /images/crumbs-120.webp 1x"
+            type="image/webp"
+          />
+          <img
+            src="/images/crumbs-120.webp"
+            alt="Task"
+            width="120"
+            height="120"
+            loading="lazy"
+            decoding="async"
+          />
+        </picture>
         <h3>Current Task</h3>
-        <p className="text-sm text-gray-500">Pick a subgoal to see its tasks.</p>
+        <p className="text-sm text-gray-500">
+          Pick a subgoal to see its tasks.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="card">
-      <img src="/crumbs.png" alt="Task" />
+      <picture>
+        <source
+          srcSet="/images/crumbs-240.avif 2x, /images/crumbs-120.avif 1x"
+          type="image/avif"
+        />
+        <source
+          srcSet="/images/crumbs-240.webp 2x, /images/crumbs-120.webp 1x"
+          type="image/webp"
+        />
+        <img
+          src="/images/crumbs-120.webp"
+          alt="Task"
+          width="120"
+          height="120"
+          loading="lazy"
+          decoding="async"
+        />
+      </picture>
       <h3>Current Task: {task.title}</h3>
       <p>📊 Progress: {progress}%</p>
 
@@ -93,8 +132,8 @@ const TaskCard = ({
                 (mt.status === 'done'
                   ? 'status-done'
                   : mt.status === 'in_progress'
-                  ? 'status-in-progress'
-                  : '');
+                    ? 'status-in-progress'
+                    : '');
 
               return (
                 <Motion.li
@@ -127,7 +166,10 @@ const TaskCard = ({
             className="card-buttons"
             onClick={() =>
               !loading &&
-              handleMicrotaskToggle(selectedMicrotaskId, selectedMicrotask.status)
+              handleMicrotaskToggle(
+                selectedMicrotaskId,
+                selectedMicrotask.status
+              )
             }
             disabled={loading}
             aria-busy={loading}
@@ -138,17 +180,17 @@ const TaskCard = ({
           </button>
 
           <button
-  className="card-buttons"
-  onClick={handleBreakdown}
-  disabled={
-    !selectedMicrotask?.task_id ||
-    loading ||
-    selectedMicrotask?.status === 'done'   // 🚫 disable if done
-  }
-  aria-busy={loading}
->
-  {loading ? '⏳ Breaking down…' : '🪄 Break Down'}
-</button>
+            className="card-buttons"
+            onClick={handleBreakdown}
+            disabled={
+              !selectedMicrotask?.task_id ||
+              loading ||
+              selectedMicrotask?.status === 'done' // 🚫 disable if done
+            }
+            aria-busy={loading}
+          >
+            {loading ? '⏳ Breaking down…' : '🪄 Break Down'}
+          </button>
         </div>
       ) : (
         <p className="text-sm text-gray-500 mt-2 italic">

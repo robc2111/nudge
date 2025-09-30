@@ -8,9 +8,6 @@ const contacts = [
   { email: 'admin@goalcrumbs.com' },
 ];
 
-// If/when you enable these again, re-import the icons above.
-// { icon: FaInstagram, url: 'https://instagram.com/goal_crumbs', label: 'Instagram' },
-// { icon: FaTwitter,   url: 'https://twitter.com/goalcrumbs',    label: 'Twitter' },
 const socials = [
   {
     icon: FaLinkedin,
@@ -24,7 +21,7 @@ const socials = [
   },
 ];
 
-const Footer = () => {
+export default function Footer() {
   return (
     <footer className="footer">
       <div className="footer-section">
@@ -41,20 +38,19 @@ const Footer = () => {
       <div className="footer-section">
         <h4>🔗 Social</h4>
         <div className="footer-socials">
-          {socials.map(({ icon, url, label }) => {
-            const Icon = icon;
-            return (
+          <div className="footer-socials">
+            {socials.map((s) => (
               <a
-                key={label}
-                href={url}
+                key={s.label}
+                href={s.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={label}
+                aria-label={s.label}
               >
-                <Icon size={20} />
+                <s.icon size={20} aria-hidden="true" />
               </a>
-            );
-          })}
+            ))}
+          </div>
         </div>
       </div>
 
@@ -75,6 +71,4 @@ const Footer = () => {
       </p>
     </footer>
   );
-};
-
-export default Footer;
+}

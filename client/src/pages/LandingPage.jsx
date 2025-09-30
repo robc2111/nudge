@@ -25,26 +25,29 @@ export default function LandingPage() {
 
       <section className="hero-section">
         <div className="hero-left">
-          <picture>
-            <source
-              srcSet="/images/logo-512.avif 2x, /images/logo-256.avif 1x"
-              type="image/avif"
-            />
-            <source
-              srcSet="/images/logo-512.webp 2x, /images/logo-256.webp 1x"
-              type="image/webp"
-            />
-            <img
-              src="/images/logo-256.webp"
-              alt="GoalCrumbs logo"
-              width="256"
-              height="256"
-              loading="eager"
-              fetchPriority="high"
-              decoding="async"
-              className="hero-image"
-            />
-          </picture>
+          <div className="hero-logo-wrapper">
+            <picture>
+              <source
+                srcSet="/images/logo-512.avif 2x, /images/logo-256.avif 1x"
+                type="image/avif"
+              />
+              <source
+                srcSet="/images/logo-512.webp 2x, /images/logo-256.webp 1x"
+                type="image/webp"
+              />
+              <img
+                src="/images/logo-256.webp"
+                alt="GoalCrumbs logo"
+                width="256"
+                height="256"
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+                className="hero-image"
+                style={{ aspectRatio: '1 / 1', objectFit: 'contain' }}
+              />
+            </picture>
+          </div>
         </div>
         <div className="hero-right">
           <h1>The Goal Tracking App That Makes Big Goals Feel Small</h1>
@@ -115,21 +118,72 @@ export default function LandingPage() {
             </p>
           </div>
           <div>
-            <img src="/slice.png" alt="Subgoal" />
+            <picture>
+              <source
+                srcSet="/images/slice-240.avif 2x, /images/slice-120.avif 1x"
+                type="image/avif"
+              />
+              <source
+                srcSet="/images/slice-240.webp 2x, /images/slice-120.webp 1x"
+                type="image/webp"
+              />
+              <img
+                src="/images/slice-120.webp"
+                alt="Subgoal"
+                width="120"
+                height="120"
+                loading="lazy"
+                decoding="async"
+              />
+            </picture>
             <p>
               <strong>Subgoal:</strong> We slice your goal into weekly
               milestones.
             </p>
           </div>
           <div>
-            <img src="/crumbs.png" alt="Tasks" />
+            <picture>
+              <source
+                srcSet="/images/crumbs-240.avif 2x, /images/crumbs-120.avif 1x"
+                type="image/avif"
+              />
+              <source
+                srcSet="/images/crumbs-240.webp 2x, /images/crumbs-120.webp 1x"
+                type="image/webp"
+              />
+              <img
+                src="/images/crumbs-120.webp"
+                alt="Tasks"
+                width="120"
+                height="120"
+                loading="lazy"
+                decoding="async"
+              />
+            </picture>
             <p>
               <strong>Tasks → Microtasks:</strong> Subgoals are broken down to
               smaller steps with daily reminders.
             </p>
           </div>
           <div>
-            <img src="/ant.png" alt="Daily Reminders" />
+            <picture>
+              <source
+                srcSet="/images/ant-240.avif 2x, /images/ant-120.avif 1x"
+                type="image/avif"
+              />
+              <source
+                srcSet="/images/ant-240.webp 2x, /images/ant-120.webp 1x"
+                type="image/webp"
+              />
+              <img
+                src="/images/ant-120.webp"
+                alt="Daily Reminders"
+                width="120"
+                height="120"
+                loading="lazy"
+                decoding="async"
+              />
+            </picture>
             <p>
               <strong>Daily Reminders:</strong> The next steps toward your goal
               are sent to you daily via Telegram.
