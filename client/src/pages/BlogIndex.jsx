@@ -1,57 +1,25 @@
-import { useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+// src/pages/BlogIndex.jsx
+import { Link } from 'react-router-dom';
 import posts from '../posts/_index';
-import SEO from '../seo/SEO';
 
-export default function BlogPost() {
-  const { slug } = useParams();
-  const post = useMemo(() => posts.find((p) => p.slug === slug), [slug]);
-
-  if (!post) {
-    return (
-      <main className="page page--blog">
-        <SEO
-          title="Post not found – GoalCrumbs"
-          description="This article could not be found."
-          url={`https://goalcrumbs.com/blog/${slug}`}
-          image="/og/blog.png"
-          keywords={[
-            'goal setting',
-            'accountability app',
-            'AI coach',
-            'habit tracking',
-            'self improvement blog',
-          ]}
-          noindex
-        />
-        <div className="container">
-          <p className="muted">
-            <Link to="/blog">← All posts</Link>
-          </p>
-          <h1>Post not found</h1>
-        </div>
-      </main>
-    );
-  }
-
+export default function BlogIndex() {
+  if (!Array.isArray(posts) || posts.length === 0) return <p>No posts yet.</p>;
   return (
     <main className="page page--blog">
-      <SEO
-        title={`${post.title} – GoalCrumbs`}
-        description={post.summary}
-        image={post.image || '/og/blog.png'}
-        url={`https://goalcrumbs.com/blog/${post.slug}`}
-        jsonLd={{
-          '@context': 'https://schema.org',
-          '@type': 'BlogPosting',
-          headline: post.title,
-          description: post.summary,
-          datePublished: post.date,
-          image: post.image ? post.image : undefined,
-          url: `https://goalcrumbs.com/blog/${post.slug}`,
-        }}
-      />
-      {/* ... */}
+      <div className="container">
+        <h1>Blog</h1>
+        <ul>
+          {posts.map((p) => (
+            <li key={p.slug}>
+              <Link to={`/blog/${p.slug}`}>{p.title}</Link>
+              <span>
+                {' '}
+                — {p.prettyDate} · {p.readingTime} min
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </main>
   );
 }

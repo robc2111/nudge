@@ -1,4 +1,4 @@
-import aiAccountabilityPartner from './ai-accountability-partner.post';
+import aiAccountabilityPartner from './ai-accountability-partner';
 
 const posts = [
   aiAccountabilityPartner,
