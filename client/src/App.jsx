@@ -14,7 +14,10 @@ import ScrollManager from './components/ScrollManager';
 import BlogIndex from './pages/BlogIndex';
 import BlogPost from './pages/BlogPost';
 
-const LandingPage = lazy(() => import('./pages/LandingPage'));
+// ✅ Home is NOT lazy. Keeps it in the entry chunk.
+import LandingPage from './pages/LandingPage';
+
+// Lazies for non-home routes
 const LogIn = lazy(() => import('./pages/LogIn'));
 const SignUp = lazy(() => import('./pages/SignUp'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -34,23 +37,16 @@ const Protected = () => (
   </PrivateRoute>
 );
 
-// App.jsx
 export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
         <div className="app-shell">
-          {/* ✅ NEW wrapper */}
-          {/* Skip link for keyboard users */}
           <a href="#main" className="skip-link">
             Skip to main content
           </a>
-
           <Header />
-
-          {/* 🔝 Always reset scroll on route changes */}
           <ScrollManager />
-
           <ToastContainer
             position="bottom-right"
             autoClose={3000}
@@ -61,53 +57,49 @@ export default function App() {
             draggable
             limit={3}
           />
-
-          {/* ✅ give main the layout class */}
           <main id="main" role="main" tabIndex={-1} className="app-main">
-            <Routes>
-              {/* Public */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/logIn" element={<LogIn />} />
-              <Route path="/signup" element={<SignUp />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/faq" element={<FAQ />} />
-              <Route path="/blog" element={<BlogIndex />} />
-              <Route path="/blog/:slug" element={<BlogPost />} />
+            {/* One Suspense wrapper for all lazies except home */}
+            <Suspense
+              fallback={<div style={{ padding: '2rem' }}>Loading…</div>}
+            >
+              <Routes>
+                {/* Public */}
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/logIn" element={<LogIn />} />
+                <Route path="/signup" element={<SignUp />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/faq" element={<FAQ />} />
+                <Route path="/blog" element={<BlogIndex />} />
+                <Route path="/blog/:slug" element={<BlogPost />} />
 
-              {/* Private */}
-              <Route element={<Protected />}>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/reflections" element={<Reflections />} />
-                <Route
-                  path="/goal-setup"
-                  element={
-                    <PlanGuard>
-                      <GoalSetup />
-                    </PlanGuard>
-                  }
-                />
-                <Route path="/edit-goal/:id" element={<EditGoal />} />
-                <Route path="/billing/success" element={<BillingSuccess />} />
-                <Route path="/billing/cancel" element={<BillingCancel />} />
-              </Route>
+                {/* Private */}
+                <Route element={<Protected />}>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/reflections" element={<Reflections />} />
+                  <Route
+                    path="/goal-setup"
+                    element={
+                      <PlanGuard>
+                        <GoalSetup />
+                      </PlanGuard>
+                    }
+                  />
+                  <Route path="/edit-goal/:id" element={<EditGoal />} />
+                  <Route path="/billing/success" element={<BillingSuccess />} />
+                  <Route path="/billing/cancel" element={<BillingCancel />} />
+                </Route>
 
-              {/* Password reset */}
-              <Route path="/reset-password" element={<ResetPassword />} />
+                {/* Password reset */}
+                <Route path="/reset-password" element={<ResetPassword />} />
 
-              {/* 404 */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            {typeof window !== 'undefined' && (
-              <Suspense
-                fallback={<div style={{ padding: '2rem' }}>Loading…</div>}
-              >
-                <CookieBanner />
-              </Suspense>
-            )}
+                {/* 404 */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+            {typeof window !== 'undefined' && <CookieBanner />}
           </main>
-
           <Footer />
         </div>
       </BrowserRouter>

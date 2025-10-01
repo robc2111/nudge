@@ -2,33 +2,45 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/ant.png" />
-    <link rel="preload" as="image" href="/images/logo-512.avif" type="image/avif" fetchpriority="high">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+    <!-- Use SVG favicon to avoid raster fetch -->
+    <link rel="icon" type="image/svg+xml" href="/icons/ant.svg" />
+    <!-- Preload LCP image -->
+    <link rel="preload" as="image" href="/images/logo-512.avif" type="image/avif" fetchpriority="high" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GoalCrumbs – Break Big Goals Into Tiny Crumbs</title>
 
     <!-- Canonical -->
     <link rel="canonical" href="https://goalcrumbs.com/" />
 
-    <!-- Description (fallback for crawlers) -->
+    <!-- Description -->
     <meta
       name="description"
       content="Your AI-powered accountability partner. Break big goals into manageable steps, get daily Telegram reminders, and track progress."
     />
 
-    <!-- Open Graph (site-wide default) -->
+    <!-- Open Graph -->
     <meta property="og:title" content="GoalCrumbs – Break Big Goals Into Tiny Crumbs" />
     <meta property="og:description" content="Your AI-powered accountability partner. Break big goals into manageable steps, get daily Telegram reminders, and track your progress with ease." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://goalcrumbs.com/" />
-    <meta property="og:image" content="https://goalcrumbs.com/og/birdog.png" />
+    <!-- Use WebP for share image; keep a separate PNG only on the server if you need legacy crawlers -->
+    <meta property="og:image" content="https://goalcrumbs.com/og/birdog.webp" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="GoalCrumbs – Break Big Goals Into Tiny Crumbs" />
     <meta name="twitter:description" content="Stay consistent with your goals using GoalCrumbs. Daily reminders, weekly check-ins, and a clean dashboard keep you moving forward." />
-    <meta name="twitter:image" content="https://goalcrumbs.com/og/cakeog.png" />
+    <meta name="twitter:image" content="https://goalcrumbs.com/og/cakeog.webp" />
+
+    <!-- Tiny critical CSS to avoid an extra CSS hop before LCP -->
+    <style>
+      .hero-section{display:grid;grid-template-columns:1fr;gap:1.25rem;align-items:center;padding:2rem 1rem}
+      @media(min-width:900px){.hero-section{grid-template-columns:auto 1fr;gap:2rem;padding:3rem 2rem}}
+      .hero-image{max-width:256px}
+      .btn{display:inline-block;padding:.6rem 1rem;border-radius:.75rem;border:1px solid #0000;background:#c97326;color:#fff;font-weight:600;text-decoration:none}
+      .btn.secondary{background:#fff;color:#333;border-color:#c97326}
+      .skip-link{position:absolute;left:-9999px}.skip-link:focus{left:0;top:0;background:#000;color:#fff;padding:.5rem 1rem;z-index:1000}
+    </style>
   </head>
   <body>
     <div id="root"></div>

@@ -1800,3 +1800,162 @@ footer.footer {
   block-size: 20px;
   flex: 0 0 20px;
 }
+/* Base */
+.brand-btn {
+  --brand: #bd661d;
+  --brand-hover: #a55217;
+  --text: #ffffff;
+  --text-hover: #fcefe3;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.02s ease;
+}
+
+/* Solid (default) */
+.brand-btn--solid {
+  background: var(--brand);
+  color: var(--text);
+}
+.brand-btn--solid:hover {
+  background: var(--brand-hover);
+  color: var(--text-hover);
+}
+.brand-btn--solid:active {
+  transform: translateY(1px);
+}
+
+/* Outline */
+.brand-btn--outline {
+  background: transparent;
+  color: var(--brand);
+  border-color: var(--brand);
+}
+.brand-btn--outline:hover {
+  background: var(--brand-hover);
+  border-color: var(--brand-hover);
+  color: var(--text-hover);
+}
+
+/* Ghost */
+.brand-btn--ghost {
+  background: transparent;
+  color: var(--brand);
+  border-color: rgba(189, 102, 29, 0.35);
+}
+.brand-btn--ghost:hover {
+  background: #fcefe3;
+  border-color: var(--brand-hover);
+  color: var(--brand-hover);
+}
+
+/* Danger */
+.brand-btn--danger {
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
+.brand-btn--danger:hover {
+  background: var(--danger-hover);
+  border-color: var(--danger-hover);
+  color: #fff;
+}
+
+/* Sizes */
+.brand-btn--sm {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.95rem;
+}
+.brand-btn--md {
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+}
+.brand-btn--lg {
+  padding: 0.8rem 1.4rem;
+  font-size: 1.05rem;
+}
+
+/* Block */
+.brand-btn--block {
+  width: 100%;
+  display: inline-flex;
+}
+
+/* Disabled */
+.brand-btn.is-disabled,
+.brand-btn:disabled {
+  background: #bfbfbf !important;
+  border-color: #bfbfbf !important;
+  color: #eee !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+}
+
+/* Icons */
+.brand-btn__icon {
+  display: inline-flex;
+  line-height: 0;
+}
+
+/* Strong override so global a:hover never turns these blue */
+a.brand-btn,
+a.brand-btn:link,
+a.brand-btn:visited,
+a.brand-btn:hover,
+a.brand-btn:active,
+a.brand-btn:focus {
+  text-decoration: none !important;
+}
+
+/* Correct text colors for each variant in link form */
+a.brand-btn.brand-btn--solid:link,
+a.brand-btn.brand-btn--solid:visited {
+  color: var(--text) !important;
+}
+a.brand-btn.brand-btn--solid:hover,
+a.brand-btn.brand-btn--solid:active {
+  color: var(--text-hover) !important;
+}
+
+a.brand-btn.brand-btn--outline:link,
+a.brand-btn.brand-btn--outline:visited {
+  color: var(--brand) !important;
+}
+a.brand-btn.brand-btn--outline:hover,
+a.brand-btn.brand-btn--outline:active {
+  color: var(--text-hover) !important;
+}
+
+a.brand-btn.brand-btn--ghost:link,
+a.brand-btn.brand-btn--ghost:visited {
+  color: var(--brand) !important;
+}
+a.brand-btn.brand-btn--ghost:hover,
+a.brand-btn.brand-btn--ghost:active {
+  color: var(--brand-hover) !important;
+}
+
+/* Focus */
+.brand-btn:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}

@@ -1,7 +1,6 @@
 // src/components/BrandButton.jsx
 import React, { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
-import './BrandButton.css';
 
 const BrandButton = forwardRef(function BrandButton(
   {
